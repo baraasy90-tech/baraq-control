@@ -23,6 +23,7 @@ export interface Company {
   createdBy: string;
   name: string;
   companyCode: string;
+  countryCode: string;
   logoUrl: string | null;
   archiveFolderName: string;
   archiveStorageType: StorageType;

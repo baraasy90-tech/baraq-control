@@ -16,6 +16,24 @@ import type { Company, StorageType } from "@/types/domain";
 
 const HEADER_COLOR_PRESETS = ["#171B26", "#E86B2C", "#2E6FE8", "#8A3FE8", "#2E9E52", "#D64545", "#0EA5A5", "#5B6472"];
 
+const COUNTRY_OPTIONS: { code: string; label: string }[] = [
+  { code: "SA", label: "السعودية" },
+  { code: "AE", label: "الإمارات" },
+  { code: "EG", label: "مصر" },
+  { code: "JO", label: "الأردن" },
+  { code: "KW", label: "الكويت" },
+  { code: "QA", label: "قطر" },
+  { code: "BH", label: "البحرين" },
+  { code: "OM", label: "عمان" },
+  { code: "IQ", label: "العراق" },
+  { code: "MA", label: "المغرب" },
+  { code: "TN", label: "تونس" },
+  { code: "DZ", label: "الجزائر" },
+  { code: "LB", label: "لبنان" },
+  { code: "US", label: "الولايات المتحدة" },
+  { code: "GB", label: "المملكة المتحدة" },
+];
+
 export function ControlPanelScreen({ company, onBack }: { company: Company; onBack: () => void }) {
   const { user } = useAuth();
   const profileQuery = useProfile();
@@ -31,6 +49,7 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
   );
   const canManage = isOwner || isExecutive;
   const [name, setName] = useState(company.name);
+  const [countryCode, setCountryCode] = useState(company.countryCode);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoError, setLogoError] = useState("");
   const [folderName, setFolderName] = useState(company.archiveFolderName);
@@ -82,6 +101,7 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
       await updateCompany.mutateAsync({
         id: company.id,
         name: name.trim(),
+        countryCode,
         ...(logoUrl !== undefined && { logoUrl }),
         archiveFolderName: folderName.trim() || "أرشيف المشاريع",
         archiveStorageType: storageType,
@@ -135,6 +155,20 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
 
             <FieldLabel>اسم الشركة</FieldLabel>
             <TextInput value={name} onChange={(e) => setName(e.target.value)} />
+            <div className="mb-4" />
+            <FieldLabel>الدولة</FieldLabel>
+            <p className="text-xs text-ink-soft mb-2">تُستخدم لعرض تنبيهات الأعياد الرسمية الصحيحة في نظرة عامة على الأقسام.</p>
+            <select
+              value={countryCode}
+              onChange={(e) => setCountryCode(e.target.value)}
+              className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink"
+            >
+              {COUNTRY_OPTIONS.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
             <div className="mb-4" />
             <FieldLabel>شعار الشركة</FieldLabel>
             <LogoUploadField currentUrl={company.logoUrl} pendingFile={logoFile} onSelect={handleLogoChange} error={logoError} />

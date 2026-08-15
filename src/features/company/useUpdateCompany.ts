@@ -9,6 +9,7 @@ type CompanyUpdate = Database["public"]["Tables"]["companies"]["Update"];
 export interface UpdateCompanyInput {
   id: string;
   name?: string;
+  countryCode?: string;
   logoUrl?: string | null;
   archiveFolderName?: string;
   archiveStorageType?: StorageType;
@@ -32,6 +33,7 @@ export function useUpdateCompany() {
     mutationFn: async ({ id, ...patch }: UpdateCompanyInput) => {
       const update: CompanyUpdate = {};
       if (patch.name !== undefined) update.name = patch.name;
+      if (patch.countryCode !== undefined) update.country_code = patch.countryCode;
       if (patch.logoUrl !== undefined) update.logo_url = patch.logoUrl;
       if (patch.archiveFolderName !== undefined) update.archive_folder_name = patch.archiveFolderName;
       if (patch.archiveStorageType !== undefined) update.archive_storage_type = patch.archiveStorageType;

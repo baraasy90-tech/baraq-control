@@ -12,6 +12,7 @@ export interface Database {
           created_by: string;
           name: string;
           company_code: string;
+          country_code: string;
           logo_url: string | null;
           archive_folder_name: string;
           archive_storage_type: "cloud" | "local" | "drive";
@@ -32,6 +33,7 @@ export interface Database {
           created_by?: string;
           name: string;
           company_code?: string;
+          country_code?: string;
           logo_url?: string | null;
           archive_folder_name?: string;
           archive_storage_type?: "cloud" | "local" | "drive";
