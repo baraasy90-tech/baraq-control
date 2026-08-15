@@ -20,6 +20,7 @@ import { useCreateTask } from "@/features/tasks/api/useCreateTask";
 import { useUpdateTask } from "@/features/tasks/api/useUpdateTask";
 import { useDeleteTask } from "@/features/tasks/api/useDeleteTask";
 import { useCompanyScheduleTasks } from "@/features/tasks/api/useCompanyScheduleTasks";
+import { useCompanyCriticalItems } from "@/features/schedule/api/useCompanyCriticalItems";
 import { useUpcomingHolidays } from "@/features/overview/api/useUpcomingHolidays";
 import { fmt, todayISO, addDays, startOfWeek } from "@/utils/dates";
 import type { TaskPriority, TaskStatus } from "@/types/domain";
@@ -344,6 +345,8 @@ export function TasksScreen() {
   };
   const holidaysQuery = useUpcomingHolidays(company.id, company.countryCode);
   const holidays = holidaysQuery.data ?? [];
+  const criticalQuery = useCompanyCriticalItems(company.id);
+  const criticalItems = criticalQuery.data ?? [];
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-5xl mx-auto">
@@ -358,6 +361,35 @@ export function TasksScreen() {
           </SecondaryButton>
         </div>
       </div>
+
+      {criticalItems.length > 0 && (
+        <Card className="mb-4">
+          <h3 className="text-sm font-bold text-ink mb-3">
+            📦 بنود تحتاج طلباً وتوريداً مسبقاً <span className="text-ink-soft font-normal">({criticalItems.length})</span>
+          </h3>
+          <div className="flex flex-col gap-2">
+            {criticalItems.map((c) => {
+              const tone = c.daysToStart <= 0 ? "critical" : c.daysToStart <= c.leadDays ? "warn" : "neutral";
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => navigate(`/projects/${c.projectId}/admin`)}
+                  className={`flex items-center justify-between text-sm rounded-lg px-3 py-2 gap-2 border-none cursor-pointer text-right hover:brightness-95 ${
+                    tone === "critical" ? "bg-critical-bg" : tone === "warn" ? "bg-warn-bg" : "bg-bg"
+                  }`}
+                >
+                  <span className="text-ink truncate">
+                    {c.name} <span className="text-ink-soft text-xs">· {c.projectName}</span>
+                  </span>
+                  <span className="text-xs text-ink-soft font-mono shrink-0">
+                    {c.daysToStart <= 0 ? "بدأت المرحلة" : `يبدأ خلال ${c.daysToStart} يوم`}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {holidays.length > 0 && (
         <Card className="mb-4">
