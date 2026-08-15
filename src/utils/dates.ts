@@ -11,6 +11,13 @@ export const addDays = (iso: string, d: number): string => {
 export const fmt = (iso: string | null | undefined): string =>
   iso ? new Date(iso).toLocaleDateString("ar-SA", { day: "2-digit", month: "short" }) : "—";
 
+/** بداية الأسبوع (الأحد) للتاريخ المُعطى، كـ ISO date. */
+export function startOfWeek(iso: string): string {
+  const dt = new Date(iso);
+  dt.setDate(dt.getDate() - dt.getDay());
+  return dt.toISOString().slice(0, 10);
+}
+
 /**
  * حساب تاريخ النهاية حسب نوع التقويم:
  * - "calendar": كل أيام الأسبوع السبعة

@@ -3,7 +3,6 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Card, StatCard, SecondaryButton } from "@/components/ui";
 import { useCompany } from "@/features/company/useCompany";
 import { useCompanyOverview } from "@/features/overview/api/useCompanyOverview";
-import { useUpcomingHolidays } from "@/features/overview/api/useUpcomingHolidays";
 import { fmt } from "@/utils/dates";
 import { fmtMoney } from "@/utils/money";
 
@@ -71,8 +70,6 @@ export function OverviewScreen() {
   const { company } = useCompany();
   const overviewQuery = useCompanyOverview(company.id);
   const data = overviewQuery.data;
-  const holidaysQuery = useUpcomingHolidays(company.countryCode);
-  const holidays = holidaysQuery.data ?? [];
 
   const totalProjects = data?.projects.length ?? 0;
   const totalTasks = data ? Object.values(data.taskStatusCounts).reduce((a, b) => a + b, 0) : 0;
@@ -85,23 +82,6 @@ export function OverviewScreen() {
           رجوع
         </SecondaryButton>
       </div>
-
-      {holidays.length > 0 && (
-        <Card className="mb-6">
-          <h3 className="text-sm font-bold text-ink mb-3">أعياد ومناسبات قادمة (خلال 60 يوماً)</h3>
-          <div className="flex flex-col gap-2">
-            {holidays.map((h, i) => (
-              <div key={i} className="flex items-center justify-between text-sm bg-bg rounded-lg px-3 py-2">
-                <span className="text-ink-soft">
-                  {h.name}
-                  {h.source === "islamic" && <span className="text-xs text-ink-soft mr-1">(هجري تقريبي)</span>}
-                </span>
-                <span className="font-bold text-ink">{fmt(h.date)}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
 
       {overviewQuery.isLoading && <p className="text-sm text-ink-soft">جارٍ التحميل...</p>}
       {overviewQuery.isError && <p className="text-sm text-critical">تعذّر تحميل البيانات</p>}

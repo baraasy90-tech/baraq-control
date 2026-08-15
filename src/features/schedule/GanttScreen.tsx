@@ -3,10 +3,21 @@ import { SecondaryButton, Card } from "@/components/ui";
 import { useActivities } from "@/features/schedule/api/useActivities";
 import { computeSchedule } from "@/features/schedule/lib/schedule";
 import { useCustomCalendarMap } from "@/features/schedule/api/useCustomCalendars";
+import { useScheduleHolidays } from "@/features/schedule/api/useScheduleHolidays";
 import { withComputedDone, getCompletionDates } from "@/features/schedule/lib/completion";
+import { useCompany } from "@/features/company/useCompany";
 import { fmt, todayISO } from "@/utils/dates";
 import type { Activity, Schedule } from "@/types/domain";
 import type { Project } from "@/types/domain";
+
+const TONE_COLOR: Record<"onTime" | "doneLate" | "current" | "overdue" | "upcoming", string> = {
+  onTime: "#2E9E52",
+  doneLate: "#DFA22E",
+  current: "#2E6FE8",
+  overdue: "#D64545",
+  upcoming: "#94A3B8",
+};
+const HOLIDAY_COLOR = "#8A3FE8";
 
 const dayMs = 86400000;
 const daysBetween = (a: string, b: string) => Math.round((new Date(b).getTime() - new Date(a).getTime()) / dayMs);
@@ -42,6 +53,7 @@ function monthLabel(iso: string): string {
 
 export function GanttScreen({ project }: { project: Project }) {
   const navigate = useNavigate();
+  const { company } = useCompany();
   const activitiesQuery = useActivities(project.id);
   const customCalendars = useCustomCalendarMap(project.companyId);
   const activities = withComputedDone(activitiesQuery.data ?? []);
@@ -49,11 +61,26 @@ export function GanttScreen({ project }: { project: Project }) {
   const completionDates = getCompletionDates(activities);
   const rows = flattenTree(activities).filter((r) => schedule[r.activity.id]);
 
+  const starts = rows.map((r) => schedule[r.activity.id].start);
+  const ends = rows.map((r) => schedule[r.activity.id].end);
+  const rangeStart = starts.length > 0 ? starts.reduce((min, s) => (s < min ? s : min)) : undefined;
+  const rangeEndRaw = ends.length > 0 ? ends.reduce((max, e) => (e > max ? e : max)) : undefined;
+  const rangeEnd =
+    rangeStart && rangeEndRaw
+      ? daysBetween(rangeStart, rangeEndRaw) < 1
+        ? new Date(new Date(rangeStart).getTime() + dayMs).toISOString().slice(0, 10)
+        : rangeEndRaw
+      : undefined;
+  const totalDays = rangeStart && rangeEnd ? Math.max(1, daysBetween(rangeStart, rangeEnd)) : 1;
+
+  const holidaysQuery = useScheduleHolidays(company.countryCode, rangeStart, rangeEnd);
+  const holidays = holidaysQuery.data ?? [];
+
   if (activitiesQuery.isLoading) {
     return <p className="text-sm text-ink-soft p-6">جارٍ التحميل...</p>;
   }
 
-  if (rows.length === 0) {
+  if (rows.length === 0 || !rangeStart || !rangeEnd) {
     return (
       <div className="min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-6 gap-2">
@@ -66,13 +93,6 @@ export function GanttScreen({ project }: { project: Project }) {
       </div>
     );
   }
-
-  const starts = rows.map((r) => schedule[r.activity.id].start);
-  const ends = rows.map((r) => schedule[r.activity.id].end);
-  const rangeStart = starts.reduce((min, s) => (s < min ? s : min));
-  const rangeEndRaw = ends.reduce((max, e) => (e > max ? e : max));
-  const rangeEnd = daysBetween(rangeStart, rangeEndRaw) < 1 ? new Date(new Date(rangeStart).getTime() + dayMs).toISOString().slice(0, 10) : rangeEndRaw;
-  const totalDays = Math.max(1, daysBetween(rangeStart, rangeEnd));
 
   const months: { iso: string; leftPct: number }[] = [];
   {
@@ -92,18 +112,22 @@ export function GanttScreen({ project }: { project: Project }) {
   const todayOffset = daysBetween(rangeStart, t);
   const todayPct = todayOffset >= 0 && todayOffset <= totalDays ? (todayOffset / totalDays) * 100 : null;
 
-  const toneStyle = (activity: Activity, sc: Schedule[string]): string => {
+  const toneColor = (activity: Activity, sc: Schedule[string]): string => {
     const isLate = !activity.done && t > sc.end;
     const isCurrent = !activity.done && sc.start <= t && t <= sc.end;
     if (activity.done) {
       const d = completionDates.get(activity.id);
       const onTime = !d || d <= sc.end;
-      return onTime ? "bg-accent" : "bg-done-late";
+      return onTime ? TONE_COLOR.onTime : TONE_COLOR.doneLate;
     }
-    if (isLate) return "bg-critical";
-    if (isCurrent) return "bg-ink";
-    return "bg-line";
+    if (isLate) return TONE_COLOR.overdue;
+    if (isCurrent) return TONE_COLOR.current;
+    return TONE_COLOR.upcoming;
   };
+
+  const holidayMarkers = holidays
+    .filter((h) => h.date >= rangeStart && h.date <= rangeEnd)
+    .map((h) => ({ ...h, leftPct: (Math.max(0, daysBetween(rangeStart, h.date)) / totalDays) * 100 }));
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-7xl mx-auto">
@@ -126,6 +150,14 @@ export function GanttScreen({ project }: { project: Project }) {
                   {monthLabel(m.iso)}
                 </div>
               ))}
+              {holidayMarkers.map((h, i) => (
+                <div
+                  key={i}
+                  title={`${h.name} · ${fmt(h.date)}`}
+                  className="absolute top-0 bottom-0 w-1 rounded-sm"
+                  style={{ left: `${h.leftPct}%`, background: HOLIDAY_COLOR }}
+                />
+              ))}
             </div>
           </div>
 
@@ -145,14 +177,22 @@ export function GanttScreen({ project }: { project: Project }) {
                   >
                     {activity.name}
                   </div>
-                  <div className="flex-1 relative h-6 bg-bg rounded">
+                  <div className="flex-1 relative h-6 bg-bg rounded overflow-hidden">
+                    {holidayMarkers.map((h, i) => (
+                      <div
+                        key={i}
+                        title={`${h.name} · ${fmt(h.date)}`}
+                        className="absolute top-0 bottom-0"
+                        style={{ left: `${h.leftPct}%`, width: `${Math.max(100 / totalDays, 0.6)}%`, background: HOLIDAY_COLOR, opacity: 0.18 }}
+                      />
+                    ))}
                     {todayPct !== null && (
                       <div className="absolute top-0 bottom-0 w-px bg-primary z-10" style={{ left: `${todayPct}%` }} />
                     )}
                     <div
                       title={`${fmt(sc.start)} → ${fmt(sc.end)}`}
-                      className={`absolute top-0.5 bottom-0.5 rounded ${toneStyle(activity, sc)}`}
-                      style={{ left: `${leftPct}%`, width: `${Math.max(widthPct, 1.5)}%` }}
+                      className="absolute top-0.5 bottom-0.5 rounded"
+                      style={{ left: `${leftPct}%`, width: `${Math.max(widthPct, 1.5)}%`, background: toneColor(activity, sc) }}
                     />
                   </div>
                 </div>
@@ -164,19 +204,22 @@ export function GanttScreen({ project }: { project: Project }) {
 
       <div className="flex flex-wrap gap-3 mt-4 text-xs text-ink-soft">
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-accent" /> منتهٍ بالموعد
+          <span className="w-2.5 h-2.5 rounded-full" style={{ background: TONE_COLOR.onTime }} /> منتهٍ بالموعد
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-done-late" /> منتهٍ متأخراً
+          <span className="w-2.5 h-2.5 rounded-full" style={{ background: TONE_COLOR.doneLate }} /> منتهٍ متأخراً
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-ink" /> جارٍ حالياً
+          <span className="w-2.5 h-2.5 rounded-full" style={{ background: TONE_COLOR.current }} /> جارٍ حالياً
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-critical" /> متأخر عن الموعد
+          <span className="w-2.5 h-2.5 rounded-full" style={{ background: TONE_COLOR.overdue }} /> متأخر عن الموعد
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-line" /> قادم
+          <span className="w-2.5 h-2.5 rounded-full" style={{ background: TONE_COLOR.upcoming }} /> قادم
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-sm" style={{ background: HOLIDAY_COLOR }} /> عطلة/عيد
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-0.5 h-2.5 bg-primary" /> اليوم

@@ -402,6 +402,7 @@ export interface Database {
           assigned_to: string | null;
           created_by: string;
           created_at: string;
+          completed_at: string | null;
         };
         Insert: {
           id?: string;
@@ -414,6 +415,7 @@ export interface Database {
           assigned_to?: string | null;
           created_by: string;
           created_at?: string;
+          completed_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["tasks"]["Insert"]>;
         Relationships: [];

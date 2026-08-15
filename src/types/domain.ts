@@ -85,6 +85,7 @@ export interface Task {
   assignedTo: string | null;
   createdBy: string;
   createdAt: string;
+  completedAt: string | null;
 }
 
 export interface Invite {

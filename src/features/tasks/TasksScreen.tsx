@@ -19,7 +19,8 @@ import { useCompanyTasks, type TaskWithContext } from "@/features/tasks/api/useT
 import { useCreateTask } from "@/features/tasks/api/useCreateTask";
 import { useUpdateTask } from "@/features/tasks/api/useUpdateTask";
 import { useDeleteTask } from "@/features/tasks/api/useDeleteTask";
-import { fmt } from "@/utils/dates";
+import { useUpcomingHolidays } from "@/features/overview/api/useUpcomingHolidays";
+import { fmt, todayISO, addDays, startOfWeek } from "@/utils/dates";
 import type { TaskPriority, TaskStatus } from "@/types/domain";
 
 const PRIORITY_LABEL: Record<TaskPriority, string> = { high: "عالي", medium: "متوسط", low: "منخفض" };
@@ -31,6 +32,68 @@ const PRIORITY_TONE: Record<TaskPriority, string> = {
 const STATUS_LABEL: Record<TaskStatus, string> = { todo: "لم تبدأ", in_progress: "قيد التنفيذ", done: "مكتملة" };
 
 type Tab = "all" | "mine" | "created";
+
+function TimeBucketCard({ title, tasks, dateField }: { title: string; tasks: TaskWithContext[]; dateField: "due" | "completed" }) {
+  return (
+    <Card>
+      <h3 className="text-sm font-bold text-ink mb-3">
+        {title} <span className="text-ink-soft font-normal">({tasks.length})</span>
+      </h3>
+      {tasks.length === 0 ? (
+        <p className="text-sm text-ink-soft">لا توجد مهام</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {tasks.map((t) => (
+            <div key={t.id} className="flex items-center justify-between text-sm bg-bg rounded-lg px-3 py-2 gap-2">
+              <span className="text-ink truncate">
+                {t.title} <span className="text-ink-soft text-xs">· {t.projectName}</span>
+              </span>
+              <span className="text-xs text-ink-soft font-mono shrink-0">
+                {fmt(dateField === "due" ? t.dueDate : (t.completedAt ?? t.dueDate))}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+interface TaskBuckets {
+  thisWeek: TaskWithContext[];
+  nextWeek: TaskWithContext[];
+  nextMonth: TaskWithContext[];
+  lastWeekDone: TaskWithContext[];
+  previousDone: TaskWithContext[];
+}
+
+function groupTasksByTime(tasks: TaskWithContext[]): TaskBuckets {
+  const today = todayISO();
+  const thisWeekStart = startOfWeek(today);
+  const thisWeekEnd = addDays(thisWeekStart, 6);
+  const nextWeekStart = addDays(thisWeekStart, 7);
+  const nextWeekEnd = addDays(thisWeekStart, 13);
+  const nextMonthStart = addDays(thisWeekStart, 14);
+  const nextMonthEnd = addDays(thisWeekStart, 44);
+  const lastWeekStart = addDays(thisWeekStart, -7);
+  const lastWeekEnd = addDays(thisWeekStart, -1);
+
+  const buckets: TaskBuckets = { thisWeek: [], nextWeek: [], nextMonth: [], lastWeekDone: [], previousDone: [] };
+
+  for (const t of tasks) {
+    if (t.status === "done") {
+      const completedDate = (t.completedAt ?? t.dueDate ?? t.createdAt).slice(0, 10);
+      if (completedDate >= lastWeekStart && completedDate <= lastWeekEnd) buckets.lastWeekDone.push(t);
+      else if (completedDate < lastWeekStart) buckets.previousDone.push(t);
+    } else if (t.dueDate) {
+      if (t.dueDate >= thisWeekStart && t.dueDate <= thisWeekEnd) buckets.thisWeek.push(t);
+      else if (t.dueDate >= nextWeekStart && t.dueDate <= nextWeekEnd) buckets.nextWeek.push(t);
+      else if (t.dueDate >= nextMonthStart && t.dueDate <= nextMonthEnd) buckets.nextMonth.push(t);
+    }
+  }
+
+  return buckets;
+}
 
 function TaskForm({
   companyId,
@@ -208,6 +271,9 @@ export function TasksScreen() {
     if (tab === "created") return t.createdBy === user?.id;
     return true;
   });
+  const buckets = groupTasksByTime(filtered);
+  const holidaysQuery = useUpcomingHolidays(company.countryCode);
+  const holidays = holidaysQuery.data ?? [];
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-5xl mx-auto">
@@ -222,6 +288,23 @@ export function TasksScreen() {
           </SecondaryButton>
         </div>
       </div>
+
+      {holidays.length > 0 && (
+        <Card className="mb-4">
+          <h3 className="text-sm font-bold text-ink mb-3">أعياد ومناسبات قادمة (خلال 60 يوماً)</h3>
+          <div className="flex flex-col gap-2">
+            {holidays.map((h, i) => (
+              <div key={i} className="flex items-center justify-between text-sm bg-bg rounded-lg px-3 py-2">
+                <span className="text-ink-soft">
+                  {h.name}
+                  {h.source === "islamic" && <span className="text-xs text-ink-soft mr-1">(هجري تقريبي)</span>}
+                </span>
+                <span className="font-bold text-ink">{fmt(h.date)}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="flex gap-2 mb-4">
         {(
@@ -245,6 +328,16 @@ export function TasksScreen() {
 
       {tasksQuery.isLoading && <p className="text-sm text-ink-soft">جارٍ التحميل...</p>}
       {tasksQuery.isError && <p className="text-sm text-critical">تعذّر تحميل المهام</p>}
+
+      {tasksQuery.data && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <TimeBucketCard title="مهام خلال الأسبوع الحالي" tasks={buckets.thisWeek} dateField="due" />
+          <TimeBucketCard title="مهام الأسبوع القادم" tasks={buckets.nextWeek} dateField="due" />
+          <TimeBucketCard title="مهام الشهر القادم" tasks={buckets.nextMonth} dateField="due" />
+          <TimeBucketCard title="مهام الأسبوع الماضي المنجزة" tasks={buckets.lastWeekDone} dateField="completed" />
+          <TimeBucketCard title="المهام المنجزة خلال المدة السابقة" tasks={buckets.previousDone} dateField="completed" />
+        </div>
+      )}
 
       {tasksQuery.data && filtered.length === 0 ? (
         <div className="bg-panel border border-dashed border-line rounded-xl p-10 text-center text-sm text-ink-soft">

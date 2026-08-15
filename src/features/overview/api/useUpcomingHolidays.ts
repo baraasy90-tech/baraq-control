@@ -7,12 +7,12 @@ export interface UpcomingHoliday {
   source: "islamic" | "official";
 }
 
-interface NagerHoliday {
+export interface NagerHoliday {
   date: string;
   localName: string;
 }
 
-async function fetchOfficialHolidays(countryCode: string, year: number): Promise<NagerHoliday[]> {
+export async function fetchOfficialHolidays(countryCode: string, year: number): Promise<NagerHoliday[]> {
   try {
     const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${countryCode}`);
     if (!res.ok) return [];

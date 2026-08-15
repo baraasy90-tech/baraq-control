@@ -15,5 +15,6 @@ export function mapTask(row: TaskRow): Task {
     assignedTo: row.assigned_to,
     createdBy: row.created_by,
     createdAt: row.created_at,
+    completedAt: row.completed_at,
   };
 }
