@@ -1,0 +1,59 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans Arabic", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+
+  --color-bg: #f1efea;
+  --color-panel: #ffffff;
+  --color-ink: #1a2332;
+  --color-ink-soft: #5b6472;
+  --color-line: #e5e2da;
+  --color-navy: #171b26;
+  --color-navy-soft: #262c3c;
+  --color-primary: #e86b2c;
+  --color-primary-bg: #fdebe0;
+  --color-accent: #2e9e52;
+  --color-accent-bg: #e5f5ea;
+  --color-ontrack: #2e9e52;
+  --color-ontrack-bg: #e5f5ea;
+  --color-warn: #dfa22e;
+  --color-warn-bg: #fbf1de;
+  --color-critical: #d64545;
+  --color-critical-bg: #fbe7e7;
+  --color-current: #1a2332;
+  --color-not-submitted: #a67c00;
+  --color-not-submitted-bg: #fbf3dc;
+
+  --color-done-late: #63a97c;
+  --color-done-late-bg: #eaf5ee;
+
+  --color-order-urgent: #d64545;
+  --color-order-urgent-bg: #fbe7e7;
+  --color-order-soon: #d9772e;
+  --color-order-soon-bg: #fbeee0;
+  --color-order-upcoming: #dfa22e;
+  --color-order-upcoming-bg: #fbf1de;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg);
+  background-image: radial-gradient(ellipse 1200px 800px at 15% -10%, #fdf3ea 0%, transparent 60%),
+    radial-gradient(ellipse 1000px 700px at 100% 10%, #eaf1fd 0%, transparent 55%),
+    linear-gradient(180deg, #f6f4ef 0%, var(--color-bg) 40%);
+  background-attachment: fixed;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+* {
+  box-sizing: border-box;
+}
