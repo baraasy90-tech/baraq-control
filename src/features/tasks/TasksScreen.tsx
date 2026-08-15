@@ -37,6 +37,7 @@ type Tab = "all" | "mine" | "created";
 interface BucketItem {
   id: string;
   title: string;
+  projectId: string;
   projectName: string;
   status: TaskStatus;
   dueDate: string | null;
@@ -49,6 +50,7 @@ function taskToBucketItem(t: TaskWithContext): BucketItem {
   return {
     id: t.id,
     title: t.title,
+    projectId: t.projectId,
     projectName: t.projectName,
     status: t.status,
     dueDate: t.dueDate,
@@ -58,7 +60,17 @@ function taskToBucketItem(t: TaskWithContext): BucketItem {
   };
 }
 
-function TimeBucketCard({ title, tasks, dateField }: { title: string; tasks: BucketItem[]; dateField: "due" | "completed" }) {
+function TimeBucketCard({
+  title,
+  tasks,
+  dateField,
+  onOpen,
+}: {
+  title: string;
+  tasks: BucketItem[];
+  dateField: "due" | "completed";
+  onOpen: (item: BucketItem) => void;
+}) {
   return (
     <Card>
       <h3 className="text-sm font-bold text-ink mb-3">
@@ -69,7 +81,11 @@ function TimeBucketCard({ title, tasks, dateField }: { title: string; tasks: Buc
       ) : (
         <div className="flex flex-col gap-2">
           {tasks.map((t) => (
-            <div key={t.id} className="flex items-center justify-between text-sm bg-bg rounded-lg px-3 py-2 gap-2">
+            <button
+              key={t.id}
+              onClick={() => onOpen(t)}
+              className="flex items-center justify-between text-sm bg-bg rounded-lg px-3 py-2 gap-2 border-none cursor-pointer text-right hover:brightness-95"
+            >
               <span className="text-ink truncate">
                 {t.title} <span className="text-ink-soft text-xs">· {t.projectName}</span>
                 {t.source === "activity" && (
@@ -79,7 +95,7 @@ function TimeBucketCard({ title, tasks, dateField }: { title: string; tasks: Buc
               <span className="text-xs text-ink-soft font-mono shrink-0">
                 {fmt(dateField === "due" ? t.dueDate : (t.completedAt ?? t.dueDate))}
               </span>
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -312,6 +328,7 @@ export function TasksScreen() {
       (s): BucketItem => ({
         id: s.id,
         title: s.title,
+        projectId: s.projectId,
         projectName: s.projectName,
         status: s.status,
         dueDate: s.dueDate,
@@ -322,6 +339,9 @@ export function TasksScreen() {
     ),
   ];
   const buckets = groupTasksByTime(bucketItems);
+  const openBucketItem = (item: BucketItem) => {
+    navigate(item.source === "activity" ? `/projects/${item.projectId}/admin` : `/projects/${item.projectId}`);
+  };
   const holidaysQuery = useUpcomingHolidays(company.id, company.countryCode);
   const holidays = holidaysQuery.data ?? [];
 
@@ -382,11 +402,21 @@ export function TasksScreen() {
 
       {tasksQuery.data && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <TimeBucketCard title="مهام خلال الأسبوع الحالي" tasks={buckets.thisWeek} dateField="due" />
-          <TimeBucketCard title="مهام الأسبوع القادم" tasks={buckets.nextWeek} dateField="due" />
-          <TimeBucketCard title="مهام الشهر القادم" tasks={buckets.nextMonth} dateField="due" />
-          <TimeBucketCard title="مهام الأسبوع الماضي المنجزة" tasks={buckets.lastWeekDone} dateField="completed" />
-          <TimeBucketCard title="المهام المنجزة خلال المدة السابقة" tasks={buckets.previousDone} dateField="completed" />
+          <TimeBucketCard title="مهام خلال الأسبوع الحالي" tasks={buckets.thisWeek} dateField="due" onOpen={openBucketItem} />
+          <TimeBucketCard title="مهام الأسبوع القادم" tasks={buckets.nextWeek} dateField="due" onOpen={openBucketItem} />
+          <TimeBucketCard title="مهام الشهر القادم" tasks={buckets.nextMonth} dateField="due" onOpen={openBucketItem} />
+          <TimeBucketCard
+            title="مهام الأسبوع الماضي المنجزة"
+            tasks={buckets.lastWeekDone}
+            dateField="completed"
+            onOpen={openBucketItem}
+          />
+          <TimeBucketCard
+            title="المهام المنجزة خلال المدة السابقة"
+            tasks={buckets.previousDone}
+            dateField="completed"
+            onOpen={openBucketItem}
+          />
         </div>
       )}
 
