@@ -19,6 +19,7 @@ import { useCompanyTasks, type TaskWithContext } from "@/features/tasks/api/useT
 import { useCreateTask } from "@/features/tasks/api/useCreateTask";
 import { useUpdateTask } from "@/features/tasks/api/useUpdateTask";
 import { useDeleteTask } from "@/features/tasks/api/useDeleteTask";
+import { useCompanyScheduleTasks } from "@/features/tasks/api/useCompanyScheduleTasks";
 import { useUpcomingHolidays } from "@/features/overview/api/useUpcomingHolidays";
 import { fmt, todayISO, addDays, startOfWeek } from "@/utils/dates";
 import type { TaskPriority, TaskStatus } from "@/types/domain";
@@ -33,7 +34,31 @@ const STATUS_LABEL: Record<TaskStatus, string> = { todo: "لم تبدأ", in_pro
 
 type Tab = "all" | "mine" | "created";
 
-function TimeBucketCard({ title, tasks, dateField }: { title: string; tasks: TaskWithContext[]; dateField: "due" | "completed" }) {
+interface BucketItem {
+  id: string;
+  title: string;
+  projectName: string;
+  status: TaskStatus;
+  dueDate: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  source: "task" | "activity";
+}
+
+function taskToBucketItem(t: TaskWithContext): BucketItem {
+  return {
+    id: t.id,
+    title: t.title,
+    projectName: t.projectName,
+    status: t.status,
+    dueDate: t.dueDate,
+    completedAt: t.completedAt,
+    createdAt: t.createdAt,
+    source: "task",
+  };
+}
+
+function TimeBucketCard({ title, tasks, dateField }: { title: string; tasks: BucketItem[]; dateField: "due" | "completed" }) {
   return (
     <Card>
       <h3 className="text-sm font-bold text-ink mb-3">
@@ -47,6 +72,9 @@ function TimeBucketCard({ title, tasks, dateField }: { title: string; tasks: Tas
             <div key={t.id} className="flex items-center justify-between text-sm bg-bg rounded-lg px-3 py-2 gap-2">
               <span className="text-ink truncate">
                 {t.title} <span className="text-ink-soft text-xs">· {t.projectName}</span>
+                {t.source === "activity" && (
+                  <span className="text-[10px] bg-primary-bg text-primary rounded px-1.5 py-0.5 mr-1.5">جدول زمني</span>
+                )}
               </span>
               <span className="text-xs text-ink-soft font-mono shrink-0">
                 {fmt(dateField === "due" ? t.dueDate : (t.completedAt ?? t.dueDate))}
@@ -60,14 +88,14 @@ function TimeBucketCard({ title, tasks, dateField }: { title: string; tasks: Tas
 }
 
 interface TaskBuckets {
-  thisWeek: TaskWithContext[];
-  nextWeek: TaskWithContext[];
-  nextMonth: TaskWithContext[];
-  lastWeekDone: TaskWithContext[];
-  previousDone: TaskWithContext[];
+  thisWeek: BucketItem[];
+  nextWeek: BucketItem[];
+  nextMonth: BucketItem[];
+  lastWeekDone: BucketItem[];
+  previousDone: BucketItem[];
 }
 
-function groupTasksByTime(tasks: TaskWithContext[]): TaskBuckets {
+function groupTasksByTime(tasks: BucketItem[]): TaskBuckets {
   const today = todayISO();
   const thisWeekStart = startOfWeek(today);
   const thisWeekEnd = addDays(thisWeekStart, 6);
@@ -262,16 +290,38 @@ export function TasksScreen() {
   const { company } = useCompany();
   const { user } = useAuth();
   const tasksQuery = useCompanyTasks(company.id);
+  const scheduleTasksQuery = useCompanyScheduleTasks(company.id);
   const [tab, setTab] = useState<Tab>("all");
   const [formOpen, setFormOpen] = useState(false);
 
   const tasks = tasksQuery.data ?? [];
+  const scheduleTasks = scheduleTasksQuery.data ?? [];
   const filtered = tasks.filter((t) => {
     if (tab === "mine") return t.assignedTo === user?.id;
     if (tab === "created") return t.createdBy === user?.id;
     return true;
   });
-  const buckets = groupTasksByTime(filtered);
+  const filteredScheduleTasks = scheduleTasks.filter((s) => {
+    if (tab === "mine") return s.assignedTo === user?.id;
+    if (tab === "created") return false;
+    return true;
+  });
+  const bucketItems: BucketItem[] = [
+    ...filtered.map(taskToBucketItem),
+    ...filteredScheduleTasks.map(
+      (s): BucketItem => ({
+        id: s.id,
+        title: s.title,
+        projectName: s.projectName,
+        status: s.status,
+        dueDate: s.dueDate,
+        completedAt: s.completedAt,
+        createdAt: s.dueDate ?? todayISO(),
+        source: "activity",
+      })
+    ),
+  ];
+  const buckets = groupTasksByTime(bucketItems);
   const holidaysQuery = useUpcomingHolidays(company.countryCode);
   const holidays = holidaysQuery.data ?? [];
 

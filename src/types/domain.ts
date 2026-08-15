@@ -178,6 +178,7 @@ export interface Activity {
   startDate: string | null;
   calendarType: CalendarType;
   customCalendarId: string | null;
+  assignedTo: string | null;
   dependsOn: string | null;
   depType: DepType | null;
   lagDays: number;

@@ -26,6 +26,7 @@ export function mapActivity(row: ActivityRow, checklist: ChecklistItem[] = []): 
     startDate: row.start_date,
     calendarType: row.calendar_type,
     customCalendarId: row.custom_calendar_id,
+    assignedTo: row.assigned_to,
     dependsOn: row.depends_on,
     depType: row.dep_type,
     lagDays: row.lag_days,

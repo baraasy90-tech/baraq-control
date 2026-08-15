@@ -10,6 +10,7 @@ import { useSaveChecklist } from "@/features/schedule/api/useSaveChecklist";
 import { ActivityForm, type ActivityFormValues } from "@/features/schedule/ActivityForm";
 import { computeSchedule } from "@/features/schedule/lib/schedule";
 import { useCustomCalendars } from "@/features/schedule/api/useCustomCalendars";
+import { useCompanyMembers } from "@/features/company/api/useCompanyMembers";
 import { withComputedDone } from "@/features/schedule/lib/completion";
 import { fmt } from "@/utils/dates";
 import type { Activity, Project } from "@/types/domain";
@@ -31,6 +32,7 @@ function ActivityRow({
   childrenMap,
   schedule,
   siblings,
+  memberNameById,
   onEdit,
   onAddChild,
   onDelete,
@@ -42,6 +44,7 @@ function ActivityRow({
   childrenMap: Map<string | null, Activity[]>;
   schedule: ReturnType<typeof computeSchedule>;
   siblings: Activity[];
+  memberNameById: Map<string, string>;
   onEdit: (a: Activity) => void;
   onAddChild: (parentId: string) => void;
   onDelete: (a: Activity) => void;
@@ -73,6 +76,11 @@ function ActivityRow({
           {activity.requiresReceiving && (
             <span className="text-[10px] bg-primary-bg text-primary rounded px-1.5 py-0.5 shrink-0">استلام</span>
           )}
+          {activity.assignedTo && memberNameById.get(activity.assignedTo) && (
+            <span className="text-[10px] bg-bg text-ink-soft rounded px-1.5 py-0.5 shrink-0">
+              👤 {memberNameById.get(activity.assignedTo)}
+            </span>
+          )}
         </div>
         <div className="text-xs text-ink-soft font-mono shrink-0 hidden sm:block">
           {sc ? `${fmt(sc.start)} → ${fmt(sc.end)}` : "—"} · {activity.durationDays} يوم
@@ -98,6 +106,7 @@ function ActivityRow({
           childrenMap={childrenMap}
           schedule={schedule}
           siblings={children}
+          memberNameById={memberNameById}
           onEdit={onEdit}
           onAddChild={onAddChild}
           onDelete={onDelete}
@@ -125,6 +134,9 @@ export function AdminScreen({ project }: { project: Project }) {
 
   const customCalendarsQuery = useCustomCalendars(project.companyId);
   const customCalendars = customCalendarsQuery.data ?? [];
+  const membersQuery = useCompanyMembers(project.companyId);
+  const members = membersQuery.data ?? [];
+  const memberNameById = new Map(members.map((m) => [m.id, m.fullName]));
   const customCalendarMap = new Map(customCalendars.map((c) => [c.id, c.workingWeekdays]));
   const activities = withComputedDone(activitiesQuery.data ?? []);
   const schedule = computeSchedule(activities, customCalendarMap);
@@ -154,6 +166,7 @@ export function AdminScreen({ project }: { project: Project }) {
           durationDays: values.durationDays,
           calendarType: values.calendarType,
           customCalendarId: values.customCalendarId,
+          assignedTo: values.assignedTo,
           startDate: values.startDate,
           dependsOn: values.dependsOn,
           depType: values.dependsOn ? values.depType : null,
@@ -180,6 +193,7 @@ export function AdminScreen({ project }: { project: Project }) {
           durationDays: values.durationDays,
           calendarType: values.calendarType,
           customCalendarId: values.customCalendarId,
+          assignedTo: values.assignedTo,
           startDate: values.startDate,
           dependsOn: values.dependsOn,
           depType: values.dependsOn ? values.depType : null,
@@ -267,6 +281,7 @@ export function AdminScreen({ project }: { project: Project }) {
               childrenMap={childrenMap}
               schedule={schedule}
               siblings={roots}
+              memberNameById={memberNameById}
               onEdit={openEdit}
               onAddChild={openCreate}
               onDelete={setConfirmDelete}
@@ -290,6 +305,7 @@ export function AdminScreen({ project }: { project: Project }) {
             initial={editingActivity}
             candidateDependencies={candidateDependencies}
             customCalendars={customCalendars}
+            members={members}
             saving={createActivity.isPending || updateActivity.isPending || saveChecklist.isPending}
             onSave={handleSave}
             onCancel={() => {

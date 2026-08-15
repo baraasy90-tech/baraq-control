@@ -7,11 +7,17 @@ import { REL_LABEL, LAG_UNIT_LABEL } from "@/features/schedule/lib/schedule";
 import type { ChecklistItemDraft } from "@/features/schedule/api/useSaveChecklist";
 import type { Activity, BudgetType, CalendarType, CustomCalendar, DepType, LagUnit } from "@/types/domain";
 
+export interface AssignableMember {
+  id: string;
+  fullName: string;
+}
+
 export interface ActivityFormValues {
   name: string;
   durationDays: number;
   calendarType: CalendarType;
   customCalendarId: string | null;
+  assignedTo: string | null;
   scheduleMode: "manual" | "dependency";
   startDate: string | null;
   dependsOn: string | null;
@@ -33,6 +39,7 @@ export function ActivityForm({
   initial,
   candidateDependencies,
   customCalendars,
+  members,
   onSave,
   onCancel,
   saving,
@@ -40,11 +47,13 @@ export function ActivityForm({
   initial: Activity | null;
   candidateDependencies: Activity[];
   customCalendars: CustomCalendar[];
+  members: AssignableMember[];
   onSave: (values: ActivityFormValues) => void;
   onCancel: () => void;
   saving?: boolean;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
+  const [assignedTo, setAssignedTo] = useState(initial?.assignedTo ?? "");
   const [durationDays, setDurationDays] = useState(String(initial?.durationDays ?? 5));
   const [calendarSelection, setCalendarSelection] = useState<string>(
     initial?.customCalendarId ? `custom:${initial.customCalendarId}` : (initial?.calendarType ?? "workdays")
@@ -86,6 +95,7 @@ export function ActivityForm({
       durationDays: Number(durationDays),
       calendarType: isCustom ? "workdays" : (calendarSelection as CalendarType),
       customCalendarId: isCustom ? calendarSelection.slice("custom:".length) : null,
+      assignedTo: assignedTo || null,
       scheduleMode,
       startDate: scheduleMode === "manual" ? startDate || null : null,
       dependsOn: scheduleMode === "dependency" ? dependsOn : null,
@@ -109,6 +119,22 @@ export function ActivityForm({
       <div>
         <FieldLabel>اسم المرحلة/البند</FieldLabel>
         <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: صبة اللبشة" />
+      </div>
+
+      <div>
+        <FieldLabel>إسناد إلى (يظهر ضمن مهام هذا العضو)</FieldLabel>
+        <select
+          value={assignedTo}
+          onChange={(e) => setAssignedTo(e.target.value)}
+          className="w-full px-3 py-2.5 border border-line rounded-lg text-sm font-sans bg-white box-border"
+        >
+          <option value="">بدون تحديد</option>
+          {members.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.fullName}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

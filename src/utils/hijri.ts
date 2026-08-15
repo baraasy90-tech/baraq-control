@@ -59,11 +59,13 @@ export interface IslamicOccasion {
   name: string;
   hijriMonth: number;
   hijriDay: number;
+  /** رموز دول (ISO alpha-2) لا تُعتبر هذه المناسبة عطلة رسمية فيها، فتُستبعد عند اختيارها. */
+  excludedCountries?: string[];
 }
 
 export const ISLAMIC_OCCASIONS: IslamicOccasion[] = [
-  { name: "رأس السنة الهجرية", hijriMonth: 1, hijriDay: 1 },
-  { name: "المولد النبوي", hijriMonth: 3, hijriDay: 12 },
+  { name: "رأس السنة الهجرية", hijriMonth: 1, hijriDay: 1, excludedCountries: ["SA"] },
+  { name: "المولد النبوي", hijriMonth: 3, hijriDay: 12, excludedCountries: ["SA"] },
   { name: "بداية شهر رمضان", hijriMonth: 9, hijriDay: 1 },
   { name: "ليلة القدر (تقريبية)", hijriMonth: 9, hijriDay: 27 },
   { name: "عيد الفطر", hijriMonth: 10, hijriDay: 1 },
@@ -76,16 +78,22 @@ export interface UpcomingIslamicHoliday {
   date: string;
 }
 
+function occasionsForCountry(countryCode: string | undefined): IslamicOccasion[] {
+  if (!countryCode) return ISLAMIC_OCCASIONS;
+  return ISLAMIC_OCCASIONS.filter((o) => !o.excludedCountries?.includes(countryCode));
+}
+
 /** يحسب كل المناسبات الإسلامية الواقعة بين اليوم وحتى windowDays يوماً قادمة. */
-export function getUpcomingIslamicHolidays(windowDays = 60): UpcomingIslamicHoliday[] {
+export function getUpcomingIslamicHolidays(windowDays = 60, countryCode?: string): UpcomingIslamicHoliday[] {
   const todayISO = new Date().toISOString().slice(0, 10);
   const currentHijriYear = gregorianToHijriYear(todayISO);
   const results: UpcomingIslamicHoliday[] = [];
   const todayMs = new Date(todayISO).getTime();
   const horizonMs = todayMs + windowDays * 86400000;
+  const occasions = occasionsForCountry(countryCode);
 
   for (const hy of [currentHijriYear, currentHijriYear + 1]) {
-    for (const occ of ISLAMIC_OCCASIONS) {
+    for (const occ of occasions) {
       const date = hijriToGregorianISO(hy, occ.hijriMonth, occ.hijriDay);
       const ms = new Date(date).getTime();
       if (ms >= todayMs && ms <= horizonMs) {
@@ -98,15 +106,16 @@ export function getUpcomingIslamicHolidays(windowDays = 60): UpcomingIslamicHoli
 }
 
 /** يحسب كل المناسبات الإسلامية الواقعة ضمن مدى تاريخ ميلادي محدد (بدايته ونهايته). */
-export function getIslamicHolidaysInRange(startISO: string, endISO: string): UpcomingIslamicHoliday[] {
+export function getIslamicHolidaysInRange(startISO: string, endISO: string, countryCode?: string): UpcomingIslamicHoliday[] {
   const startMs = new Date(startISO).getTime();
   const endMs = new Date(endISO).getTime();
   const startHijriYear = gregorianToHijriYear(startISO);
   const endHijriYear = gregorianToHijriYear(endISO);
   const results: UpcomingIslamicHoliday[] = [];
+  const occasions = occasionsForCountry(countryCode);
 
   for (let hy = startHijriYear; hy <= endHijriYear + 1; hy++) {
-    for (const occ of ISLAMIC_OCCASIONS) {
+    for (const occ of occasions) {
       const date = hijriToGregorianISO(hy, occ.hijriMonth, occ.hijriDay);
       const ms = new Date(date).getTime();
       if (ms >= startMs && ms <= endMs) {

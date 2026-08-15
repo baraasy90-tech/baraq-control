@@ -13,6 +13,7 @@ export interface CreateActivityInput {
   startDate: string | null;
   calendarType: "calendar" | "workdays";
   customCalendarId?: string | null;
+  assignedTo?: string | null;
   dependsOn: string | null;
   depType: "SS" | "FS" | null;
   lagDays: number;
@@ -43,6 +44,7 @@ export function useCreateActivity() {
         start_date: input.startDate,
         calendar_type: input.calendarType,
         custom_calendar_id: input.customCalendarId ?? null,
+        assigned_to: input.assignedTo ?? null,
         depends_on: input.dependsOn,
         dep_type: input.depType,
         lag_days: input.lagDays,

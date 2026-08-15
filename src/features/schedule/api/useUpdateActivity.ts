@@ -15,6 +15,7 @@ export interface UpdateActivityInput {
   startDate?: string | null;
   calendarType?: "calendar" | "workdays";
   customCalendarId?: string | null;
+  assignedTo?: string | null;
   dependsOn?: string | null;
   depType?: "SS" | "FS" | null;
   lagDays?: number;
@@ -45,6 +46,7 @@ export function useUpdateActivity() {
       if (input.startDate !== undefined) patch.start_date = input.startDate;
       if (input.calendarType !== undefined) patch.calendar_type = input.calendarType;
       if (input.customCalendarId !== undefined) patch.custom_calendar_id = input.customCalendarId;
+      if (input.assignedTo !== undefined) patch.assigned_to = input.assignedTo;
       if (input.dependsOn !== undefined) patch.depends_on = input.dependsOn;
       if (input.depType !== undefined) patch.dep_type = input.depType;
       if (input.lagDays !== undefined) patch.lag_days = input.lagDays;
