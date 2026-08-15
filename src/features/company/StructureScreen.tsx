@@ -75,8 +75,9 @@ function ProjectDots({ dots, selectedProjectId }: { dots: UserProjectDot[] | und
 const NODE_COLOR = "#1c5d72";
 const NODE_WIDTH = 190;
 const NODE_HEIGHT = 96;
-const CANVAS_WIDTH = 2200;
-const CANVAS_HEIGHT = 1300;
+const CANVAS_PADDING = 80;
+const CANVAS_MIN_WIDTH = 700;
+const CANVAS_MIN_HEIGHT = 420;
 
 const ROLE_LABEL: Record<string, string> = { member: "عضو", head: "رئيس القسم" };
 const PROJECT_ROLE_LABEL: Record<string, string> = { manager: "صلاحية كاملة (مدير مشروع)", member: "صلاحية عضو" };
@@ -176,7 +177,13 @@ export function StructureScreen() {
     return defaultPositions.get(deptId) ?? { x: 80, y: 140 };
   };
 
-  const companyPos: Pos = { x: CANVAS_WIDTH / 2 - NODE_WIDTH / 2, y: 20 };
+  const deptPositions = departments.map((d) => getPos(d.id));
+  const maxX = deptPositions.length > 0 ? Math.max(...deptPositions.map((p) => p.x + NODE_WIDTH)) : NODE_WIDTH;
+  const maxY = deptPositions.length > 0 ? Math.max(...deptPositions.map((p) => p.y + NODE_HEIGHT)) : NODE_HEIGHT;
+  const canvasWidth = Math.max(CANVAS_MIN_WIDTH, maxX + CANVAS_PADDING);
+  const canvasHeight = Math.max(CANVAS_MIN_HEIGHT, maxY + CANVAS_PADDING);
+
+  const companyPos: Pos = { x: canvasWidth / 2 - NODE_WIDTH / 2, y: 20 };
 
   useEffect(() => {
     if (!dragState) return;
@@ -189,8 +196,8 @@ export function StructureScreen() {
       const scaleY = canvas.offsetHeight / rect.height;
       let x = (e.clientX - rect.left) * scaleX - dragState.offsetX;
       let y = (e.clientY - rect.top) * scaleY - dragState.offsetY;
-      x = Math.max(0, Math.min(x, CANVAS_WIDTH - NODE_WIDTH));
-      y = Math.max(0, Math.min(y, CANVAS_HEIGHT - NODE_HEIGHT));
+      x = Math.max(0, Math.min(x, canvas.offsetWidth - NODE_WIDTH));
+      y = Math.max(0, Math.min(y, canvas.offsetHeight - NODE_HEIGHT));
       setLivePositions((prev) => ({ ...prev, [dragState.id]: { x, y } }));
     };
 
@@ -279,11 +286,11 @@ export function StructureScreen() {
               ref={canvasRef}
               dir="ltr"
               className="relative"
-              style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, touchAction: "none" }}
+              style={{ width: canvasWidth, height: canvasHeight, touchAction: "none" }}
             >
               <svg
-                width={CANVAS_WIDTH}
-                height={CANVAS_HEIGHT}
+                width={canvasWidth}
+                height={canvasHeight}
                 className="absolute inset-0 pointer-events-none"
                 style={{ zIndex: 0 }}
               >
