@@ -41,6 +41,7 @@ export function ImportScheduleScreen({ projectId }: { projectId: string }) {
 
   // وضع الملفات المهيكلة (Primavera XER/XML) — تُحلَّل مباشرة بدون ربط أعمدة
   const [structuredRows, setStructuredRows] = useState<ParsedScheduleRow[] | null>(null);
+  const [skippedCount, setSkippedCount] = useState(0);
 
   const [error, setError] = useState("");
   const [committing, setCommitting] = useState(false);
@@ -49,6 +50,7 @@ export function ImportScheduleScreen({ projectId }: { projectId: string }) {
     setRows([]);
     setHeaders([]);
     setStructuredRows(null);
+    setSkippedCount(0);
   };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -70,12 +72,16 @@ export function ImportScheduleScreen({ projectId }: { projectId: string }) {
     try {
       if (ext === "xer") {
         const text = await readTextSmart(file);
-        setStructuredRows(parsePrimaveraXer(text));
+        const result = parsePrimaveraXer(text);
+        setStructuredRows(result.rows);
+        setSkippedCount(result.skippedCount);
         return;
       }
       if (ext === "xml") {
         const text = await readTextSmart(file);
-        setStructuredRows(parsePrimaveraXml(text));
+        const result = parsePrimaveraXml(text);
+        setStructuredRows(result.rows);
+        setSkippedCount(result.skippedCount);
         return;
       }
 
@@ -104,6 +110,7 @@ export function ImportScheduleScreen({ projectId }: { projectId: string }) {
       name: String(row[nameCol] ?? "").trim(),
       durationDays: Number(row[durationCol]) || 1,
       predecessorName: predecessorCol ? String(row[predecessorCol] ?? "").trim() || null : null,
+      isMilestone: false,
     }))
     .filter((r) => r.name.length > 0);
 
@@ -233,6 +240,13 @@ export function ImportScheduleScreen({ projectId }: { projectId: string }) {
             <p className="text-xs text-ink-soft mb-4">
               تم تحليل الملف تلقائياً (الاسم، المدة، الاعتماديات) — تأكد من صحة المدد بالمعاينة قبل الاستيراد، فقد
               تحتاج مراجعة حسب إعدادات التصدير من Primavera.
+              {skippedCount > 0 && (
+                <>
+                  {" "}
+                  تم تجاهل <strong className="text-ink">{skippedCount}</strong> بند تجميعي (WBS/Level of Effort)
+                  تلقائياً لأنها ليست أنشطة جدول فعلية.
+                </>
+              )}
             </p>
           )}
 
@@ -249,7 +263,14 @@ export function ImportScheduleScreen({ projectId }: { projectId: string }) {
               <tbody>
                 {parsedRows.slice(0, 20).map((r, i) => (
                   <tr key={i} className="border-b border-line last:border-0">
-                    <td className="py-1.5 pl-2 text-ink">{r.name}</td>
+                    <td className="py-1.5 pl-2 text-ink">
+                      {r.name}
+                      {r.isMilestone && (
+                        <span className="mr-1.5 text-[10px] text-primary bg-primary-bg rounded-full px-1.5 py-0.5">
+                          معلم
+                        </span>
+                      )}
+                    </td>
                     <td className="py-1.5 pl-2 text-ink-soft">{r.durationDays}</td>
                     <td className="py-1.5 text-ink-soft">{r.predecessorName ?? "—"}</td>
                   </tr>
