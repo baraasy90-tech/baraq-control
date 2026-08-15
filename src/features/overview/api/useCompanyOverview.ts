@@ -42,6 +42,13 @@ export function useCompanyOverview(companyId: string | undefined) {
     queryKey: ["overview", companyId],
     enabled: !!companyId,
     queryFn: async (): Promise<CompanyOverview> => {
+      const { data: calendarRows, error: calendarsError } = await supabase
+        .from("custom_calendars")
+        .select("id, working_weekdays")
+        .eq("company_id", companyId!);
+      if (calendarsError) throw calendarsError;
+      const customCalendars = new Map(calendarRows.map((c) => [c.id, c.working_weekdays]));
+
       const { data: projectRows, error: projectsError } = await supabase
         .from("projects")
         .select("*")
@@ -108,7 +115,7 @@ export function useCompanyOverview(companyId: string | undefined) {
         for (const [projectId, activities] of activitiesByProject) {
           const project = projectById.get(projectId);
           if (!project) continue;
-          const schedule = computeSchedule(activities);
+          const schedule = computeSchedule(activities, customCalendars);
 
           for (const late of getLatePhases(activities, schedule)) {
             latePhases.push({ projectId, projectName: project.name, activityName: late.name, end: late.end });

@@ -5,12 +5,13 @@ import { CALENDAR_LABEL } from "@/utils/dates";
 import { fmtMoney } from "@/utils/money";
 import { REL_LABEL, LAG_UNIT_LABEL } from "@/features/schedule/lib/schedule";
 import type { ChecklistItemDraft } from "@/features/schedule/api/useSaveChecklist";
-import type { Activity, BudgetType, CalendarType, DepType, LagUnit } from "@/types/domain";
+import type { Activity, BudgetType, CalendarType, CustomCalendar, DepType, LagUnit } from "@/types/domain";
 
 export interface ActivityFormValues {
   name: string;
   durationDays: number;
   calendarType: CalendarType;
+  customCalendarId: string | null;
   scheduleMode: "manual" | "dependency";
   startDate: string | null;
   dependsOn: string | null;
@@ -31,19 +32,23 @@ export interface ActivityFormValues {
 export function ActivityForm({
   initial,
   candidateDependencies,
+  customCalendars,
   onSave,
   onCancel,
   saving,
 }: {
   initial: Activity | null;
   candidateDependencies: Activity[];
+  customCalendars: CustomCalendar[];
   onSave: (values: ActivityFormValues) => void;
   onCancel: () => void;
   saving?: boolean;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [durationDays, setDurationDays] = useState(String(initial?.durationDays ?? 5));
-  const [calendarType, setCalendarType] = useState<CalendarType>(initial?.calendarType ?? "workdays");
+  const [calendarSelection, setCalendarSelection] = useState<string>(
+    initial?.customCalendarId ? `custom:${initial.customCalendarId}` : (initial?.calendarType ?? "workdays")
+  );
   const [scheduleMode, setScheduleMode] = useState<"manual" | "dependency">(
     initial?.dependsOn ? "dependency" : "manual"
   );
@@ -75,10 +80,12 @@ export function ActivityForm({
       return;
     }
     setError("");
+    const isCustom = calendarSelection.startsWith("custom:");
     onSave({
       name: name.trim(),
       durationDays: Number(durationDays),
-      calendarType,
+      calendarType: isCustom ? "workdays" : (calendarSelection as CalendarType),
+      customCalendarId: isCustom ? calendarSelection.slice("custom:".length) : null,
       scheduleMode,
       startDate: scheduleMode === "manual" ? startDate || null : null,
       dependsOn: scheduleMode === "dependency" ? dependsOn : null,
@@ -118,13 +125,18 @@ export function ActivityForm({
         <div>
           <FieldLabel>نوع التقويم</FieldLabel>
           <select
-            value={calendarType}
-            onChange={(e) => setCalendarType(e.target.value as CalendarType)}
+            value={calendarSelection}
+            onChange={(e) => setCalendarSelection(e.target.value)}
             className="w-full px-3 py-2.5 border border-line rounded-lg text-sm font-sans bg-white box-border"
           >
             {Object.entries(CALENDAR_LABEL).map(([k, v]) => (
               <option key={k} value={k}>
                 {v}
+              </option>
+            ))}
+            {customCalendars.map((c) => (
+              <option key={c.id} value={`custom:${c.id}`}>
+                {c.name} (مخصص)
               </option>
             ))}
           </select>

@@ -9,6 +9,7 @@ import { useDeleteActivity } from "@/features/schedule/api/useDeleteActivity";
 import { useSaveChecklist } from "@/features/schedule/api/useSaveChecklist";
 import { ActivityForm, type ActivityFormValues } from "@/features/schedule/ActivityForm";
 import { computeSchedule } from "@/features/schedule/lib/schedule";
+import { useCustomCalendars } from "@/features/schedule/api/useCustomCalendars";
 import { withComputedDone } from "@/features/schedule/lib/completion";
 import { fmt } from "@/utils/dates";
 import type { Activity, Project } from "@/types/domain";
@@ -122,8 +123,11 @@ export function AdminScreen({ project }: { project: Project }) {
   const [confirmDelete, setConfirmDelete] = useState<Activity | null>(null);
   const [error, setError] = useState("");
 
+  const customCalendarsQuery = useCustomCalendars(project.companyId);
+  const customCalendars = customCalendarsQuery.data ?? [];
+  const customCalendarMap = new Map(customCalendars.map((c) => [c.id, c.workingWeekdays]));
   const activities = withComputedDone(activitiesQuery.data ?? []);
-  const schedule = computeSchedule(activities);
+  const schedule = computeSchedule(activities, customCalendarMap);
   const childrenMap = buildChildrenMap(activities);
   const roots = childrenMap.get(null) ?? [];
 
@@ -149,6 +153,7 @@ export function AdminScreen({ project }: { project: Project }) {
           name: values.name,
           durationDays: values.durationDays,
           calendarType: values.calendarType,
+          customCalendarId: values.customCalendarId,
           startDate: values.startDate,
           dependsOn: values.dependsOn,
           depType: values.dependsOn ? values.depType : null,
@@ -174,6 +179,7 @@ export function AdminScreen({ project }: { project: Project }) {
           order: nextOrder,
           durationDays: values.durationDays,
           calendarType: values.calendarType,
+          customCalendarId: values.customCalendarId,
           startDate: values.startDate,
           dependsOn: values.dependsOn,
           depType: values.dependsOn ? values.depType : null,
@@ -283,6 +289,7 @@ export function AdminScreen({ project }: { project: Project }) {
           <ActivityForm
             initial={editingActivity}
             candidateDependencies={candidateDependencies}
+            customCalendars={customCalendars}
             saving={createActivity.isPending || updateActivity.isPending || saveChecklist.isPending}
             onSave={handleSave}
             onCancel={() => {

@@ -198,6 +198,24 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["invites"]["Insert"]>;
         Relationships: [];
       };
+      custom_calendars: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          working_weekdays: number[];
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          working_weekdays: number[];
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["custom_calendars"]["Insert"]>;
+        Relationships: [];
+      };
       activities: {
         Row: {
           id: string;
@@ -209,6 +227,7 @@ export interface Database {
           done: boolean;
           start_date: string | null;
           calendar_type: "calendar" | "workdays";
+          custom_calendar_id: string | null;
           depends_on: string | null;
           dep_type: "SS" | "FS" | null;
           lag_days: number;
@@ -236,6 +255,7 @@ export interface Database {
           done?: boolean;
           start_date?: string | null;
           calendar_type?: "calendar" | "workdays";
+          custom_calendar_id?: string | null;
           depends_on?: string | null;
           dep_type?: "SS" | "FS" | null;
           lag_days?: number;

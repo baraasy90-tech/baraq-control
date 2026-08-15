@@ -17,7 +17,7 @@ export const lagToDays = (lag: number | null | undefined, unit: "day" | "month")
  * - FS (يبدأ بعد نهاية السابق): start = predecessor.end + مهلة
  * تُحل الروابط بشكل تراجعي (recursive) مع حماية من الحلقات الدائرية.
  */
-export function computeSchedule(activities: Activity[]): Schedule {
+export function computeSchedule(activities: Activity[], customCalendars?: Map<string, number[]>): Schedule {
   const byId: Record<string, Activity> = {};
   activities.forEach((a) => (byId[a.id] = a));
   const schedule: Record<string, { start: string; end: string } | null> = {};
@@ -40,7 +40,8 @@ export function computeSchedule(activities: Activity[]): Schedule {
       start = a.startDate || null;
     }
 
-    const end = start ? addByCalendar(start, a.durationDays, a.calendarType) : null;
+    const customPattern = a.customCalendarId ? customCalendars?.get(a.customCalendarId) : undefined;
+    const end = start ? addByCalendar(start, a.durationDays, a.calendarType, customPattern) : null;
     const result = start && end ? { start, end } : null;
     schedule[id] = result;
     visiting.delete(id);

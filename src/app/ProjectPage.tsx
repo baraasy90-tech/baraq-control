@@ -7,6 +7,7 @@ import { ScopeSetupScreen } from "@/features/projects/ScopeSetupScreen";
 import { ProjectPath } from "@/features/schedule/ProjectPath";
 import { AdvanceOrdersPanel } from "@/features/schedule/AdvanceOrdersPanel";
 import { computeSchedule, getCurrentPreviousNext, getLatePhases, getCriticalUpcoming } from "@/features/schedule/lib/schedule";
+import { useCustomCalendarMap } from "@/features/schedule/api/useCustomCalendars";
 import { withComputedDone } from "@/features/schedule/lib/completion";
 import { DonutChart } from "@/components/DonutChart";
 import { Card, StatCard, SecondaryButton } from "@/components/ui";
@@ -19,6 +20,7 @@ export function ProjectPage() {
   const projectQuery = useProject(id);
   const activitiesQuery = useActivities(id);
   const updateProject = useUpdateProject();
+  const customCalendars = useCustomCalendarMap(company.id);
   const navigate = useNavigate();
 
   if (projectQuery.isLoading) {
@@ -43,7 +45,7 @@ export function ProjectPage() {
   }
 
   const activities = withComputedDone(activitiesQuery.data ?? []);
-  const schedule = computeSchedule(activities);
+  const schedule = computeSchedule(activities, customCalendars);
   const roots = activities.filter((a) => a.parentId === null);
   const { current, previous, next } = getCurrentPreviousNext(activities, schedule);
   const latePhases = getLatePhases(activities, schedule);

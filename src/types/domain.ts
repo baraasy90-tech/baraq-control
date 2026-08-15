@@ -158,6 +158,13 @@ export interface BudgetActualEntry {
   contractRef: string | null;
 }
 
+export interface CustomCalendar {
+  id: string;
+  companyId: string;
+  name: string;
+  workingWeekdays: number[];
+}
+
 export interface Activity {
   id: string;
   projectId: string;
@@ -168,6 +175,7 @@ export interface Activity {
   done: boolean;
   startDate: string | null;
   calendarType: CalendarType;
+  customCalendarId: string | null;
   dependsOn: string | null;
   depType: DepType | null;
   lagDays: number;

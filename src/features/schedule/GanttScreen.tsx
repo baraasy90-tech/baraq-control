@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { SecondaryButton, Card } from "@/components/ui";
 import { useActivities } from "@/features/schedule/api/useActivities";
 import { computeSchedule } from "@/features/schedule/lib/schedule";
+import { useCustomCalendarMap } from "@/features/schedule/api/useCustomCalendars";
 import { withComputedDone, getCompletionDates } from "@/features/schedule/lib/completion";
 import { fmt, todayISO } from "@/utils/dates";
 import type { Activity, Schedule } from "@/types/domain";
@@ -42,8 +43,9 @@ function monthLabel(iso: string): string {
 export function GanttScreen({ project }: { project: Project }) {
   const navigate = useNavigate();
   const activitiesQuery = useActivities(project.id);
+  const customCalendars = useCustomCalendarMap(project.companyId);
   const activities = withComputedDone(activitiesQuery.data ?? []);
-  const schedule = computeSchedule(activities);
+  const schedule = computeSchedule(activities, customCalendars);
   const completionDates = getCompletionDates(activities);
   const rows = flattenTree(activities).filter((r) => schedule[r.activity.id]);
 

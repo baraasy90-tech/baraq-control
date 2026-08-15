@@ -38,10 +38,18 @@ export function useMemberWorkSummaries(userIds: string[]) {
       const projectIds = [...new Set(pmRows.map((r) => r.project_id))];
       const { data: projectRows, error: projError } = await supabase
         .from("projects")
-        .select("id, name")
+        .select("id, name, company_id")
         .in("id", projectIds);
       if (projError) throw projError;
       const projectNameById = new Map(projectRows.map((p) => [p.id, p.name]));
+
+      const companyIds = [...new Set(projectRows.map((p) => p.company_id))];
+      const { data: calendarRows, error: calendarsError } =
+        companyIds.length > 0
+          ? await supabase.from("custom_calendars").select("id, working_weekdays").in("company_id", companyIds)
+          : { data: [] as { id: string; working_weekdays: number[] }[], error: null };
+      if (calendarsError) throw calendarsError;
+      const customCalendars = new Map(calendarRows.map((c) => [c.id, c.working_weekdays]));
 
       const { data: activityRows, error: actError } = await supabase
         .from("activities")
@@ -59,7 +67,7 @@ export function useMemberWorkSummaries(userIds: string[]) {
       }
 
       const scheduleByProject = new Map<string, ReturnType<typeof computeSchedule>>();
-      for (const [pid, acts] of activitiesByProject) scheduleByProject.set(pid, computeSchedule(acts));
+      for (const [pid, acts] of activitiesByProject) scheduleByProject.set(pid, computeSchedule(acts, customCalendars));
 
       const projectIdsByUser = new Map<string, string[]>();
       for (const r of pmRows) {

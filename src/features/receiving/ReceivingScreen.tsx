@@ -13,6 +13,7 @@ import { useDeleteSubmission } from "@/features/receiving/api/useDeleteSubmissio
 import { printSubmissionReport } from "@/features/receiving/lib/printReport";
 import { useCompany } from "@/features/company/useCompany";
 import { computeSchedule } from "@/features/schedule/lib/schedule";
+import { useCustomCalendarMap } from "@/features/schedule/api/useCustomCalendars";
 import { getReceivingGate } from "@/features/schedule/lib/scope";
 import { fmt } from "@/utils/dates";
 import type { Decision, Project, Submission } from "@/types/domain";
@@ -39,8 +40,9 @@ export function ReceivingScreen({ project }: { project: Project }) {
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
   const [error, setError] = useState("");
 
+  const customCalendars = useCustomCalendarMap(company.id);
   const activities = activitiesQuery.data ?? [];
-  const schedule = computeSchedule(activities);
+  const schedule = computeSchedule(activities, customCalendars);
   const selected = activities.find((a) => a.id === selectedId) ?? null;
   const gate = selected ? getReceivingGate(selected, activities, schedule) : null;
 

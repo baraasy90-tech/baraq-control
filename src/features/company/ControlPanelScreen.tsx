@@ -6,6 +6,7 @@ import { ArchiveStorageFields, isArchiveConfigValid } from "@/features/company/A
 import { PrintSettingsFields, type PrintSettingsValue } from "@/features/company/PrintSettingsFields";
 import { LogoUploadField } from "@/features/company/LogoUploadField";
 import { TeamSection } from "@/features/company/TeamSection";
+import { CustomCalendarsSection } from "@/features/schedule/CustomCalendarsSection";
 import { uploadFile, uniqueFileName } from "@/lib/supabase/storage";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useProfile } from "@/features/company/useProfile";
@@ -154,6 +155,8 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
           </div>
 
           <TeamSection companyId={company.id} />
+
+          <CustomCalendarsSection companyId={company.id} />
 
           <div className="bg-panel border border-line/60 shadow-sm rounded-xl p-6 mb-4">
             <h2 className="text-sm font-bold text-ink mb-4">إعداد الأرشفة</h2>
