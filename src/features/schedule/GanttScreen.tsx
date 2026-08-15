@@ -73,7 +73,7 @@ export function GanttScreen({ project }: { project: Project }) {
       : undefined;
   const totalDays = rangeStart && rangeEnd ? Math.max(1, daysBetween(rangeStart, rangeEnd)) : 1;
 
-  const holidaysQuery = useScheduleHolidays(company.countryCode, rangeStart, rangeEnd);
+  const holidaysQuery = useScheduleHolidays(company.id, company.countryCode, rangeStart, rangeEnd);
   const holidays = holidaysQuery.data ?? [];
 
   if (activitiesQuery.isLoading) {

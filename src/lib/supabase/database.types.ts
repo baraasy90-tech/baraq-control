@@ -218,6 +218,26 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["custom_calendars"]["Insert"]>;
         Relationships: [];
       };
+      company_holidays: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          holiday_date: string;
+          recurring_yearly: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          holiday_date: string;
+          recurring_yearly?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["company_holidays"]["Insert"]>;
+        Relationships: [];
+      };
       activities: {
         Row: {
           id: string;

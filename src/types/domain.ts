@@ -167,6 +167,14 @@ export interface CustomCalendar {
   workingWeekdays: number[];
 }
 
+export interface CompanyHoliday {
+  id: string;
+  companyId: string;
+  name: string;
+  date: string;
+  recurringYearly: boolean;
+}
+
 export interface Activity {
   id: string;
   projectId: string;

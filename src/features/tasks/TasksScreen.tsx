@@ -322,7 +322,7 @@ export function TasksScreen() {
     ),
   ];
   const buckets = groupTasksByTime(bucketItems);
-  const holidaysQuery = useUpcomingHolidays(company.countryCode);
+  const holidaysQuery = useUpcomingHolidays(company.id, company.countryCode);
   const holidays = holidaysQuery.data ?? [];
 
   return (
@@ -348,6 +348,7 @@ export function TasksScreen() {
                 <span className="text-ink-soft">
                   {h.name}
                   {h.source === "islamic" && <span className="text-xs text-ink-soft mr-1">(هجري تقريبي)</span>}
+                  {h.source === "custom" && <span className="text-xs text-primary mr-1">(مُضافة يدوياً)</span>}
                 </span>
                 <span className="font-bold text-ink">{fmt(h.date)}</span>
               </div>
