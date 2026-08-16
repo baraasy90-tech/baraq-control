@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
+import { Palette, Printer, Users, Network, Archive as ArchiveIcon, CalendarDays } from "lucide-react";
 import { FieldLabel, TextInput, PrimaryButton, SecondaryButton, ErrorText } from "@/components/ui";
 import { useUpdateCompany } from "@/features/company/useUpdateCompany";
 import { ArchiveStorageFields, isArchiveConfigValid } from "@/features/company/ArchiveStorageFields";
@@ -35,7 +37,30 @@ const COUNTRY_OPTIONS: { code: string; label: string }[] = [
   { code: "GB", label: "المملكة المتحدة" },
 ];
 
+type SectionKey = "appearance" | "print" | "team" | "structure" | "archive" | "calendars";
+
+const SECTIONS: { key: SectionKey; label: string; icon: typeof Palette }[] = [
+  { key: "appearance", label: "المظهر", icon: Palette },
+  { key: "print", label: "إعدادات الطباعة", icon: Printer },
+  { key: "team", label: "الدعوات والموظفين", icon: Users },
+  { key: "structure", label: "الهيكلة", icon: Network },
+  { key: "archive", label: "الأرشفة", icon: ArchiveIcon },
+  { key: "calendars", label: "التقاويم والمناسبات", icon: CalendarDays },
+];
+
+function SectionCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-panel border border-line/60 shadow-sm rounded-xl p-6 mb-4">
+      <h2 className="text-sm font-bold text-ink mb-1">{title}</h2>
+      {description && <p className="text-xs text-ink-soft mb-4">{description}</p>}
+      {!description && <div className="mb-4" />}
+      {children}
+    </div>
+  );
+}
+
 export function ControlPanelScreen({ company, onBack }: { company: Company; onBack: () => void }) {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const profileQuery = useProfile();
   const profile = profileQuery.data?.profile;
@@ -49,6 +74,8 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
     (m) => m.userId === profile?.id && departments.find((d) => d.id === m.departmentId)?.type === "executive"
   );
   const canManage = isOwner || isExecutive;
+
+  const [activeSection, setActiveSection] = useState<SectionKey>("appearance");
   const [name, setName] = useState(company.name);
   const [countryCode, setCountryCode] = useState(company.countryCode);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -123,125 +150,181 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
     }
   };
 
+  const showSaveBar = activeSection === "appearance" || activeSection === "print" || activeSection === "archive";
+
+  if (!canManage) {
+    return (
+      <div className="min-h-screen p-4 sm:p-5 max-w-2xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-xl font-bold text-ink">لوحة التحكم</h1>
+          <SecondaryButton onClick={onBack}>رجوع</SecondaryButton>
+        </div>
+        <div className="bg-panel border border-line/60 shadow-sm rounded-xl p-6 mb-4">
+          <div className="flex items-center gap-3 mb-2">
+            {company.logoUrl && <img src={company.logoUrl} alt={company.name} className="h-10 object-contain" />}
+            <h2 className="text-base font-bold text-ink">{company.name}</h2>
+          </div>
+          <p className="text-xs text-ink-soft">
+            بيانات الشركة (الاسم، الشعار، الأرشفة، الطباعة) يديرها مدير الحساب أو الإدارة التنفيذية فقط.
+          </p>
+        </div>
+        <TeamSection companyId={company.id} />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen p-4 sm:p-5 max-w-2xl mx-auto">
+    <div className="min-h-screen p-4 sm:p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-ink">لوحة التحكم</h1>
         <SecondaryButton onClick={onBack}>رجوع</SecondaryButton>
       </div>
 
-      {canManage ? (
-        <>
-          <div className="bg-panel border border-line/60 shadow-sm rounded-xl p-6 mb-4">
-            <h2 className="text-sm font-bold text-ink mb-4">بيانات الشركة</h2>
+      <div className="flex flex-col sm:flex-row gap-6">
+        <nav className="flex sm:flex-col gap-1.5 overflow-x-auto sm:overflow-visible sm:w-52 shrink-0 pb-1 sm:pb-0">
+          {SECTIONS.map((s) => {
+            const Icon = s.icon;
+            const isActive = activeSection === s.key;
+            return (
+              <button
+                key={s.key}
+                onClick={() => setActiveSection(s.key)}
+                className={clsx(
+                  "flex items-center gap-2 text-sm font-semibold px-3 py-2.5 rounded-lg cursor-pointer border whitespace-nowrap shrink-0 sm:shrink text-right",
+                  isActive ? "border-primary bg-primary-bg text-ink" : "border-transparent bg-panel text-ink-soft hover:bg-bg"
+                )}
+              >
+                <Icon size={16} strokeWidth={2.25} />
+                {s.label}
+              </button>
+            );
+          })}
+        </nav>
 
-            <div className="bg-bg rounded-lg p-3 mb-4">
-              <FieldLabel>رمز انضمام الموظفين</FieldLabel>
-              <p className="text-xs text-ink-soft mb-2">
-                شاركه مع أي موظف ليُنشئ حسابه بنفسه ويُضاف مباشرة لشركتك (اختر "إنشاء حساب موظف" بشاشة الدخول).
-              </p>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm font-bold text-ink bg-panel border border-line/60 rounded-lg px-3 py-2 tracking-widest">
-                  {company.companyCode}
-                </span>
-                <SecondaryButton
-                  type="button"
-                  onClick={() => navigator.clipboard.writeText(company.companyCode).catch(() => {})}
-                  className="text-xs px-3 py-2"
-                >
-                  نسخ
-                </SecondaryButton>
+        <div className="flex-1 min-w-0">
+          {activeSection === "appearance" && (
+            <SectionCard title="المظهر" description="اسم الشركة، الشعار، ولون الرأس العلوي بلوحة المشاريع.">
+              <FieldLabel>اسم الشركة</FieldLabel>
+              <TextInput value={name} onChange={(e) => setName(e.target.value)} />
+              <div className="mb-4" />
+              <FieldLabel>شعار الشركة</FieldLabel>
+              <LogoUploadField currentUrl={company.logoUrl} pendingFile={logoFile} onSelect={handleLogoChange} error={logoError} />
+              <div className="mb-4" />
+              <FieldLabel>لون الرأس العلوي (لوحة المشاريع)</FieldLabel>
+              <div className="flex flex-wrap gap-2">
+                {HEADER_COLOR_PRESETS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setHeaderColor(c)}
+                    className={clsx("w-8 h-8 rounded-full border-2 cursor-pointer", headerColor === c ? "border-ink" : "border-transparent")}
+                    style={{ background: c }}
+                    aria-label={c}
+                  />
+                ))}
               </div>
+            </SectionCard>
+          )}
+
+          {activeSection === "print" && (
+            <SectionCard title="إعدادات الطباعة" description="تنسيق التقارير المطبوعة — ترويسة/تذييل، ورقة رسمية كاملة، أو بدون تنسيق.">
+              <PrintSettingsFields
+                value={print}
+                onChange={(patch) => setPrint((prev) => ({ ...prev, ...patch }))}
+                onUploadHeader={(f) => uploadPrintAsset(f, "headerUrl")}
+                onUploadFooter={(f) => uploadPrintAsset(f, "footerUrl")}
+                onUploadFullPage={(f) => uploadPrintAsset(f, "fullPageUrl")}
+              />
+            </SectionCard>
+          )}
+
+          {activeSection === "team" && (
+            <>
+              <SectionCard title="رمز انضمام الموظفين" description='شاركه مع أي موظف ليُنشئ حسابه بنفسه ويُضاف مباشرة لشركتك (اختر "إنشاء حساب موظف" بشاشة الدخول).'>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm font-bold text-ink bg-bg border border-line/60 rounded-lg px-3 py-2 tracking-widest">
+                    {company.companyCode}
+                  </span>
+                  <SecondaryButton
+                    type="button"
+                    onClick={() => navigator.clipboard.writeText(company.companyCode).catch(() => {})}
+                    className="text-xs px-3 py-2"
+                  >
+                    نسخ
+                  </SecondaryButton>
+                </div>
+              </SectionCard>
+              <TeamSection companyId={company.id} />
+            </>
+          )}
+
+          {activeSection === "structure" && (
+            <SectionCard title="الهيكلة" description="محرر رسم حر لهيكلة الأقسام — يفتح بصفحة منفصلة.">
+              <SecondaryButton onClick={() => navigate("/structure")} className="w-auto px-4">
+                فتح محرر الهيكلة
+              </SecondaryButton>
+            </SectionCard>
+          )}
+
+          {activeSection === "archive" && (
+            <SectionCard title="الأرشفة" description="مكان حفظ مستندات المشاريع المؤرشفة.">
+              <ArchiveStorageFields
+                folderName={folderName}
+                onFolderNameChange={setFolderName}
+                storageType={storageType}
+                onStorageTypeChange={setStorageType}
+                localPath={localPath}
+                onLocalPathChange={setLocalPath}
+              />
+            </SectionCard>
+          )}
+
+          {activeSection === "calendars" && (
+            <>
+              <SectionCard title="الدولة" description="تُستخدم لعرض تنبيهات الأعياد الرسمية الصحيحة بقسم المهام والجدول الزمني.">
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink"
+                >
+                  {COUNTRY_OPTIONS.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="mt-3">
+                  <PrimaryButton
+                    onClick={handleSave}
+                    disabled={updateCompany.isPending || uploading || !isArchiveConfigValid(folderName, storageType, localPath)}
+                    className="w-auto px-4 py-2 text-xs"
+                  >
+                    {updateCompany.isPending || uploading ? "جارٍ الحفظ..." : "حفظ الدولة"}
+                  </PrimaryButton>
+                  <ErrorText>{submitError}</ErrorText>
+                  {saved && <p className="text-xs text-accent mt-1">تم الحفظ بنجاح</p>}
+                </div>
+              </SectionCard>
+              <CustomCalendarsSection companyId={company.id} />
+              <CompanyHolidaysSection companyId={company.id} />
+            </>
+          )}
+
+          {showSaveBar && (
+            <div className="sticky bottom-0 bg-bg/95 backdrop-blur-sm pt-2 pb-1 -mx-1 px-1">
+              <ErrorText>{submitError}</ErrorText>
+              {saved && <p className="text-sm text-accent mb-2">تم الحفظ بنجاح</p>}
+              <PrimaryButton
+                onClick={handleSave}
+                disabled={updateCompany.isPending || uploading || !isArchiveConfigValid(folderName, storageType, localPath)}
+                className="w-auto px-6"
+              >
+                {updateCompany.isPending || uploading ? "جارٍ الحفظ..." : "حفظ التغييرات"}
+              </PrimaryButton>
             </div>
-
-            <FieldLabel>اسم الشركة</FieldLabel>
-            <TextInput value={name} onChange={(e) => setName(e.target.value)} />
-            <div className="mb-4" />
-            <FieldLabel>الدولة</FieldLabel>
-            <p className="text-xs text-ink-soft mb-2">تُستخدم لعرض تنبيهات الأعياد الرسمية الصحيحة في نظرة عامة على الأقسام.</p>
-            <select
-              value={countryCode}
-              onChange={(e) => setCountryCode(e.target.value)}
-              className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink"
-            >
-              {COUNTRY_OPTIONS.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-            <div className="mb-4" />
-            <FieldLabel>شعار الشركة</FieldLabel>
-            <LogoUploadField currentUrl={company.logoUrl} pendingFile={logoFile} onSelect={handleLogoChange} error={logoError} />
-            <div className="mb-4" />
-            <FieldLabel>لون الرأس العلوي (لوحة المشاريع)</FieldLabel>
-            <div className="flex flex-wrap gap-2">
-              {HEADER_COLOR_PRESETS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setHeaderColor(c)}
-                  className={clsx("w-8 h-8 rounded-full border-2 cursor-pointer", headerColor === c ? "border-ink" : "border-transparent")}
-                  style={{ background: c }}
-                  aria-label={c}
-                />
-              ))}
-            </div>
-          </div>
-
-          <TeamSection companyId={company.id} />
-
-          <CustomCalendarsSection companyId={company.id} />
-
-          <CompanyHolidaysSection companyId={company.id} />
-
-          <div className="bg-panel border border-line/60 shadow-sm rounded-xl p-6 mb-4">
-            <h2 className="text-sm font-bold text-ink mb-4">إعداد الأرشفة</h2>
-            <ArchiveStorageFields
-              folderName={folderName}
-              onFolderNameChange={setFolderName}
-              storageType={storageType}
-              onStorageTypeChange={setStorageType}
-              localPath={localPath}
-              onLocalPathChange={setLocalPath}
-            />
-          </div>
-
-          <div className="bg-panel border border-line/60 shadow-sm rounded-xl p-6 mb-4">
-            <h2 className="text-sm font-bold text-ink mb-4">تنسيق الطباعة والتقارير</h2>
-            <PrintSettingsFields
-              value={print}
-              onChange={(patch) => setPrint((prev) => ({ ...prev, ...patch }))}
-              onUploadHeader={(f) => uploadPrintAsset(f, "headerUrl")}
-              onUploadFooter={(f) => uploadPrintAsset(f, "footerUrl")}
-              onUploadFullPage={(f) => uploadPrintAsset(f, "fullPageUrl")}
-            />
-          </div>
-
-          <ErrorText>{submitError}</ErrorText>
-          {saved && <p className="text-sm text-accent mb-2">تم الحفظ بنجاح</p>}
-          <PrimaryButton
-            onClick={handleSave}
-            disabled={updateCompany.isPending || uploading || !isArchiveConfigValid(folderName, storageType, localPath)}
-            className="w-auto px-6"
-          >
-            {updateCompany.isPending || uploading ? "جارٍ الحفظ..." : "حفظ التغييرات"}
-          </PrimaryButton>
-        </>
-      ) : (
-        <>
-          <div className="bg-panel border border-line/60 shadow-sm rounded-xl p-6 mb-4">
-            <div className="flex items-center gap-3 mb-2">
-              {company.logoUrl && <img src={company.logoUrl} alt={company.name} className="h-10 object-contain" />}
-              <h2 className="text-base font-bold text-ink">{company.name}</h2>
-            </div>
-            <p className="text-xs text-ink-soft">
-              بيانات الشركة (الاسم، الشعار، الأرشفة، الطباعة) يديرها مدير الحساب أو الإدارة التنفيذية فقط.
-            </p>
-          </div>
-          <TeamSection companyId={company.id} />
-        </>
-      )}
+          )}
+        </div>
+      </div>
     </div>
   );
 }
