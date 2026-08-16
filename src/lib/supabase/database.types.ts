@@ -599,7 +599,12 @@ export interface Database {
     Functions: {
       accept_invite: {
         Args: { p_token: string };
-        Returns: { company_id: string; company_name: string; department_id: string; role: "member" | "head" }[];
+        Returns: {
+          result_company_id: string;
+          result_company_name: string;
+          result_department_id: string;
+          result_role: "member" | "head";
+        }[];
       };
       join_company_by_code: {
         Args: { p_code: string };

@@ -24,7 +24,7 @@ export function JoinScreen() {
     const { data, error: rpcError } = await supabase.rpc("accept_invite", { p_token: token });
     if (rpcError) throw rpcError;
     const row = data?.[0];
-    setSuccess({ companyName: row?.company_name ?? "" });
+    setSuccess({ companyName: row?.result_company_name ?? "" });
   };
 
   const canSubmit = email.trim().length > 3 && password.length >= 6 && (mode === "login" || fullName.trim().length > 0);
@@ -42,7 +42,7 @@ export function JoinScreen() {
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
-          options: { data: { full_name: fullName.trim() } },
+          options: { data: { full_name: fullName.trim() }, emailRedirectTo: window.location.href },
         });
         if (signUpError) throw signUpError;
         if (!data.session) {
