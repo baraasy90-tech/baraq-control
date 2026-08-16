@@ -12,6 +12,7 @@ import { computeSchedule } from "@/features/schedule/lib/schedule";
 import { useCustomCalendars } from "@/features/schedule/api/useCustomCalendars";
 import { useCompanyMembers } from "@/features/company/api/useCompanyMembers";
 import { withComputedDone } from "@/features/schedule/lib/completion";
+import { exportPrimaveraXer, downloadXerFile } from "@/features/schedule/lib/exportXer";
 import { fmt } from "@/utils/dates";
 import type { Activity, Project } from "@/types/domain";
 
@@ -244,13 +245,21 @@ export function AdminScreen({ project }: { project: Project }) {
 
   const candidateDependencies = activities.filter((a) => a.id !== editingActivity?.id);
 
+  const handleExportXer = () => {
+    const xer = exportPrimaveraXer(project, activities, schedule);
+    downloadXerFile(xer, `${project.name.replace(/[^\w؀-ۿ]+/g, "_")}.xer`);
+  };
+
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6 gap-2">
         <h1 className="text-lg sm:text-xl font-bold text-ink truncate">إدارة المراحل — {project.name}</h1>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 shrink-0 flex-wrap">
           <SecondaryButton onClick={() => navigate(`/projects/${project.id}/import`)} className="text-sm">
             إرفاق الجدول الزمني
+          </SecondaryButton>
+          <SecondaryButton onClick={handleExportXer} disabled={roots.length === 0} className="text-sm">
+            تصدير لبريمافيرا (XER)
           </SecondaryButton>
           <SecondaryButton onClick={() => navigate(`/projects/${project.id}`)} className="text-sm">
             رجوع
