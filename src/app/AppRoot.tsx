@@ -11,6 +11,7 @@ import { getErrorMessage } from "@/utils/errors";
 import { useJoinCompanyByCode } from "@/features/auth/useJoinCompanyByCode";
 import { CompanyOnboardingWizard } from "@/features/company/CompanyOnboardingWizard";
 import { SupportChatWidget } from "@/features/support/SupportChatWidget";
+import { QuickSignOutButton } from "@/features/auth/QuickSignOutButton";
 
 function CenteredMessage({ children }: { children: React.ReactNode }) {
   return <div className="min-h-screen flex items-center justify-center p-5 text-sm text-ink-soft">{children}</div>;
@@ -89,6 +90,7 @@ function AppRootContent() {
         <Outlet />
       </Suspense>
       <SupportChatWidget />
+      <QuickSignOutButton />
     </>
   );
 }

@@ -10,4 +10,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+// sessionStorage بدل localStorage عمداً — الجلسة تُمسح تلقائياً عند إغلاق المتصفح/التبويب فعلياً،
+// فيلزم تسجيل دخول جديد في كل مرة (متطلب حماية صريح)، على عكس localStorage اللي يبقى للأبد.
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  auth: { storage: window.sessionStorage },
+});

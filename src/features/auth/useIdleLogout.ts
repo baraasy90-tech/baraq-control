@@ -18,33 +18,45 @@ export function useIdleLogout(active: boolean) {
       }, IDLE_TIMEOUT_MS);
     };
 
-    // نشاط حقيقي من المستخدم فقط — لا نُسجّله عند مجرّد تركيب الشاشة، حتى لا نطمس
-    // طابع زمني قديم (من جلسة سابقة) قبل ما يتحقق AuthContext منه عند التحميل.
+    // فحص فوري أولاً — لو التبويب كان معلّقاً بالخلفية (نوم الجهاز، تبويب مجمّد على الجوال)
+    // لساعات ثم عاد، لا نثق بأي حدث نشاط جديد قبل التأكد أن الجلسة لم تنتهِ صلاحيتها أصلاً.
+    const checkAndMaybeSignOut = (): boolean => {
+      if (isIdleExpired()) {
+        supabase.auth.signOut();
+        return true;
+      }
+      return false;
+    };
+
     const onActivity = () => {
+      if (checkAndMaybeSignOut()) return;
       recordActivity();
       restartTimeout();
     };
 
+    checkAndMaybeSignOut();
     restartTimeout();
     ACTIVITY_EVENTS.forEach((event) => window.addEventListener(event, onActivity, { passive: true }));
 
     // يغطي حالة إغلاق/تعليق التبويب لفترة (نوم الجهاز مثلاً) دون تفعيل مؤقت setTimeout بدقة —
     // فحص دوري يعتمد على الوقت الفعلي المخزَّن بدل الاعتماد فقط على المؤقت الداخلي.
-    const intervalId = setInterval(() => {
-      if (isIdleExpired()) supabase.auth.signOut();
-    }, CHECK_INTERVAL_MS);
+    const intervalId = setInterval(checkAndMaybeSignOut, CHECK_INTERVAL_MS);
 
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible" && isIdleExpired()) {
-        supabase.auth.signOut();
-      }
+    // أحداث متعددة لالتقاط "عودة" التبويب من الخلفية بأكثر من إشارة — بعض المتصفحات
+    // (خصوصاً بالجوال) قد لا تُطلق visibilitychange بشكل موثوق بعد تعليق طويل.
+    const handleResume = () => {
+      if (document.visibilityState === "visible") checkAndMaybeSignOut();
     };
-    document.addEventListener("visibilitychange", handleVisibility);
+    document.addEventListener("visibilitychange", handleResume);
+    window.addEventListener("focus", handleResume);
+    window.addEventListener("pageshow", handleResume);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
       clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", handleVisibility);
+      document.removeEventListener("visibilitychange", handleResume);
+      window.removeEventListener("focus", handleResume);
+      window.removeEventListener("pageshow", handleResume);
       ACTIVITY_EVENTS.forEach((event) => window.removeEventListener(event, onActivity));
     };
   }, [active]);
