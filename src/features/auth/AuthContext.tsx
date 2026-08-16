@@ -41,7 +41,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     init();
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+      // تسجيل دخول تفاعلي جديد — لازم يصفّر ساعة الخمول، وإلا طابع نشاط قديم متبقٍ من جلسة
+      // سابقة (بأي عمر) يخلي useIdleLogout يسجّل خروجاً فورياً بعد الدخول مباشرة.
+      if (event === "SIGNED_IN") recordActivity();
       setSession(newSession);
     });
 
