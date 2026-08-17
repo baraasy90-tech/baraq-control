@@ -582,6 +582,8 @@ function PreviewTab({ activities, schedule }: { activities: Activity[]; schedule
                 actualWidthPct = (actualDuration / totalDays) * 100;
               }
 
+              const actualColor = hasActual ? actualToneColor(activity, sc) : undefined;
+
               return (
                 <div key={activity.id} className="flex items-center">
                   <div
@@ -589,16 +591,36 @@ function PreviewTab({ activities, schedule }: { activities: Activity[]; schedule
                     style={{ paddingRight: depth * 12 }}
                     title={activity.name}
                   >
-                    {activity.code && <span className="font-mono text-ink-soft">{activity.code} </span>}
-                    {activity.name}
+                    <div className="truncate">
+                      {activity.code && <span className="font-mono text-ink-soft">{activity.code} </span>}
+                      {activity.name}
+                    </div>
+                    {hasActual && (
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="flex items-center gap-1 text-[9px] text-ink-soft">
+                          <span
+                            className="w-2.5 h-1.5 rounded-sm shrink-0"
+                            style={{
+                              background: `repeating-linear-gradient(45deg, ${toneColor(activity, sc)}, ${toneColor(activity, sc)} 2px, transparent 2px, transparent 4px)`,
+                              border: `1px solid ${toneColor(activity, sc)}`,
+                            }}
+                          />
+                          مخطط
+                        </span>
+                        <span className="flex items-center gap-1 text-[9px] text-ink-soft">
+                          <span className="w-2.5 h-1.5 rounded-sm shrink-0" style={{ background: actualColor }} />
+                          فعلي
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  <div className={`flex-1 relative bg-bg rounded overflow-hidden ${hasActual ? "h-8" : "h-6"}`}>
+                  <div className={`flex-1 relative bg-bg rounded overflow-hidden ${hasActual ? "h-11" : "h-6"}`}>
                     {holidayMarkers.map((h, i) => (
                       <div
                         key={i}
                         title={`${h.name} · ${fmt(h.date)}`}
                         className="absolute top-0 bottom-0"
-                        style={{ left: `${h.leftPct}%`, width: `${Math.max(100 / totalDays, 0.6)}%`, background: HOLIDAY_COLOR, opacity: 0.18 }}
+                        style={{ left: `${h.leftPct}%`, width: `${Math.max(100 / totalDays, 0.6)}%`, background: HOLIDAY_COLOR, opacity: 0.12 }}
                       />
                     ))}
                     {todayPct !== null && (
@@ -610,22 +632,26 @@ function PreviewTab({ activities, schedule }: { activities: Activity[]; schedule
                       style={{
                         left: `${leftPct}%`,
                         width: `${Math.max(widthPct, 1.5)}%`,
-                        background: toneColor(activity, sc),
-                        top: 2,
-                        height: hasActual ? 10 : "auto",
-                        bottom: hasActual ? undefined : 2,
+                        background: hasActual
+                          ? `repeating-linear-gradient(45deg, ${toneColor(activity, sc)}, ${toneColor(activity, sc)} 4px, transparent 4px, transparent 8px)`
+                          : toneColor(activity, sc),
+                        border: hasActual ? `1px solid ${toneColor(activity, sc)}` : undefined,
+                        boxSizing: "border-box",
+                        top: 3,
+                        height: hasActual ? 13 : "auto",
+                        bottom: hasActual ? undefined : 3,
                       }}
                     />
                     {hasActual && (
                       <div
                         title={`فعلي: ${fmt(activity.actualStartDate)} → ${activity.actualEndDate ? fmt(activity.actualEndDate) : "مستمر"}`}
-                        className="absolute rounded"
+                        className="absolute rounded shadow-sm"
                         style={{
                           left: `${actualLeftPct}%`,
                           width: `${Math.max(actualWidthPct, 1.5)}%`,
-                          background: actualToneColor(activity, sc),
-                          bottom: 2,
-                          height: 10,
+                          background: actualColor,
+                          bottom: 3,
+                          height: 13,
                         }}
                       />
                     )}
