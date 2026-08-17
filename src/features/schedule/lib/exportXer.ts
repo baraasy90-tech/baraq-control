@@ -211,7 +211,10 @@ export function exportPrimaveraXer(project: Project, activities: Activity[], sch
 }
 
 export function downloadXerFile(content: string, fileName: string): void {
-  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  // BOM إلزامي هنا — بدونه يفترض P6 ترميزاً محلياً (ANSI) بدل UTF-8 الفعلي، فيظهر أي نص
+  // غير إنجليزي (كالعربية) مشوّهاً رغم أن باقي بنية الملف تبقى سليمة تماماً.
+  const BOM = "﻿";
+  const blob = new Blob([BOM + content], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
