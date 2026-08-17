@@ -45,6 +45,7 @@ function ActivityRow({
   onDelete,
   onToggleDone,
   onStartNow,
+  onSetActualDate,
   onMove,
 }: {
   activity: Activity;
@@ -58,6 +59,7 @@ function ActivityRow({
   onDelete: (a: Activity) => void;
   onToggleDone: (a: Activity) => void;
   onStartNow: (a: Activity) => void;
+  onSetActualDate: (a: Activity, field: "start" | "end", value: string) => void;
   onMove: (a: Activity, direction: "up" | "down") => void;
 }) {
   const children = childrenMap.get(activity.id) ?? [];
@@ -68,7 +70,7 @@ function ActivityRow({
   return (
     <div>
       <div
-        className="flex flex-wrap items-center gap-2 py-3 border-b border-line/60 last:border-b-0"
+        className="flex flex-wrap items-center gap-2 pt-3 pb-1.5"
         style={{ paddingRight: depth * 20 }}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -120,6 +122,30 @@ function ActivityRow({
           <IconButton icon={Trash2} label="حذف" tone="critical" onClick={() => onDelete(activity)} />
         </div>
       </div>
+
+      <div
+        className="flex items-center gap-4 flex-wrap pb-3 border-b border-line/60 last:border-b-0"
+        style={{ paddingRight: depth * 20 + 28 }}
+      >
+        <label className="flex items-center gap-1.5 text-[11px] text-ink-soft">
+          <span className="shrink-0">البداية الفعلية</span>
+          <input
+            type="date"
+            value={activity.actualStartDate ?? ""}
+            onChange={(e) => onSetActualDate(activity, "start", e.target.value)}
+            className="border border-line rounded px-1.5 py-1 text-[11px] font-mono bg-white"
+          />
+        </label>
+        <label className="flex items-center gap-1.5 text-[11px] text-ink-soft">
+          <span className="shrink-0">النهاية الفعلية</span>
+          <input
+            type="date"
+            value={activity.actualEndDate ?? ""}
+            onChange={(e) => onSetActualDate(activity, "end", e.target.value)}
+            className="border border-line rounded px-1.5 py-1 text-[11px] font-mono bg-white"
+          />
+        </label>
+      </div>
       {children.map((child) => (
         <ActivityRow
           key={child.id}
@@ -134,6 +160,7 @@ function ActivityRow({
           onDelete={onDelete}
           onToggleDone={onToggleDone}
           onStartNow={onStartNow}
+          onSetActualDate={onSetActualDate}
           onMove={onMove}
         />
       ))}
@@ -280,6 +307,14 @@ function CreateTab({
     updateActivity.mutate({ id: activity.id, projectId: project.id, actualStartDate: todayISO() });
   };
 
+  const handleSetActualDate = (activity: Activity, field: "start" | "end", value: string) => {
+    updateActivity.mutate({
+      id: activity.id,
+      projectId: project.id,
+      ...(field === "start" ? { actualStartDate: value || null } : { actualEndDate: value || null }),
+    });
+  };
+
   const handleMove = (activity: Activity, direction: "up" | "down") => {
     const siblings = childrenMap.get(activity.parentId) ?? [];
     const index = siblings.findIndex((s) => s.id === activity.id);
@@ -330,6 +365,7 @@ function CreateTab({
               onDelete={setConfirmDelete}
               onToggleDone={handleToggleDone}
               onStartNow={handleStartNow}
+              onSetActualDate={handleSetActualDate}
               onMove={handleMove}
             />
           ))}
