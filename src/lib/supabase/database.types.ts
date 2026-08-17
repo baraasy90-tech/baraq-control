@@ -268,6 +268,8 @@ export interface Database {
           created_at: string;
           assigned_to: string | null;
           code: string | null;
+          actual_start_date: string | null;
+          actual_end_date: string | null;
         };
         Insert: {
           id?: string;
@@ -298,6 +300,8 @@ export interface Database {
           created_at?: string;
           assigned_to?: string | null;
           code?: string | null;
+          actual_start_date?: string | null;
+          actual_end_date?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["activities"]["Insert"]>;
         Relationships: [];

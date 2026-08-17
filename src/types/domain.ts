@@ -185,6 +185,8 @@ export interface Activity {
   durationDays: number;
   done: boolean;
   startDate: string | null;
+  actualStartDate: string | null;
+  actualEndDate: string | null;
   calendarType: CalendarType;
   customCalendarId: string | null;
   assignedTo: string | null;

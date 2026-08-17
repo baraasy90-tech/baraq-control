@@ -12,6 +12,8 @@ export interface CreateActivityInput {
   order: number;
   durationDays: number;
   startDate: string | null;
+  actualStartDate?: string | null;
+  actualEndDate?: string | null;
   calendarType: "calendar" | "workdays";
   customCalendarId?: string | null;
   assignedTo?: string | null;
@@ -44,6 +46,8 @@ export function useCreateActivity() {
         order: input.order,
         duration_days: input.durationDays,
         start_date: input.startDate,
+        actual_start_date: input.actualStartDate ?? null,
+        actual_end_date: input.actualEndDate ?? null,
         calendar_type: input.calendarType,
         custom_calendar_id: input.customCalendarId ?? null,
         assigned_to: input.assignedTo ?? null,

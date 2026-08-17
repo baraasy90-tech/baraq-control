@@ -14,6 +14,8 @@ export interface UpdateActivityInput {
   durationDays?: number;
   done?: boolean;
   startDate?: string | null;
+  actualStartDate?: string | null;
+  actualEndDate?: string | null;
   calendarType?: "calendar" | "workdays";
   customCalendarId?: string | null;
   assignedTo?: string | null;
@@ -46,6 +48,8 @@ export function useUpdateActivity() {
       if (input.durationDays !== undefined) patch.duration_days = input.durationDays;
       if (input.done !== undefined) patch.done = input.done;
       if (input.startDate !== undefined) patch.start_date = input.startDate;
+      if (input.actualStartDate !== undefined) patch.actual_start_date = input.actualStartDate;
+      if (input.actualEndDate !== undefined) patch.actual_end_date = input.actualEndDate;
       if (input.calendarType !== undefined) patch.calendar_type = input.calendarType;
       if (input.customCalendarId !== undefined) patch.custom_calendar_id = input.customCalendarId;
       if (input.assignedTo !== undefined) patch.assigned_to = input.assignedTo;

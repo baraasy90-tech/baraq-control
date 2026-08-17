@@ -28,6 +28,8 @@ export interface ActivityFormValues {
   critical: boolean;
   alertLeadDays: number;
   requiresReceiving: boolean;
+  actualStartDate: string | null;
+  actualEndDate: string | null;
   budgetType: BudgetType | null;
   plannedAmount: number | null;
   boqQty: number | null;
@@ -73,6 +75,8 @@ export function ActivityForm({
   const [critical, setCritical] = useState(initial?.critical ?? false);
   const [alertLeadDays, setAlertLeadDays] = useState(String(initial?.alertLeadDays ?? 7));
   const [requiresReceiving, setRequiresReceiving] = useState(initial?.requiresReceiving ?? false);
+  const [actualStartDate, setActualStartDate] = useState(initial?.actualStartDate ?? "");
+  const [actualEndDate, setActualEndDate] = useState(initial?.actualEndDate ?? "");
   const [budgetType, setBudgetType] = useState<BudgetType | "none">(initial?.budgetType ?? "none");
   const [plannedAmount, setPlannedAmount] = useState(String(initial?.plannedAmount ?? ""));
   const [boqQty, setBoqQty] = useState(String(initial?.boqQty ?? ""));
@@ -110,6 +114,8 @@ export function ActivityForm({
       critical,
       alertLeadDays: Number(alertLeadDays) || 7,
       requiresReceiving,
+      actualStartDate: actualStartDate || null,
+      actualEndDate: actualEndDate || null,
       budgetType: budgetType === "none" ? null : budgetType,
       plannedAmount: budgetType === "lumpsum" ? Number(plannedAmount) || 0 : null,
       boqQty: budgetType === "boq" ? Number(boqQty) || 0 : null,
@@ -265,6 +271,19 @@ export function ActivityForm({
           يتطلب استلام
         </label>
       </div>
+
+      {initial && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-bg rounded-lg p-3">
+          <div>
+            <FieldLabel>تاريخ البداية الفعلي</FieldLabel>
+            <TextInput type="date" value={actualStartDate} onChange={(e) => setActualStartDate(e.target.value)} />
+          </div>
+          <div>
+            <FieldLabel>تاريخ الانتهاء الفعلي</FieldLabel>
+            <TextInput type="date" value={actualEndDate} onChange={(e) => setActualEndDate(e.target.value)} />
+          </div>
+        </div>
+      )}
 
       {critical && (
         <div>

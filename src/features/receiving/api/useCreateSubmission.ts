@@ -50,6 +50,16 @@ export function useCreateSubmission() {
         if (imagesError) throw imagesError;
       }
 
+      if (input.decision === "approved") {
+        // نسجّل تاريخ الانتهاء الفعلي تلقائياً عند الاعتماد النهائي — فقط لو لم يُسجَّل من قبل،
+        // حتى لا نطمس تصحيحاً يدوياً سابقاً لو تكرر الاعتماد.
+        await supabase
+          .from("activities")
+          .update({ actual_end_date: new Date().toISOString().slice(0, 10) })
+          .eq("id", input.activityId)
+          .is("actual_end_date", null);
+      }
+
       return submission;
     },
     onSuccess: (_data, input) => {

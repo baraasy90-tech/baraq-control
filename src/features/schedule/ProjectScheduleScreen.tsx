@@ -44,6 +44,7 @@ function ActivityRow({
   onAddChild,
   onDelete,
   onToggleDone,
+  onStartNow,
   onMove,
 }: {
   activity: Activity;
@@ -56,6 +57,7 @@ function ActivityRow({
   onAddChild: (parentId: string) => void;
   onDelete: (a: Activity) => void;
   onToggleDone: (a: Activity) => void;
+  onStartNow: (a: Activity) => void;
   onMove: (a: Activity, direction: "up" | "down") => void;
 }) {
   const children = childrenMap.get(activity.id) ?? [];
@@ -91,10 +93,20 @@ function ActivityRow({
               👤 {memberNameById.get(activity.assignedTo)}
             </span>
           )}
+          {activity.actualStartDate && !activity.actualEndDate && (
+            <span className="text-[10px] bg-warn-bg text-warn rounded px-1.5 py-0.5 shrink-0">
+              جارٍ منذ {fmt(activity.actualStartDate)}
+            </span>
+          )}
         </div>
         <div className="text-xs text-ink-soft font-mono shrink-0 hidden sm:block">
           {sc ? `${fmt(sc.start)} → ${fmt(sc.end)}` : "—"} · {activity.durationDays} يوم
         </div>
+        {!activity.actualStartDate && (
+          <SecondaryButton onClick={() => onStartNow(activity)} className="text-[11px] px-2 py-1 shrink-0">
+            بدء الآن
+          </SecondaryButton>
+        )}
         <div className="flex gap-1 shrink-0">
           <IconButton icon={ChevronUp} label="نقل لأعلى" onClick={() => onMove(activity, "up")} disabled={index <= 0} />
           <IconButton
@@ -121,6 +133,7 @@ function ActivityRow({
           onAddChild={onAddChild}
           onDelete={onDelete}
           onToggleDone={onToggleDone}
+          onStartNow={onStartNow}
           onMove={onMove}
         />
       ))}
@@ -196,6 +209,8 @@ function CreateTab({
           critical: values.critical,
           alertLeadDays: values.alertLeadDays,
           requiresReceiving: values.requiresReceiving,
+          actualStartDate: values.actualStartDate,
+          actualEndDate: values.actualEndDate,
           budgetType: values.budgetType,
           plannedAmount: values.plannedAmount,
           boqQty: values.boqQty,
@@ -252,7 +267,17 @@ function CreateTab({
   };
 
   const handleToggleDone = (activity: Activity) => {
-    updateActivity.mutate({ id: activity.id, projectId: project.id, done: !activity.done });
+    const nextDone = !activity.done;
+    updateActivity.mutate({
+      id: activity.id,
+      projectId: project.id,
+      done: nextDone,
+      actualEndDate: nextDone ? (activity.actualEndDate ?? todayISO()) : null,
+    });
+  };
+
+  const handleStartNow = (activity: Activity) => {
+    updateActivity.mutate({ id: activity.id, projectId: project.id, actualStartDate: todayISO() });
   };
 
   const handleMove = (activity: Activity, direction: "up" | "down") => {
@@ -304,6 +329,7 @@ function CreateTab({
               onAddChild={openCreate}
               onDelete={setConfirmDelete}
               onToggleDone={handleToggleDone}
+              onStartNow={handleStartNow}
               onMove={handleMove}
             />
           ))}
@@ -402,8 +428,12 @@ function PreviewTab({ activities, schedule }: { activities: Activity[]; schedule
   const completionDates = getCompletionDates(activities);
   const rows = flattenTree(activities).filter((r) => schedule[r.activity.id]);
 
-  const starts = rows.map((r) => schedule[r.activity.id].start);
-  const ends = rows.map((r) => schedule[r.activity.id].end);
+  const todayForRange = todayISO();
+  const starts = rows.flatMap((r) => [schedule[r.activity.id].start, ...(r.activity.actualStartDate ? [r.activity.actualStartDate] : [])]);
+  const ends = rows.flatMap((r) => [
+    schedule[r.activity.id].end,
+    ...(r.activity.actualStartDate ? [r.activity.actualEndDate ?? todayForRange] : []),
+  ]);
   const rangeStart = starts.length > 0 ? starts.reduce((min, s) => (s < min ? s : min)) : undefined;
   const rangeEndRaw = ends.length > 0 ? ends.reduce((max, e) => (e > max ? e : max)) : undefined;
   const rangeEnd =
@@ -460,6 +490,15 @@ function PreviewTab({ activities, schedule }: { activities: Activity[]; schedule
     .filter((h) => h.date >= rangeStart && h.date <= rangeEnd)
     .map((h) => ({ ...h, leftPct: (Math.max(0, daysBetween(rangeStart, h.date)) / totalDays) * 100 }));
 
+  // المسار الفعلي: أخضر لو بدأ بموعده أو أبكر وانتهى (أو ما زال جارياً) بموعده أو أسرع من
+  // المخطط، أحمر لو تأخر بالبداية أو تجاوز نهاية المخطط.
+  const actualToneColor = (activity: Activity, sc: Schedule[string]): string => {
+    const actualStart = activity.actualStartDate!;
+    const actualEnd = activity.actualEndDate ?? t;
+    const delayed = actualStart > sc.start || actualEnd > sc.end;
+    return delayed ? TONE_COLOR.overdue : TONE_COLOR.onTime;
+  };
+
   return (
     <div>
       <Card className="overflow-x-auto">
@@ -494,6 +533,19 @@ function PreviewTab({ activities, schedule }: { activities: Activity[]; schedule
               const duration = Math.max(1, daysBetween(sc.start, sc.end));
               const leftPct = (offset / totalDays) * 100;
               const widthPct = (duration / totalDays) * 100;
+
+              const hasActual = !!activity.actualStartDate;
+              let actualLeftPct = 0;
+              let actualWidthPct = 0;
+              if (hasActual) {
+                const actualStart = activity.actualStartDate!;
+                const actualEnd = activity.actualEndDate ?? t;
+                const actualOffset = Math.max(0, daysBetween(rangeStart, actualStart));
+                const actualDuration = Math.max(1, daysBetween(actualStart, actualEnd));
+                actualLeftPct = (actualOffset / totalDays) * 100;
+                actualWidthPct = (actualDuration / totalDays) * 100;
+              }
+
               return (
                 <div key={activity.id} className="flex items-center">
                   <div
@@ -504,7 +556,7 @@ function PreviewTab({ activities, schedule }: { activities: Activity[]; schedule
                     {activity.code && <span className="font-mono text-ink-soft">{activity.code} </span>}
                     {activity.name}
                   </div>
-                  <div className="flex-1 relative h-6 bg-bg rounded overflow-hidden">
+                  <div className={`flex-1 relative bg-bg rounded overflow-hidden ${hasActual ? "h-8" : "h-6"}`}>
                     {holidayMarkers.map((h, i) => (
                       <div
                         key={i}
@@ -517,10 +569,30 @@ function PreviewTab({ activities, schedule }: { activities: Activity[]; schedule
                       <div className="absolute top-0 bottom-0 w-px bg-primary z-10" style={{ left: `${todayPct}%` }} />
                     )}
                     <div
-                      title={`${fmt(sc.start)} → ${fmt(sc.end)}`}
-                      className="absolute top-0.5 bottom-0.5 rounded"
-                      style={{ left: `${leftPct}%`, width: `${Math.max(widthPct, 1.5)}%`, background: toneColor(activity, sc) }}
+                      title={`مخطط: ${fmt(sc.start)} → ${fmt(sc.end)}`}
+                      className="absolute rounded"
+                      style={{
+                        left: `${leftPct}%`,
+                        width: `${Math.max(widthPct, 1.5)}%`,
+                        background: toneColor(activity, sc),
+                        top: 2,
+                        height: hasActual ? 10 : "auto",
+                        bottom: hasActual ? undefined : 2,
+                      }}
                     />
+                    {hasActual && (
+                      <div
+                        title={`فعلي: ${fmt(activity.actualStartDate)} → ${activity.actualEndDate ? fmt(activity.actualEndDate) : "مستمر"}`}
+                        className="absolute rounded"
+                        style={{
+                          left: `${actualLeftPct}%`,
+                          width: `${Math.max(actualWidthPct, 1.5)}%`,
+                          background: actualToneColor(activity, sc),
+                          bottom: 2,
+                          height: 10,
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
               );
@@ -550,6 +622,12 @@ function PreviewTab({ activities, schedule }: { activities: Activity[]; schedule
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-0.5 h-2.5 bg-primary" /> اليوم
+        </span>
+        <span className="flex items-center gap-1.5 border-r border-line/60 pr-3">
+          <span className="w-2.5 h-2.5 rounded-full" style={{ background: TONE_COLOR.onTime }} /> المسار الفعلي — على الموعد
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full" style={{ background: TONE_COLOR.overdue }} /> المسار الفعلي — متأخر
         </span>
       </div>
     </div>

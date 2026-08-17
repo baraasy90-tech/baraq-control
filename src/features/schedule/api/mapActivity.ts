@@ -25,6 +25,8 @@ export function mapActivity(row: ActivityRow, checklist: ChecklistItem[] = []): 
     durationDays: row.duration_days,
     done: row.done,
     startDate: row.start_date,
+    actualStartDate: row.actual_start_date,
+    actualEndDate: row.actual_end_date,
     calendarType: row.calendar_type,
     customCalendarId: row.custom_calendar_id,
     assignedTo: row.assigned_to,
