@@ -6,6 +6,7 @@ import { useAuth } from "@/features/auth/AuthContext";
 export interface SaveContractInput {
   id?: string;
   projectId: string;
+  name: string;
   pdfFile?: File | null;
   startDate: string | null;
   durationDays: number | null;
@@ -34,6 +35,7 @@ export function useSaveContract() {
 
       const payload = {
         project_id: input.projectId,
+        contract_name: input.name,
         ...(pdfUrl ? { pdf_url: pdfUrl } : {}),
         start_date: input.startDate,
         duration_days: input.durationDays,
@@ -51,13 +53,16 @@ export function useSaveContract() {
       if (input.id) {
         const { error } = await supabase.from("contracts").update(payload).eq("id", input.id);
         if (error) throw error;
+        return { id: input.id };
       } else {
-        const { error } = await supabase.from("contracts").insert(payload);
+        const { data, error } = await supabase.from("contracts").insert(payload).select("id").single();
         if (error) throw error;
+        return { id: data.id };
       }
     },
     onSuccess: (_data, input) => {
-      queryClient.invalidateQueries({ queryKey: ["contract", input.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["contracts", input.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["contract", _data.id] });
     },
   });
 }

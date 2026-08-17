@@ -8,7 +8,7 @@ import { useActivities } from "@/features/schedule/api/useActivities";
 import { useCreateBudgetEntry } from "@/features/budget/api/useCreateBudgetEntry";
 import { useDeleteBudgetEntry } from "@/features/budget/api/useDeleteBudgetEntry";
 import { computeBudgetRollup, getPlannedAmount } from "@/features/budget/lib/budget";
-import { useContract } from "@/features/contracts/api/useContract";
+import { useContracts } from "@/features/contracts/api/useContract";
 import { BudgetVarianceBanner } from "@/features/budget/BudgetVarianceBanner";
 import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
@@ -19,7 +19,8 @@ const SOURCE_LABEL: Record<string, string> = { contract: "عقد مقاول", pu
 export function BudgetScreen({ project }: { project: Project }) {
   const navigate = useNavigate();
   const activitiesQuery = useActivities(project.id);
-  const contractQuery = useContract(project.id);
+  const contractsQuery = useContracts(project.id);
+  const totalContractValue = (contractsQuery.data ?? []).reduce((sum, c) => sum + (c.totalValue ?? 0), 0);
   const createEntry = useCreateBudgetEntry();
   const deleteEntry = useDeleteBudgetEntry(project.id);
 
@@ -61,7 +62,7 @@ export function BudgetScreen({ project }: { project: Project }) {
 
       <BudgetVarianceBanner
         projectId={project.id}
-        contractValue={contractQuery.data?.contract.totalValue ?? null}
+        contractValue={contractsQuery.data && contractsQuery.data.length > 0 ? totalContractValue : null}
         trackedBudget={overallRollup.planned}
       />
 

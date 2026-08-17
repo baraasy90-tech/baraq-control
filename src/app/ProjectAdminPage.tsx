@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useProject } from "@/features/projects/api/useProject";
-import { AdminScreen } from "@/features/schedule/AdminScreen";
+import { ProjectScheduleScreen } from "@/features/schedule/ProjectScheduleScreen";
 
 export function ProjectAdminPage() {
   const { id } = useParams<{ id: string }>();
@@ -10,5 +10,5 @@ export function ProjectAdminPage() {
     return <div className="min-h-screen flex items-center justify-center text-sm text-ink-soft">جارٍ التحميل...</div>;
   }
 
-  return <AdminScreen project={projectQuery.data} />;
+  return <ProjectScheduleScreen project={projectQuery.data} defaultTab="create" />;
 }

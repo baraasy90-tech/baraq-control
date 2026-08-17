@@ -10,6 +10,7 @@ export function mapContract(row: ContractRow): Contract {
   return {
     id: row.id,
     projectId: row.project_id,
+    name: row.contract_name,
     pdfUrl: row.pdf_url,
     startDate: row.start_date,
     durationDays: row.duration_days,

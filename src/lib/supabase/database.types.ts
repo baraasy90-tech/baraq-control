@@ -477,6 +477,7 @@ export interface Database {
           retention_released: boolean;
           retention_release_note: string | null;
           created_at: string;
+          contract_name: string;
         };
         Insert: {
           id?: string;
@@ -494,6 +495,7 @@ export interface Database {
           retention_released?: boolean;
           retention_release_note?: string | null;
           created_at?: string;
+          contract_name?: string;
         };
         Update: Partial<Database["public"]["Tables"]["contracts"]["Insert"]>;
         Relationships: [];
@@ -581,6 +583,10 @@ export interface Database {
           note: string;
           created_by: string;
           created_at: string;
+          status: "pending" | "approved" | "rejected";
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          review_note: string | null;
         };
         Insert: {
           id?: string;
@@ -590,6 +596,10 @@ export interface Database {
           note: string;
           created_by: string;
           created_at?: string;
+          status?: "pending" | "approved" | "rejected";
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          review_note?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["budget_reconciliation_notes"]["Insert"]>;
         Relationships: [];

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FileText, Trash2, Plus, Upload } from "lucide-react";
+import { FileText, Trash2, Upload } from "lucide-react";
 import { Card, StatCard, SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText } from "@/components/ui";
 import { useContract } from "@/features/contracts/api/useContract";
 import { useSaveContract } from "@/features/contracts/api/useSaveContract";
@@ -15,9 +15,6 @@ import {
 } from "@/features/contracts/api/useContractItems";
 import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
-import { useActivities } from "@/features/schedule/api/useActivities";
-import { getPlannedAmount } from "@/features/budget/lib/budget";
-import { BudgetVarianceBanner } from "@/features/budget/BudgetVarianceBanner";
 
 function numOrNull(v: string): number | null {
   const n = Number(v);
@@ -25,14 +22,14 @@ function numOrNull(v: string): number | null {
 }
 
 export function ContractScreen() {
-  const { id: projectId } = useParams<{ id: string }>();
+  const { id: projectId, contractId } = useParams<{ id: string; contractId: string }>();
   const navigate = useNavigate();
-  const bundleQuery = useContract(projectId);
-  const activitiesQuery = useActivities(projectId);
+  const bundleQuery = useContract(contractId);
   const saveContract = useSaveContract();
 
   const [editingMain, setEditingMain] = useState(false);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [name, setName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [durationDays, setDurationDays] = useState("");
   const [totalValue, setTotalValue] = useState("");
@@ -63,13 +60,13 @@ export function ContractScreen() {
   const [violationDesc, setViolationDesc] = useState("");
   const [violationDate, setViolationDate] = useState(new Date().toISOString().slice(0, 10));
 
-  const addLineItem = useAddLineItem(projectId);
-  const deleteLineItem = useDeleteLineItem(projectId);
-  const addPayment = useAddPayment(projectId);
-  const togglePaymentPaid = useTogglePaymentPaid(projectId);
-  const deletePayment = useDeletePayment(projectId);
-  const addDeduction = useAddDeduction(projectId);
-  const deleteDeduction = useDeleteDeduction(projectId);
+  const addLineItem = useAddLineItem(contractId);
+  const deleteLineItem = useDeleteLineItem(contractId);
+  const addPayment = useAddPayment(contractId);
+  const togglePaymentPaid = useTogglePaymentPaid(contractId);
+  const deletePayment = useDeletePayment(contractId);
+  const addDeduction = useAddDeduction(contractId);
+  const deleteDeduction = useDeleteDeduction(contractId);
 
   if (bundleQuery.isLoading) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-ink-soft">جارٍ التحميل...</div>;
@@ -80,6 +77,7 @@ export function ContractScreen() {
 
   const startEditMain = () => {
     if (contract) {
+      setName(contract.name);
       setStartDate(contract.startDate ?? "");
       setDurationDays(contract.durationDays?.toString() ?? "");
       setTotalValue(contract.totalValue?.toString() ?? "");
@@ -92,6 +90,7 @@ export function ContractScreen() {
       setRetentionReleased(contract.retentionReleased);
       setRetentionNote(contract.retentionReleaseNote ?? "");
     } else {
+      setName("");
       setStartDate("");
       setDurationDays("");
       setTotalValue("");
@@ -113,8 +112,9 @@ export function ContractScreen() {
     setMainError("");
     try {
       await saveContract.mutateAsync({
-        id: contract?.id,
+        id: contract?.id ?? contractId,
         projectId: projectId!,
+        name: name.trim(),
         pdfFile,
         startDate: startDate || null,
         durationDays: numOrNull(durationDays),
@@ -207,37 +207,22 @@ export function ContractScreen() {
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6 gap-2">
-        <h1 className="text-lg sm:text-xl font-bold text-ink">العقد</h1>
-        <SecondaryButton onClick={() => navigate(`/projects/${projectId}`)} className="text-sm">
-          رجوع للمشروع
+        <h1 className="text-lg sm:text-xl font-bold text-ink truncate">{contract?.name ?? "العقد"}</h1>
+        <SecondaryButton onClick={() => navigate(`/projects/${projectId}/contract`)} className="text-sm shrink-0">
+          رجوع للعقود
         </SecondaryButton>
       </div>
 
-      {contract && (
-        <BudgetVarianceBanner
-          projectId={projectId!}
-          contractValue={contract.totalValue}
-          trackedBudget={(activitiesQuery.data ?? []).reduce((sum, a) => sum + getPlannedAmount(a), 0)}
-        />
-      )}
+      {bundleQuery.isLoading && <p className="text-sm text-ink-soft">جارٍ التحميل...</p>}
 
-      {!editingMain && (
+      {!editingMain && contract && (
         <Card className="mb-6">
-          {!contract ? (
-            <div className="text-center py-6">
-              <p className="text-sm text-ink-soft mb-4">لم يُسجّل عقد لهذا المشروع بعد</p>
-              <PrimaryButton onClick={startEditMain} className="w-auto px-5 inline-flex items-center gap-1.5">
-                <Plus size={15} strokeWidth={2.5} /> إضافة العقد
-              </PrimaryButton>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-bold text-ink">بيانات العقد</h2>
-                <SecondaryButton onClick={startEditMain} className="text-xs px-3 py-1.5">
-                  تعديل
-                </SecondaryButton>
-              </div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-bold text-ink">بيانات العقد</h2>
+            <SecondaryButton onClick={startEditMain} className="text-xs px-3 py-1.5">
+              تعديل
+            </SecondaryButton>
+          </div>
 
               {contract.pdfUrl && (
                 <a
@@ -293,14 +278,17 @@ export function ContractScreen() {
                   )}
                 </div>
               )}
-            </>
-          )}
         </Card>
       )}
 
       {editingMain && (
         <Card className="mb-6">
-          <h2 className="text-sm font-bold text-ink mb-4">{contract ? "تعديل بيانات العقد" : "إضافة العقد"}</h2>
+          <h2 className="text-sm font-bold text-ink mb-4">تعديل بيانات العقد</h2>
+
+          <div className="mb-4">
+            <FieldLabel>اسم العقد</FieldLabel>
+            <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: عقد العظم" />
+          </div>
 
           <div className="mb-4">
             <FieldLabel>نسخة العقد (PDF)</FieldLabel>

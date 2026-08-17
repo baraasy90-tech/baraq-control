@@ -56,11 +56,11 @@ export function ProjectPage() {
   const overallPercent = totalDuration > 0 ? (doneDuration / totalDuration) * 100 : 0;
 
   const navButtons: { label: string; onClick: () => void }[] = [
-    { label: "إدارة المراحل", onClick: () => navigate(`/projects/${project.id}/admin`) },
-    { label: "الجدول الزمني", onClick: () => navigate(`/projects/${project.id}/timeline`) },
+    { label: "إنشاء الجدول الزمني", onClick: () => navigate(`/projects/${project.id}/admin`) },
+    { label: "معاينة الجدول الزمني", onClick: () => navigate(`/projects/${project.id}/timeline`) },
     { label: "الاستلام", onClick: () => navigate(`/projects/${project.id}/receiving`) },
     { label: "الميزانية", onClick: () => navigate(`/projects/${project.id}/budget`) },
-    { label: "العقد", onClick: () => navigate(`/projects/${project.id}/contract`) },
+    { label: "العقود", onClick: () => navigate(`/projects/${project.id}/contract`) },
     { label: "المستندات", onClick: () => navigate(`/projects/${project.id}/documents`) },
     { label: "الفريق", onClick: () => navigate(`/projects/${project.id}/team`) },
     { label: "النطاقات", onClick: () => navigate(`/projects/${project.id}/scope`) },

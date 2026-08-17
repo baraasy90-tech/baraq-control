@@ -1,5 +1,5 @@
-import { ContractScreen } from "@/features/contracts/ContractScreen";
+import { ContractsListScreen } from "@/features/contracts/ContractsListScreen";
 
 export function ProjectContractPage() {
-  return <ContractScreen />;
+  return <ContractsListScreen />;
 }

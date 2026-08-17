@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
-import type { BudgetReconciliationNote } from "@/types/domain";
+import type { BudgetReconciliationNote, ReconciliationStatus } from "@/types/domain";
 
 function mapNote(row: {
   id: string;
@@ -11,6 +11,10 @@ function mapNote(row: {
   note: string;
   created_by: string;
   created_at: string;
+  status: ReconciliationStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
 }): BudgetReconciliationNote {
   return {
     id: row.id,
@@ -20,6 +24,10 @@ function mapNote(row: {
     note: row.note,
     createdBy: row.created_by,
     createdAt: row.created_at,
+    status: row.status,
+    reviewedBy: row.reviewed_by,
+    reviewedAt: row.reviewed_at,
+    reviewNote: row.review_note,
   };
 }
 
@@ -60,6 +68,37 @@ export function useAddReconciliationNote() {
         note: input.note,
         created_by: user.id,
       });
+      if (error) throw error;
+    },
+    onSuccess: (_data, input) => {
+      queryClient.invalidateQueries({ queryKey: ["budget-reconciliation-notes", input.projectId] });
+    },
+  });
+}
+
+export interface ReviewReconciliationNoteInput {
+  id: string;
+  projectId: string;
+  status: "approved" | "rejected";
+  reviewNote: string | null;
+}
+
+export function useReviewReconciliationNote() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: ReviewReconciliationNoteInput) => {
+      if (!user) throw new Error("not authenticated");
+      const { error } = await supabase
+        .from("budget_reconciliation_notes")
+        .update({
+          status: input.status,
+          reviewed_by: user.id,
+          reviewed_at: new Date().toISOString(),
+          review_note: input.reviewNote,
+        })
+        .eq("id", input.id);
       if (error) throw error;
     },
     onSuccess: (_data, input) => {

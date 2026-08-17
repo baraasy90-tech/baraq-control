@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useProject } from "@/features/projects/api/useProject";
-import { GanttScreen } from "@/features/schedule/GanttScreen";
+import { ProjectScheduleScreen } from "@/features/schedule/ProjectScheduleScreen";
 
 export function ProjectTimelinePage() {
   const { id } = useParams<{ id: string }>();
@@ -13,5 +13,5 @@ export function ProjectTimelinePage() {
     return <div className="min-h-screen flex items-center justify-center text-sm text-critical">تعذّر العثور على المشروع</div>;
   }
 
-  return <GanttScreen project={projectQuery.data} />;
+  return <ProjectScheduleScreen project={projectQuery.data} defaultTab="preview" />;
 }

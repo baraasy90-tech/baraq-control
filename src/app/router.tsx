@@ -30,6 +30,9 @@ const ProjectTimelinePage = lazy(() =>
 const ProjectContractPage = lazy(() =>
   import("@/app/ProjectContractPage").then((m) => ({ default: m.ProjectContractPage }))
 );
+const ProjectContractDetailPage = lazy(() =>
+  import("@/app/ProjectContractDetailPage").then((m) => ({ default: m.ProjectContractDetailPage }))
+);
 
 export const router = createBrowserRouter([
   { path: "/join/:token", element: <JoinScreen /> },
@@ -54,6 +57,7 @@ export const router = createBrowserRouter([
       { path: "projects/:id/team", element: <ProjectTeamPage /> },
       { path: "projects/:id/timeline", element: <ProjectTimelinePage /> },
       { path: "projects/:id/contract", element: <ProjectContractPage /> },
+      { path: "projects/:id/contract/:contractId", element: <ProjectContractDetailPage /> },
     ],
   },
 ]);

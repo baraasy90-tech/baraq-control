@@ -85,9 +85,19 @@ export function ErrorText({ children }: { children: ReactNode }) {
   return <p className="text-sm text-critical mt-2">{children}</p>;
 }
 
-export function Card({ children, title, className }: { children: ReactNode; title?: string; className?: string }) {
+export function Card({
+  children,
+  title,
+  className,
+  onClick,
+}: {
+  children: ReactNode;
+  title?: string;
+  className?: string;
+  onClick?: () => void;
+}) {
   return (
-    <div className={clsx("bg-panel border border-line/60 shadow-sm rounded-xl p-5", className)}>
+    <div className={clsx("bg-panel border border-line/60 shadow-sm rounded-xl p-5", className)} onClick={onClick}>
       {title && <h3 className="text-sm font-bold text-ink mb-3">{title}</h3>}
       {children}
     </div>

@@ -245,6 +245,7 @@ export interface ProjectDocument {
 export interface Contract {
   id: string;
   projectId: string;
+  name: string;
   pdfUrl: string | null;
   startDate: string | null;
   durationDays: number | null;
@@ -294,6 +295,8 @@ export interface ContractDeduction {
   createdAt: string;
 }
 
+export type ReconciliationStatus = "pending" | "approved" | "rejected";
+
 export interface BudgetReconciliationNote {
   id: string;
   projectId: string;
@@ -302,6 +305,10 @@ export interface BudgetReconciliationNote {
   note: string;
   createdBy: string;
   createdAt: string;
+  status: ReconciliationStatus;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
 }
 
 export interface ScheduleEntry {

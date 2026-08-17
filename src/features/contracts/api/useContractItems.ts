@@ -2,9 +2,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
 
-function useInvalidateContract(projectId: string | undefined) {
+function useInvalidateContract(contractId: string | undefined) {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: ["contract", projectId] });
+  return () => queryClient.invalidateQueries({ queryKey: ["contract", contractId] });
 }
 
 // ---------- بنود الكميات وسعر الوحدة ----------
@@ -18,8 +18,8 @@ export interface LineItemInput {
   order: number;
 }
 
-export function useAddLineItem(projectId: string | undefined) {
-  const invalidate = useInvalidateContract(projectId);
+export function useAddLineItem(contractId: string | undefined) {
+  const invalidate = useInvalidateContract(contractId);
   return useMutation({
     mutationFn: async (input: LineItemInput) => {
       const { error } = await supabase.from("contract_line_items").insert({
@@ -36,8 +36,8 @@ export function useAddLineItem(projectId: string | undefined) {
   });
 }
 
-export function useDeleteLineItem(projectId: string | undefined) {
-  const invalidate = useInvalidateContract(projectId);
+export function useDeleteLineItem(contractId: string | undefined) {
+  const invalidate = useInvalidateContract(contractId);
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("contract_line_items").delete().eq("id", id);
@@ -60,8 +60,8 @@ export interface PaymentInput {
   isAdvancePayment: boolean;
 }
 
-export function useAddPayment(projectId: string | undefined) {
-  const invalidate = useInvalidateContract(projectId);
+export function useAddPayment(contractId: string | undefined) {
+  const invalidate = useInvalidateContract(contractId);
   return useMutation({
     mutationFn: async (input: PaymentInput) => {
       const { error } = await supabase.from("contract_payments").insert({
@@ -80,8 +80,8 @@ export function useAddPayment(projectId: string | undefined) {
   });
 }
 
-export function useTogglePaymentPaid(projectId: string | undefined) {
-  const invalidate = useInvalidateContract(projectId);
+export function useTogglePaymentPaid(contractId: string | undefined) {
+  const invalidate = useInvalidateContract(contractId);
   return useMutation({
     mutationFn: async ({ id, paid }: { id: string; paid: boolean }) => {
       const { error } = await supabase.from("contract_payments").update({ paid }).eq("id", id);
@@ -91,8 +91,8 @@ export function useTogglePaymentPaid(projectId: string | undefined) {
   });
 }
 
-export function useDeletePayment(projectId: string | undefined) {
-  const invalidate = useInvalidateContract(projectId);
+export function useDeletePayment(contractId: string | undefined) {
+  const invalidate = useInvalidateContract(contractId);
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("contract_payments").delete().eq("id", id);
@@ -112,9 +112,9 @@ export interface DeductionInput {
   deductedAt: string;
 }
 
-export function useAddDeduction(projectId: string | undefined) {
+export function useAddDeduction(contractId: string | undefined) {
   const { user } = useAuth();
-  const invalidate = useInvalidateContract(projectId);
+  const invalidate = useInvalidateContract(contractId);
   return useMutation({
     mutationFn: async (input: DeductionInput) => {
       if (!user) throw new Error("not authenticated");
@@ -132,8 +132,8 @@ export function useAddDeduction(projectId: string | undefined) {
   });
 }
 
-export function useDeleteDeduction(projectId: string | undefined) {
-  const invalidate = useInvalidateContract(projectId);
+export function useDeleteDeduction(contractId: string | undefined) {
+  const invalidate = useInvalidateContract(contractId);
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("contract_deductions").delete().eq("id", id);
