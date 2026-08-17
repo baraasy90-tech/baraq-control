@@ -14,6 +14,7 @@ import { useCustomCalendars, useCustomCalendarMap } from "@/features/schedule/ap
 import { useCompanyMembers } from "@/features/company/api/useCompanyMembers";
 import { withComputedDone, getCompletionDates } from "@/features/schedule/lib/completion";
 import { exportPrimaveraXer, downloadXerFile } from "@/features/schedule/lib/exportXer";
+import { suggestActivityCode } from "@/features/schedule/lib/activityCode";
 import { useScheduleHolidays } from "@/features/schedule/api/useScheduleHolidays";
 import { useCompany } from "@/features/company/useCompany";
 import { fmt, todayISO } from "@/utils/dates";
@@ -77,6 +78,9 @@ function ActivityRow({
             title={isAutoDone ? "يُحدَّد تلقائياً من اعتماد الاستلام/اكتمال البنود التابعة" : undefined}
             className="shrink-0 disabled:opacity-60"
           />
+          {activity.code && (
+            <span className="text-[11px] font-mono font-bold text-ink-soft bg-bg rounded px-1.5 py-0.5 shrink-0">{activity.code}</span>
+          )}
           <span className="text-sm font-medium text-ink truncate">{activity.name}</span>
           {activity.critical && <span title="يتطلب طلباً وتوريداً مسبقاً">📦</span>}
           {activity.requiresReceiving && (
@@ -144,6 +148,7 @@ function CreateTab({
   const [formOpen, setFormOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [newParentId, setNewParentId] = useState<string | null>(null);
+  const [suggestedCode, setSuggestedCode] = useState<string | undefined>(undefined);
   const [confirmDelete, setConfirmDelete] = useState<Activity | null>(null);
   const [error, setError] = useState("");
 
@@ -157,12 +162,16 @@ function CreateTab({
   const openCreate = (parentId: string | null) => {
     setEditingActivity(null);
     setNewParentId(parentId);
+    const parentCode = parentId ? (activities.find((a) => a.id === parentId)?.code ?? null) : null;
+    const siblingCount = (childrenMap.get(parentId) ?? []).length;
+    setSuggestedCode(suggestActivityCode(parentCode, siblingCount));
     setFormOpen(true);
   };
 
   const openEdit = (activity: Activity) => {
     setEditingActivity(activity);
     setNewParentId(activity.parentId);
+    setSuggestedCode(undefined);
     setFormOpen(true);
   };
 
@@ -174,6 +183,7 @@ function CreateTab({
           id: editingActivity.id,
           projectId: project.id,
           name: values.name,
+          code: values.code,
           durationDays: values.durationDays,
           calendarType: values.calendarType,
           customCalendarId: values.customCalendarId,
@@ -200,6 +210,7 @@ function CreateTab({
           projectId: project.id,
           parentId: newParentId,
           name: values.name,
+          code: values.code,
           order: nextOrder,
           durationDays: values.durationDays,
           calendarType: values.calendarType,
@@ -310,6 +321,7 @@ function CreateTab({
           <ErrorText>{error}</ErrorText>
           <ActivityForm
             initial={editingActivity}
+            suggestedCode={suggestedCode}
             candidateDependencies={candidateDependencies}
             customCalendars={customCalendars}
             members={members}
@@ -489,6 +501,7 @@ function PreviewTab({ activities, schedule }: { activities: Activity[]; schedule
                     style={{ paddingRight: depth * 12 }}
                     title={activity.name}
                   >
+                    {activity.code && <span className="font-mono text-ink-soft">{activity.code} </span>}
                     {activity.name}
                   </div>
                   <div className="flex-1 relative h-6 bg-bg rounded overflow-hidden">

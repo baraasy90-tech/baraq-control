@@ -14,6 +14,7 @@ export interface AssignableMember {
 
 export interface ActivityFormValues {
   name: string;
+  code: string | null;
   durationDays: number;
   calendarType: CalendarType;
   customCalendarId: string | null;
@@ -37,6 +38,7 @@ export interface ActivityFormValues {
 
 export function ActivityForm({
   initial,
+  suggestedCode,
   candidateDependencies,
   customCalendars,
   members,
@@ -45,6 +47,7 @@ export function ActivityForm({
   saving,
 }: {
   initial: Activity | null;
+  suggestedCode?: string;
   candidateDependencies: Activity[];
   customCalendars: CustomCalendar[];
   members: AssignableMember[];
@@ -53,6 +56,7 @@ export function ActivityForm({
   saving?: boolean;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
+  const [code, setCode] = useState(initial?.code ?? suggestedCode ?? "");
   const [assignedTo, setAssignedTo] = useState(initial?.assignedTo ?? "");
   const [durationDays, setDurationDays] = useState(String(initial?.durationDays ?? 5));
   const [calendarSelection, setCalendarSelection] = useState<string>(
@@ -92,6 +96,7 @@ export function ActivityForm({
     const isCustom = calendarSelection.startsWith("custom:");
     onSave({
       name: name.trim(),
+      code: code.trim() || null,
       durationDays: Number(durationDays),
       calendarType: isCustom ? "workdays" : (calendarSelection as CalendarType),
       customCalendarId: isCustom ? calendarSelection.slice("custom:".length) : null,
@@ -116,9 +121,15 @@ export function ActivityForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div>
-        <FieldLabel>اسم المرحلة/البند</FieldLabel>
-        <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: صبة اللبشة" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="sm:col-span-1">
+          <FieldLabel>الترميز</FieldLabel>
+          <TextInput value={code} onChange={(e) => setCode(e.target.value)} placeholder="مثال: 01-01 أو STR-01" className="font-mono" />
+        </div>
+        <div className="sm:col-span-2">
+          <FieldLabel>اسم المرحلة/البند</FieldLabel>
+          <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: صبة اللبشة" />
+        </div>
       </div>
 
       <div>
@@ -200,7 +211,7 @@ export function ActivityForm({
               <option value="">اختر البند السابق</option>
               {candidateDependencies.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.name}
+                  {a.code ? `${a.code} — ${a.name}` : a.name}
                 </option>
               ))}
             </select>

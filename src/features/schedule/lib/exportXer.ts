@@ -1,4 +1,5 @@
 import type { Activity, Project, Schedule } from "@/types/domain";
+import { encodeWindows1256 } from "@/utils/windows1256";
 
 /**
  * مُصدِّر ملف XER (صيغة تبادل بيانات Primavera P6) — يبني ملفاً نصياً يمكن استيراده مباشرة
@@ -130,7 +131,7 @@ export function exportPrimaveraXer(project: Project, activities: Activity[], sch
     const wbsId = idByActivity.get(a.id)!;
     const parentWbsId = a.parentId ? (idByActivity.get(a.parentId) ?? rootWbsId) : rootWbsId;
     wbsRows.push([
-      wbsId, projId, obsId, wbsId * 10, 1, "N", "N", "WS_Open", a.name.slice(0, 30), a.name.slice(0, 100), "",
+      wbsId, projId, obsId, wbsId * 10, 1, "N", "N", "WS_Open", (a.code || a.name).slice(0, 30), a.name.slice(0, 100), "",
       parentWbsId, "", "", "0.0000", "0.0000", "", "", "", "", "", "EC_Cmp_pct", "EE_PF_cpi", guidFor(a.id), "", "",
     ]);
   }
@@ -163,9 +164,10 @@ export function exportPrimaveraXer(project: Project, activities: Activity[], sch
     const start = fmtDate(sc.start);
     const end = fmtDate(sc.end);
 
+    const taskCode = a.code || `A${taskId.toString().padStart(4, "0")}`;
     taskRows.push([
       taskId, projId, wbsId, clndrId, a.done ? 100 : 0, "N", 1, "N", "N", "CP_Drtn", taskType, durationType,
-      statusCode, `A${taskId.toString().padStart(4, "0")}`, a.name.slice(0, 100), "", 0, 0, remainHrs, 0, 0, 0,
+      statusCode, taskCode, a.name.slice(0, 100), "", 0, 0, remainHrs, 0, 0, 0,
       durationHrs, 0, 0, 0, "", a.done ? start : "", a.done ? end : "", start, end, "", start, end, start, end,
       start, end, start, end, "", "PT_Normal", "", "", "", "", guidFor(a.id), "", "", "", "N", 0, 0, "", "",
       fmtDate(today), fmtDate(today), "baraq", "baraq", "",
@@ -211,10 +213,11 @@ export function exportPrimaveraXer(project: Project, activities: Activity[], sch
 }
 
 export function downloadXerFile(content: string, fileName: string): void {
-  // BOM إلزامي هنا — بدونه يفترض P6 ترميزاً محلياً (ANSI) بدل UTF-8 الفعلي، فيظهر أي نص
-  // غير إنجليزي (كالعربية) مشوّهاً رغم أن باقي بنية الملف تبقى سليمة تماماً.
-  const BOM = "﻿";
-  const blob = new Blob([BOM + content], { type: "text/plain;charset=utf-8" });
+  // P6 يقرأ نصوص XER بترميز النظام المحلي (ANSI) دائماً — تجربة فعلية أثبتت أن UTF-8
+  // (حتى مع BOM) لا يُفسَّر بشكل صحيح، ويظهر أي نص عربي مشوّهاً. الحل الفعلي: ترميز الملف
+  // نفسه بـ Windows-1256 (الترميز العربي المحلي القياسي) بدل UTF-8.
+  const bytes = encodeWindows1256(content);
+  const blob = new Blob([bytes as BlobPart], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

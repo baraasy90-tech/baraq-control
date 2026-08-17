@@ -180,6 +180,7 @@ export interface Activity {
   projectId: string;
   parentId: string | null;
   name: string;
+  code: string | null;
   order: number;
   durationDays: number;
   done: boolean;

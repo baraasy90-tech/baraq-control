@@ -8,6 +8,7 @@ export interface CreateActivityInput {
   projectId: string;
   parentId: string | null;
   name: string;
+  code: string | null;
   order: number;
   durationDays: number;
   startDate: string | null;
@@ -39,6 +40,7 @@ export function useCreateActivity() {
         project_id: input.projectId,
         parent_id: input.parentId,
         name: input.name,
+        code: input.code,
         order: input.order,
         duration_days: input.durationDays,
         start_date: input.startDate,

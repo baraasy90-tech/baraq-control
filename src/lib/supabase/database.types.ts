@@ -267,6 +267,7 @@ export interface Database {
           boq_unit_price: number | null;
           created_at: string;
           assigned_to: string | null;
+          code: string | null;
         };
         Insert: {
           id?: string;
@@ -296,6 +297,7 @@ export interface Database {
           boq_unit_price?: number | null;
           created_at?: string;
           assigned_to?: string | null;
+          code?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["activities"]["Insert"]>;
         Relationships: [];

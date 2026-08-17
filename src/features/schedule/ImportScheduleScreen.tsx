@@ -131,6 +131,7 @@ export function ImportScheduleScreen({ projectId }: { projectId: string }) {
           projectId,
           parentId: null,
           name: row.name,
+          code: null,
           order: baseOrder + i + 1,
           durationDays: row.durationDays,
           calendarType: "workdays",

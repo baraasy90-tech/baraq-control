@@ -8,6 +8,7 @@ export interface UpdateActivityInput {
   id: string;
   projectId: string;
   name?: string;
+  code?: string | null;
   parentId?: string | null;
   order?: number;
   durationDays?: number;
@@ -39,6 +40,7 @@ export function useUpdateActivity() {
     mutationFn: async (input: UpdateActivityInput) => {
       const patch: ActivityUpdate = {};
       if (input.name !== undefined) patch.name = input.name;
+      if (input.code !== undefined) patch.code = input.code;
       if (input.parentId !== undefined) patch.parent_id = input.parentId;
       if (input.order !== undefined) patch.order = input.order;
       if (input.durationDays !== undefined) patch.duration_days = input.durationDays;

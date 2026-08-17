@@ -20,6 +20,7 @@ export function mapActivity(row: ActivityRow, checklist: ChecklistItem[] = []): 
     projectId: row.project_id,
     parentId: row.parent_id,
     name: row.name,
+    code: row.code,
     order: row.order,
     durationDays: row.duration_days,
     done: row.done,
