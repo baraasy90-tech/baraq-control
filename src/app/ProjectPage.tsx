@@ -56,8 +56,7 @@ export function ProjectPage() {
   const overallPercent = totalDuration > 0 ? (doneDuration / totalDuration) * 100 : 0;
 
   const navButtons: { label: string; onClick: () => void }[] = [
-    { label: "إنشاء الجدول الزمني", onClick: () => navigate(`/projects/${project.id}/admin`) },
-    { label: "معاينة الجدول الزمني", onClick: () => navigate(`/projects/${project.id}/timeline`) },
+    { label: "الجدول الزمني للمشروع", onClick: () => navigate(`/projects/${project.id}/admin`) },
     { label: "الاستلام", onClick: () => navigate(`/projects/${project.id}/receiving`) },
     { label: "الميزانية", onClick: () => navigate(`/projects/${project.id}/budget`) },
     { label: "العقود", onClick: () => navigate(`/projects/${project.id}/contract`) },
