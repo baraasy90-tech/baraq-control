@@ -89,21 +89,6 @@ export function ProjectsDashboard({
           <h1 className="text-lg sm:text-xl font-bold text-white truncate">{company.name}</h1>
         </div>
         <div className="flex gap-2 shrink-0">
-          <SecondaryButton onClick={() => navigate("/departments")} className="text-sm bg-white/10 text-white border-white/30">
-            الأقسام
-          </SecondaryButton>
-          <SecondaryButton onClick={() => navigate("/structure")} className="text-sm bg-white/10 text-white border-white/30">
-            الهيكلة
-          </SecondaryButton>
-          <SecondaryButton onClick={() => navigate("/overview")} className="text-sm bg-white/10 text-white border-white/30">
-            نظرة عامة على الأقسام
-          </SecondaryButton>
-          <SecondaryButton onClick={() => navigate("/tasks")} className="text-sm bg-white/10 text-white border-white/30">
-            المهام
-          </SecondaryButton>
-          <SecondaryButton onClick={() => navigate("/approvals")} className="text-sm bg-white/10 text-white border-white/30">
-            الاعتمادات
-          </SecondaryButton>
           <SecondaryButton onClick={onOpenControlPanel} className="text-sm bg-white/10 text-white border-white/30">
             لوحة التحكم
           </SecondaryButton>
