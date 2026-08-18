@@ -616,6 +616,88 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["contract_deductions"]["Insert"]>;
         Relationships: [];
       };
+      material_requests: {
+        Row: {
+          id: string;
+          project_id: string;
+          item_name: string;
+          description: string | null;
+          created_by: string | null;
+          created_at: string;
+          status:
+            | "draft"
+            | "sample_pending_pm_approval"
+            | "sample_pending_executive_approval"
+            | "sample_approved"
+            | "sample_rejected"
+            | "purchase_pending_pm_approval"
+            | "purchase_pending_finance_approval"
+            | "purchase_approved"
+            | "purchase_rejected";
+          sample_price: number | null;
+          sample_received_at: string | null;
+          sample_submitted_by: string | null;
+          sample_submitted_at: string | null;
+          sample_pm_reviewed_by: string | null;
+          sample_pm_reviewed_at: string | null;
+          sample_pm_review_note: string | null;
+          sample_executive_reviewed_by: string | null;
+          sample_executive_reviewed_at: string | null;
+          sample_executive_review_note: string | null;
+          attachments_note: string | null;
+          quote_price: number | null;
+          quote_received_at: string | null;
+          purchase_submitted_by: string | null;
+          purchase_submitted_at: string | null;
+          purchase_pm_reviewed_by: string | null;
+          purchase_pm_reviewed_at: string | null;
+          purchase_pm_review_note: string | null;
+          purchase_finance_reviewed_by: string | null;
+          purchase_finance_reviewed_at: string | null;
+          purchase_finance_review_note: string | null;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          item_name: string;
+          description?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          status?:
+            | "draft"
+            | "sample_pending_pm_approval"
+            | "sample_pending_executive_approval"
+            | "sample_approved"
+            | "sample_rejected"
+            | "purchase_pending_pm_approval"
+            | "purchase_pending_finance_approval"
+            | "purchase_approved"
+            | "purchase_rejected";
+          sample_price?: number | null;
+          sample_received_at?: string | null;
+          sample_submitted_by?: string | null;
+          sample_submitted_at?: string | null;
+          sample_pm_reviewed_by?: string | null;
+          sample_pm_reviewed_at?: string | null;
+          sample_pm_review_note?: string | null;
+          sample_executive_reviewed_by?: string | null;
+          sample_executive_reviewed_at?: string | null;
+          sample_executive_review_note?: string | null;
+          attachments_note?: string | null;
+          quote_price?: number | null;
+          quote_received_at?: string | null;
+          purchase_submitted_by?: string | null;
+          purchase_submitted_at?: string | null;
+          purchase_pm_reviewed_by?: string | null;
+          purchase_pm_reviewed_at?: string | null;
+          purchase_pm_review_note?: string | null;
+          purchase_finance_reviewed_by?: string | null;
+          purchase_finance_reviewed_at?: string | null;
+          purchase_finance_review_note?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["material_requests"]["Insert"]>;
+        Relationships: [];
+      };
       budget_reconciliation_notes: {
         Row: {
           id: string;
@@ -668,6 +750,22 @@ export interface Database {
       };
       review_contract_payment: {
         Args: { p_payment_id: string; p_approve: boolean; p_note: string | null };
+        Returns: undefined;
+      };
+      submit_material_sample: {
+        Args: { p_request_id: string };
+        Returns: undefined;
+      };
+      review_material_sample: {
+        Args: { p_request_id: string; p_approve: boolean; p_note: string | null };
+        Returns: undefined;
+      };
+      submit_material_purchase: {
+        Args: { p_request_id: string };
+        Returns: undefined;
+      };
+      review_material_purchase: {
+        Args: { p_request_id: string; p_approve: boolean; p_note: string | null };
         Returns: undefined;
       };
     };

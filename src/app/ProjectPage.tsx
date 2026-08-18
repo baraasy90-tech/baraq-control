@@ -60,6 +60,7 @@ export function ProjectPage() {
     { label: "الاستلام", onClick: () => navigate(`/projects/${project.id}/receiving`) },
     { label: "الميزانية", onClick: () => navigate(`/projects/${project.id}/budget`) },
     { label: "العقود", onClick: () => navigate(`/projects/${project.id}/contract`) },
+    { label: "اعتماد المواد والمشتريات", onClick: () => navigate(`/projects/${project.id}/materials`) },
     { label: "المستندات", onClick: () => navigate(`/projects/${project.id}/documents`) },
     { label: "الفريق", onClick: () => navigate(`/projects/${project.id}/team`) },
     { label: "النطاقات", onClick: () => navigate(`/projects/${project.id}/scope`) },

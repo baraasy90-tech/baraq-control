@@ -320,6 +320,50 @@ export interface ContractDeduction {
   createdAt: string;
 }
 
+export type MaterialRequestStatus =
+  | "draft"
+  | "sample_pending_pm_approval"
+  | "sample_pending_executive_approval"
+  | "sample_approved"
+  | "sample_rejected"
+  | "purchase_pending_pm_approval"
+  | "purchase_pending_finance_approval"
+  | "purchase_approved"
+  | "purchase_rejected";
+
+export interface MaterialRequest {
+  id: string;
+  projectId: string;
+  itemName: string;
+  description: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  status: MaterialRequestStatus;
+
+  samplePrice: number | null;
+  sampleReceivedAt: string | null;
+  sampleSubmittedBy: string | null;
+  sampleSubmittedAt: string | null;
+  samplePmReviewedBy: string | null;
+  samplePmReviewedAt: string | null;
+  samplePmReviewNote: string | null;
+  sampleExecutiveReviewedBy: string | null;
+  sampleExecutiveReviewedAt: string | null;
+  sampleExecutiveReviewNote: string | null;
+
+  attachmentsNote: string | null;
+  quotePrice: number | null;
+  quoteReceivedAt: string | null;
+  purchaseSubmittedBy: string | null;
+  purchaseSubmittedAt: string | null;
+  purchasePmReviewedBy: string | null;
+  purchasePmReviewedAt: string | null;
+  purchasePmReviewNote: string | null;
+  purchaseFinanceReviewedBy: string | null;
+  purchaseFinanceReviewedAt: string | null;
+  purchaseFinanceReviewNote: string | null;
+}
+
 export type ReconciliationStatus = "pending" | "approved" | "rejected";
 
 export interface BudgetReconciliationNote {
