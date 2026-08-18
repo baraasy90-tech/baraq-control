@@ -17,9 +17,11 @@ import {
 import { useCompany } from "@/features/company/useCompany";
 import { useDepartments } from "@/features/company/api/useDepartments";
 import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
+import { useProject } from "@/features/projects/api/useProject";
 import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
 import { STATUS_LABEL, STATUS_TONE, PAYMENT_STATUS_LABEL, PAYMENT_STATUS_TONE } from "@/features/contracts/statusLabels";
+import { printRetentionCertificate } from "@/features/contracts/lib/printRetentionCertificate";
 
 function numOrNull(v: string): number | null {
   const n = Number(v);
@@ -30,6 +32,8 @@ export function ContractScreen() {
   const { id: projectId, contractId } = useParams<{ id: string; contractId: string }>();
   const navigate = useNavigate();
   const bundleQuery = useContract(contractId);
+  const projectQuery = useProject(projectId);
+  const project = projectQuery.data;
   const saveContract = useSaveContract();
   const submitContract = useSubmitContract();
   const reviewContract = useReviewContract();
@@ -248,6 +252,26 @@ export function ContractScreen() {
   const totalAdvanceRecouped = paymentBreakdowns.reduce((s, b) => s + b.advanceDeduction, 0);
   const totalRetentionWithheld = paymentBreakdowns.reduce((s, b) => s + b.retentionDeduction, 0);
   const advanceRemaining = Math.max(0, advancePaymentAmount - totalAdvanceRecouped);
+
+  // سجل الضمان الفعلي — فقط المستخلصات المدفوعة فعلاً (وليست كل الجدول المخطط)، لأنها تمثّل
+  // مبالغ استُقطعت بالفعل من مبالغ حقيقية تم دفعها.
+  const retentionLedger = paymentBreakdowns
+    .filter((b) => b.payment.paid && b.retentionDeduction > 0)
+    .map((b) => ({ title: b.payment.title, paidDate: b.payment.dueDate, gross: b.gross, retentionAmount: b.retentionDeduction }));
+
+  const handlePrintRetentionCertificate = () => {
+    if (!contract) return;
+    printRetentionCertificate({
+      companyName: company.name,
+      projectName: project?.name ?? "",
+      contractName: contract.name,
+      retentionPercentage: contract.retentionPercentage ?? 0,
+      released: contract.retentionReleased,
+      releaseNote: contract.retentionReleaseNote,
+      ledger: retentionLedger,
+      print: company.print,
+    });
+  };
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-4xl mx-auto">
@@ -634,6 +658,41 @@ export function ContractScreen() {
               إضافة دفعة
             </SecondaryButton>
           </Card>
+
+          {contract.retentionPercentage != null && (
+            <Card className="mb-6">
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <h2 className="text-sm font-bold text-ink">سجل ضمان الأعمال (الاستقطاع)</h2>
+                <SecondaryButton onClick={handlePrintRetentionCertificate} className="text-xs px-3 py-1.5">
+                  طباعة شهادة الضمان
+                </SecondaryButton>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+                <StatCard label="نسبة الاستقطاع" value={`${contract.retentionPercentage}%`} />
+                <StatCard label="إجمالي المستقطع" value={fmtMoney(totalRetentionWithheld)} />
+                <StatCard
+                  label="حالة الاسترداد"
+                  value={contract.retentionReleased ? "تم الاسترداد" : "قيد الاستقطاع"}
+                  tone={contract.retentionReleased ? undefined : "warn"}
+                />
+              </div>
+              {retentionLedger.length === 0 ? (
+                <p className="text-xs text-ink-soft">لا توجد مستخلصات مدفوعة بعد لعرضها بالسجل</p>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  {retentionLedger.map((r, i) => (
+                    <div key={i} className="flex items-center justify-between text-xs bg-bg rounded-lg px-3 py-2">
+                      <span className="text-ink">{r.title}</span>
+                      <span className="text-ink-soft font-mono">-{fmtMoney(r.retentionAmount)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {contract.retentionReleaseNote && (
+                <p className="text-xs text-ink-soft mt-2">ملاحظة الاسترداد: {contract.retentionReleaseNote}</p>
+              )}
+            </Card>
+          )}
 
           <Card>
             <h2 className="text-sm font-bold text-ink mb-3">خصومات على المقاول (مخالفات)</h2>
