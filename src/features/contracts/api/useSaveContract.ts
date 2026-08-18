@@ -19,6 +19,7 @@ export interface SaveContractInput {
   retentionPercentage: number | null;
   retentionReleased: boolean;
   retentionReleaseNote: string | null;
+  resetToDraft?: boolean;
 }
 
 export function useSaveContract() {
@@ -48,6 +49,7 @@ export function useSaveContract() {
         retention_percentage: input.retentionPercentage,
         retention_released: input.retentionReleased,
         retention_release_note: input.retentionReleaseNote,
+        ...(input.resetToDraft ? { status: "draft" as const, reviewed_by: null, reviewed_at: null, review_note: null } : {}),
       };
 
       if (input.id) {

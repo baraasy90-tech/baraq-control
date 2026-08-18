@@ -9,6 +9,7 @@ import { getPlannedAmount } from "@/features/budget/lib/budget";
 import { BudgetVarianceBanner } from "@/features/budget/BudgetVarianceBanner";
 import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
+import { STATUS_LABEL, STATUS_TONE } from "@/features/contracts/statusLabels";
 
 export function ContractsListScreen() {
   const { id: projectId } = useParams<{ id: string }>();
@@ -22,7 +23,9 @@ export function ContractsListScreen() {
   const [error, setError] = useState("");
 
   const contracts = contractsQuery.data ?? [];
-  const totalContractValue = contracts.reduce((sum, c) => sum + (c.totalValue ?? 0), 0);
+  // فقط العقود المعتمدة تُحسب ضمن قيمة العقود الرسمية — المسودات وما بانتظار الاعتماد
+  // ليست ملزمة بعد.
+  const totalContractValue = contracts.filter((c) => c.status === "approved").reduce((sum, c) => sum + (c.totalValue ?? 0), 0);
   const trackedBudget = (activitiesQuery.data ?? []).reduce((sum, a) => sum + getPlannedAmount(a), 0);
 
   const handleCreate = async () => {
@@ -89,7 +92,10 @@ export function ContractsListScreen() {
                     </div>
                   </div>
                 </div>
-                <div className="text-sm font-bold text-ink font-mono shrink-0">{c.totalValue ? fmtMoney(c.totalValue) : "—"}</div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${STATUS_TONE[c.status]}`}>{STATUS_LABEL[c.status]}</span>
+                  <span className="text-sm font-bold text-ink font-mono">{c.totalValue ? fmtMoney(c.totalValue) : "—"}</span>
+                </div>
               </div>
             </Card>
           ))}

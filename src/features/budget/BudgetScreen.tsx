@@ -20,7 +20,9 @@ export function BudgetScreen({ project }: { project: Project }) {
   const navigate = useNavigate();
   const activitiesQuery = useActivities(project.id);
   const contractsQuery = useContracts(project.id);
-  const totalContractValue = (contractsQuery.data ?? []).reduce((sum, c) => sum + (c.totalValue ?? 0), 0);
+  const totalContractValue = (contractsQuery.data ?? [])
+    .filter((c) => c.status === "approved")
+    .reduce((sum, c) => sum + (c.totalValue ?? 0), 0);
   const createEntry = useCreateBudgetEntry();
   const deleteEntry = useDeleteBudgetEntry(project.id);
 

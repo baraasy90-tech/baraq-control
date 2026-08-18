@@ -4,6 +4,7 @@ import { FileText, Trash2, Upload } from "lucide-react";
 import { Card, StatCard, SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText } from "@/components/ui";
 import { useContract } from "@/features/contracts/api/useContract";
 import { useSaveContract } from "@/features/contracts/api/useSaveContract";
+import { useSubmitContract, useReviewContract } from "@/features/contracts/api/useContractApproval";
 import {
   useAddLineItem,
   useDeleteLineItem,
@@ -13,8 +14,12 @@ import {
   useAddDeduction,
   useDeleteDeduction,
 } from "@/features/contracts/api/useContractItems";
+import { useCompany } from "@/features/company/useCompany";
+import { useDepartments } from "@/features/company/api/useDepartments";
+import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
 import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
+import { STATUS_LABEL, STATUS_TONE } from "@/features/contracts/statusLabels";
 
 function numOrNull(v: string): number | null {
   const n = Number(v);
@@ -26,6 +31,23 @@ export function ContractScreen() {
   const navigate = useNavigate();
   const bundleQuery = useContract(contractId);
   const saveContract = useSaveContract();
+  const submitContract = useSubmitContract();
+  const reviewContract = useReviewContract();
+  const [reviewNoteInput, setReviewNoteInput] = useState("");
+
+  const { company, profile } = useCompany();
+  const departmentsQuery = useDepartments(company.id);
+  const departments = departmentsQuery.data ?? [];
+  const membersQuery = useDepartmentMembers(departments.map((d) => d.id));
+  const members = membersQuery.data ?? [];
+  const isOwner = company.createdBy === profile.id;
+  const isExecutive = members.some(
+    (m) => m.userId === profile.id && departments.find((d) => d.id === m.departmentId)?.type === "executive"
+  );
+  const isFinanceMember = members.some(
+    (m) => m.userId === profile.id && departments.find((d) => d.id === m.departmentId)?.type === "finance"
+  );
+  const canApproveContract = isOwner || isExecutive || isFinanceMember;
 
   const [editingMain, setEditingMain] = useState(false);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -127,11 +149,23 @@ export function ContractScreen() {
         retentionPercentage: numOrNull(retentionPct),
         retentionReleased,
         retentionReleaseNote: retentionNote || null,
+        resetToDraft: contract?.status === "approved",
       });
       setEditingMain(false);
     } catch {
       setMainError("تعذّر حفظ بيانات العقد، حاول مجدداً");
     }
+  };
+
+  const handleSubmitForApproval = async () => {
+    if (!contract || !projectId) return;
+    await submitContract.mutateAsync({ contractId: contract.id, projectId });
+  };
+
+  const handleReview = async (approve: boolean) => {
+    if (!contract || !projectId) return;
+    await reviewContract.mutateAsync({ contractId: contract.id, projectId, approve, note: reviewNoteInput.trim() || null });
+    setReviewNoteInput("");
   };
 
   const handleAddLineItem = async () => {
@@ -214,6 +248,51 @@ export function ContractScreen() {
       </div>
 
       {bundleQuery.isLoading && <p className="text-sm text-ink-soft">جارٍ التحميل...</p>}
+
+      {contract && (
+        <Card className="mb-4">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-ink-soft">حالة الاعتماد:</span>
+              <span className={`text-xs font-semibold rounded-full px-2.5 py-1 ${STATUS_TONE[contract.status]}`}>
+                {STATUS_LABEL[contract.status]}
+              </span>
+            </div>
+
+            {contract.status === "draft" && (
+              <PrimaryButton onClick={handleSubmitForApproval} disabled={submitContract.isPending} className="w-auto px-4 py-2 text-xs">
+                {submitContract.isPending ? "جارٍ الإرسال..." : "تقديم للاعتماد"}
+              </PrimaryButton>
+            )}
+          </div>
+
+          {contract.status === "pending_approval" && canApproveContract && (
+            <div className="mt-3 pt-3 border-t border-line/60">
+              <TextInput
+                value={reviewNoteInput}
+                onChange={(e) => setReviewNoteInput(e.target.value)}
+                placeholder="ملاحظة الاعتماد/الرفض (اختياري)"
+              />
+              <div className="flex gap-2 mt-2">
+                <PrimaryButton onClick={() => handleReview(true)} disabled={reviewContract.isPending} className="w-auto px-4 py-2 text-xs">
+                  اعتماد العقد
+                </PrimaryButton>
+                <SecondaryButton onClick={() => handleReview(false)} disabled={reviewContract.isPending} className="text-xs px-3 py-2">
+                  رفض
+                </SecondaryButton>
+              </div>
+            </div>
+          )}
+
+          {contract.status === "pending_approval" && !canApproveContract && (
+            <p className="text-xs text-ink-soft mt-2">بانتظار اعتماد مدير الحساب أو الإدارة المالية.</p>
+          )}
+
+          {(contract.status === "approved" || contract.status === "rejected") && contract.reviewNote && (
+            <p className="text-xs text-ink-soft mt-2">ملاحظة الاعتماد: {contract.reviewNote}</p>
+          )}
+        </Card>
+      )}
 
       {!editingMain && contract && (
         <Card className="mb-6">

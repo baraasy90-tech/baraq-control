@@ -262,7 +262,15 @@ export interface Contract {
   retentionReleased: boolean;
   retentionReleaseNote: string | null;
   createdAt: string;
+  status: ContractStatus;
+  submittedBy: string | null;
+  submittedAt: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
 }
+
+export type ContractStatus = "draft" | "pending_approval" | "approved" | "rejected";
 
 export interface ContractLineItem {
   id: string;

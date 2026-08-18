@@ -24,6 +24,12 @@ export function mapContract(row: ContractRow): Contract {
     retentionReleased: row.retention_released,
     retentionReleaseNote: row.retention_release_note,
     createdAt: row.created_at,
+    status: row.status,
+    submittedBy: row.submitted_by,
+    submittedAt: row.submitted_at,
+    reviewedBy: row.reviewed_by,
+    reviewedAt: row.reviewed_at,
+    reviewNote: row.review_note,
   };
 }
 

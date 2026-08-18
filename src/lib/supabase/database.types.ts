@@ -484,6 +484,12 @@ export interface Database {
           retention_release_note: string | null;
           created_at: string;
           contract_name: string;
+          status: "draft" | "pending_approval" | "approved" | "rejected";
+          submitted_by: string | null;
+          submitted_at: string | null;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          review_note: string | null;
         };
         Insert: {
           id?: string;
@@ -502,6 +508,12 @@ export interface Database {
           retention_release_note?: string | null;
           created_at?: string;
           contract_name?: string;
+          status?: "draft" | "pending_approval" | "approved" | "rejected";
+          submitted_by?: string | null;
+          submitted_at?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          review_note?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["contracts"]["Insert"]>;
         Relationships: [];
@@ -625,6 +637,10 @@ export interface Database {
       join_company_by_code: {
         Args: { p_code: string };
         Returns: { result_company_id: string; result_company_name: string }[];
+      };
+      review_contract: {
+        Args: { p_contract_id: string; p_approve: boolean; p_note: string | null };
+        Returns: undefined;
       };
     };
     Enums: Record<string, never>;
