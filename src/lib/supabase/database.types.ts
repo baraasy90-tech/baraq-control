@@ -592,6 +592,46 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["contract_payments"]["Insert"]>;
         Relationships: [];
       };
+      contract_extra_works: {
+        Row: {
+          id: string;
+          contract_id: string;
+          title: string;
+          description: string | null;
+          amount: number;
+          created_by: string | null;
+          created_at: string;
+          status: "draft" | "pending_pm_approval" | "pending_finance_approval" | "approved" | "rejected";
+          submitted_by: string | null;
+          submitted_at: string | null;
+          pm_reviewed_by: string | null;
+          pm_reviewed_at: string | null;
+          pm_review_note: string | null;
+          finance_reviewed_by: string | null;
+          finance_reviewed_at: string | null;
+          finance_review_note: string | null;
+        };
+        Insert: {
+          id?: string;
+          contract_id: string;
+          title: string;
+          description?: string | null;
+          amount: number;
+          created_by?: string | null;
+          created_at?: string;
+          status?: "draft" | "pending_pm_approval" | "pending_finance_approval" | "approved" | "rejected";
+          submitted_by?: string | null;
+          submitted_at?: string | null;
+          pm_reviewed_by?: string | null;
+          pm_reviewed_at?: string | null;
+          pm_review_note?: string | null;
+          finance_reviewed_by?: string | null;
+          finance_reviewed_at?: string | null;
+          finance_review_note?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["contract_extra_works"]["Insert"]>;
+        Relationships: [];
+      };
       contract_deductions: {
         Row: {
           id: string;
@@ -750,6 +790,14 @@ export interface Database {
       };
       review_contract_payment: {
         Args: { p_payment_id: string; p_approve: boolean; p_note: string | null };
+        Returns: undefined;
+      };
+      submit_contract_extra_work: {
+        Args: { p_extra_work_id: string };
+        Returns: undefined;
+      };
+      review_contract_extra_work: {
+        Args: { p_extra_work_id: string; p_approve: boolean; p_note: string | null };
         Returns: undefined;
       };
       submit_material_sample: {

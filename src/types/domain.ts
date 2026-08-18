@@ -309,6 +309,25 @@ export interface ContractPayment {
 
 export type PaymentApprovalStatus = "pending" | "pending_pm_approval" | "pending_finance_approval" | "approved" | "rejected";
 
+export interface ContractExtraWork {
+  id: string;
+  contractId: string;
+  title: string;
+  description: string | null;
+  amount: number;
+  createdBy: string | null;
+  createdAt: string;
+  status: ContractStatus;
+  submittedBy: string | null;
+  submittedAt: string | null;
+  pmReviewedBy: string | null;
+  pmReviewedAt: string | null;
+  pmReviewNote: string | null;
+  financeReviewedBy: string | null;
+  financeReviewedAt: string | null;
+  financeReviewNote: string | null;
+}
+
 export interface ContractDeduction {
   id: string;
   contractId: string;

@@ -22,6 +22,8 @@ import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
 import { STATUS_LABEL, STATUS_TONE, PAYMENT_STATUS_LABEL, PAYMENT_STATUS_TONE } from "@/features/contracts/statusLabels";
 import { printRetentionCertificate } from "@/features/contracts/lib/printRetentionCertificate";
+import { ExtraWorksSection } from "@/features/contracts/ExtraWorksSection";
+import { useExtraWorks } from "@/features/contracts/api/useExtraWorks";
 
 function numOrNull(v: string): number | null {
   const n = Number(v);
@@ -243,6 +245,11 @@ export function ContractScreen() {
 
   const totalDeductions = (bundle?.deductions ?? []).reduce((sum, d) => sum + d.deductionAmount, 0);
 
+  const extraWorksQuery = useExtraWorks(contract?.id);
+  const approvedExtraWorksTotal = (extraWorksQuery.data ?? [])
+    .filter((e) => e.status === "approved")
+    .reduce((sum, e) => sum + e.amount, 0);
+
   const payments = bundle?.payments ?? [];
   const advancePaymentAmount = payments.find((p) => p.isAdvancePayment)?.amount ?? 0;
   const advanceDeductionPctValue: number = contract?.advanceDeductionPercentage ?? 0;
@@ -393,13 +400,23 @@ export function ContractScreen() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                 <StatCard label="تاريخ البدء" value={contract.startDate ? fmt(contract.startDate) : "—"} />
                 <StatCard label="مدة العقد" value={contract.durationDays ? `${contract.durationDays} يوم` : "—"} />
-                <StatCard label="قيمة العقد" value={contract.totalValue ? fmtMoney(contract.totalValue) : "—"} />
+                <StatCard label="قيمة العقد الأصلية" value={contract.totalValue ? fmtMoney(contract.totalValue) : "—"} />
                 <StatCard
                   label="إجمالي الخصومات"
                   value={totalDeductions > 0 ? fmtMoney(totalDeductions) : "—"}
                   tone={totalDeductions > 0 ? "critical" : undefined}
                 />
               </div>
+
+              {approvedExtraWorksTotal > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                  <StatCard label="الأعمال الإضافية المعتمدة" value={fmtMoney(approvedExtraWorksTotal)} />
+                  <StatCard
+                    label="القيمة الإجمالية بعد الإضافات"
+                    value={fmtMoney((contract.totalValue ?? 0) + approvedExtraWorksTotal)}
+                  />
+                </div>
+              )}
 
               {contract.paymentTerms && (
                 <div className="mb-4">
@@ -700,6 +717,8 @@ export function ContractScreen() {
               إضافة دفعة
             </SecondaryButton>
           </Card>
+
+          <ExtraWorksSection contractId={contract.id} canPmApprove={canPmApprove} canFinanceApprove={canFinanceApprove} />
 
           {contract.retentionPercentage != null && (
             <Card className="mb-6">
