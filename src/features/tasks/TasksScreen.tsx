@@ -22,6 +22,9 @@ import { useDeleteTask } from "@/features/tasks/api/useDeleteTask";
 import { useCompanyScheduleTasks } from "@/features/tasks/api/useCompanyScheduleTasks";
 import { useCompanyCriticalItems } from "@/features/schedule/api/useCompanyCriticalItems";
 import { useUpcomingHolidays } from "@/features/overview/api/useUpcomingHolidays";
+import { useCompanyApprovals } from "@/features/contracts/api/useCompanyApprovals";
+import { useDepartments } from "@/features/company/api/useDepartments";
+import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
 import { fmt, todayISO, addDays, startOfWeek } from "@/utils/dates";
 import type { TaskPriority, TaskStatus } from "@/types/domain";
 
@@ -304,7 +307,7 @@ function TaskRow({ task, companyId }: { task: TaskWithContext; companyId: string
 
 export function TasksScreen() {
   const navigate = useNavigate();
-  const { company } = useCompany();
+  const { company, profile } = useCompany();
   const { user } = useAuth();
   const tasksQuery = useCompanyTasks(company.id);
   const scheduleTasksQuery = useCompanyScheduleTasks(company.id);
@@ -348,6 +351,28 @@ export function TasksScreen() {
   const criticalQuery = useCompanyCriticalItems(company.id);
   const criticalItems = criticalQuery.data ?? [];
 
+  const departmentsQuery = useDepartments(company.id);
+  const departments = departmentsQuery.data ?? [];
+  const membersQuery = useDepartmentMembers(departments.map((d) => d.id));
+  const members = membersQuery.data ?? [];
+  const isOwner = company.createdBy === profile.id;
+  const isExecutive = members.some(
+    (m) => m.userId === profile.id && departments.find((d) => d.id === m.departmentId)?.type === "executive"
+  );
+  const isPmDeptHead = members.some(
+    (m) => m.userId === profile.id && m.role === "head" && departments.find((d) => d.id === m.departmentId)?.type === "project_management"
+  );
+  const isFinanceDeptHead = members.some(
+    (m) => m.userId === profile.id && m.role === "head" && departments.find((d) => d.id === m.departmentId)?.type === "finance"
+  );
+  const canPmApprove = isOwner || isExecutive || isPmDeptHead;
+  const canFinanceApprove = isOwner || isExecutive || isFinanceDeptHead;
+
+  const approvalsQuery = useCompanyApprovals(company.id);
+  const myPendingApprovals = (approvalsQuery.data ?? []).filter(
+    (a) => (a.status === "pending_pm_approval" && canPmApprove) || (a.status === "pending_finance_approval" && canFinanceApprove)
+  );
+
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6 gap-2">
@@ -361,6 +386,38 @@ export function TasksScreen() {
           </SecondaryButton>
         </div>
       </div>
+
+      {myPendingApprovals.length > 0 && (
+        <Card className="mb-4">
+          <h3 className="text-sm font-bold text-ink mb-3">
+            🗂️ اعتمادات بانتظارك <span className="text-ink-soft font-normal">({myPendingApprovals.length})</span>
+          </h3>
+          <div className="flex flex-col gap-2">
+            {myPendingApprovals.map((a) => {
+              const days = a.daysAtCurrentStage ?? 0;
+              const tone = days >= 5 ? "critical" : days >= 2 ? "warn" : "neutral";
+              return (
+                <button
+                  key={`${a.kind}-${a.id}`}
+                  onClick={() => navigate(`/projects/${a.projectId}/contract/${a.contractId}`)}
+                  className={`flex items-center justify-between text-sm rounded-lg px-3 py-2 gap-2 border-none cursor-pointer text-right hover:brightness-95 ${
+                    tone === "critical" ? "bg-critical-bg" : tone === "warn" ? "bg-warn-bg" : "bg-bg"
+                  }`}
+                >
+                  <span className="flex items-center gap-2 min-w-0">
+                    <span className="text-[10px] text-ink-soft bg-panel rounded-full px-1.5 py-0.5 shrink-0">
+                      {a.kind === "contract" ? "عقد" : "دفعة"}
+                    </span>
+                    <span className="truncate">{a.title}</span>
+                    <span className="text-ink-soft shrink-0">— {a.projectName}</span>
+                  </span>
+                  <span className="text-xs font-semibold shrink-0">منذ {days} يوم</span>
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+      )}
 
       {criticalItems.length > 0 && (
         <Card className="mb-4">

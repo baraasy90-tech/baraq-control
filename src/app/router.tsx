@@ -33,6 +33,7 @@ const ProjectContractPage = lazy(() =>
 const ProjectContractDetailPage = lazy(() =>
   import("@/app/ProjectContractDetailPage").then((m) => ({ default: m.ProjectContractDetailPage }))
 );
+const ApprovalsPage = lazy(() => import("@/app/ApprovalsPage").then((m) => ({ default: m.ApprovalsPage })));
 
 export const router = createBrowserRouter([
   { path: "/join/:token", element: <JoinScreen /> },
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
       { index: true, element: <ProjectsPage /> },
       { path: "control-panel", element: <ControlPanelPage /> },
       { path: "tasks", element: <TasksPage /> },
+      { path: "approvals", element: <ApprovalsPage /> },
       { path: "overview", element: <OverviewPage /> },
       { path: "departments", element: <DepartmentsPage /> },
       { path: "structure", element: <StructurePage /> },

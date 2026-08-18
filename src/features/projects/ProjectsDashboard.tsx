@@ -101,6 +101,9 @@ export function ProjectsDashboard({
           <SecondaryButton onClick={() => navigate("/tasks")} className="text-sm bg-white/10 text-white border-white/30">
             المهام
           </SecondaryButton>
+          <SecondaryButton onClick={() => navigate("/approvals")} className="text-sm bg-white/10 text-white border-white/30">
+            الاعتمادات
+          </SecondaryButton>
           <SecondaryButton onClick={onOpenControlPanel} className="text-sm bg-white/10 text-white border-white/30">
             لوحة التحكم
           </SecondaryButton>
