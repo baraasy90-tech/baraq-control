@@ -52,3 +52,40 @@ export function useReviewContract() {
     },
   });
 }
+
+export function useSubmitPayment(contractId: string | undefined) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (paymentId: string) => {
+      if (!user) throw new Error("not authenticated");
+      const { error } = await supabase
+        .from("contract_payments")
+        .update({ status: "submitted", submitted_by: user.id, submitted_at: new Date().toISOString() })
+        .eq("id", paymentId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contract", contractId] });
+    },
+  });
+}
+
+export function useReviewPayment(contractId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ paymentId, approve, note }: { paymentId: string; approve: boolean; note: string | null }) => {
+      const { error } = await supabase.rpc("review_contract_payment", {
+        p_payment_id: paymentId,
+        p_approve: approve,
+        p_note: note,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contract", contractId] });
+    },
+  });
+}

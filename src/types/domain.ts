@@ -293,7 +293,15 @@ export interface ContractPayment {
   guaranteeNote: string | null;
   order: number;
   isAdvancePayment: boolean;
+  status: PaymentApprovalStatus;
+  submittedBy: string | null;
+  submittedAt: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
 }
+
+export type PaymentApprovalStatus = "pending" | "submitted" | "approved" | "rejected";
 
 export interface ContractDeduction {
   id: string;

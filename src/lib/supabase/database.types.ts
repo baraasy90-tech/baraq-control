@@ -552,6 +552,12 @@ export interface Database {
           guarantee_note: string | null;
           order: number;
           is_advance_payment: boolean;
+          status: "pending" | "submitted" | "approved" | "rejected";
+          submitted_by: string | null;
+          submitted_at: string | null;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          review_note: string | null;
         };
         Insert: {
           id?: string;
@@ -564,6 +570,12 @@ export interface Database {
           guarantee_note?: string | null;
           order?: number;
           is_advance_payment?: boolean;
+          status?: "pending" | "submitted" | "approved" | "rejected";
+          submitted_by?: string | null;
+          submitted_at?: string | null;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          review_note?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["contract_payments"]["Insert"]>;
         Relationships: [];
@@ -640,6 +652,10 @@ export interface Database {
       };
       review_contract: {
         Args: { p_contract_id: string; p_approve: boolean; p_note: string | null };
+        Returns: undefined;
+      };
+      review_contract_payment: {
+        Args: { p_payment_id: string; p_approve: boolean; p_note: string | null };
         Returns: undefined;
       };
     };

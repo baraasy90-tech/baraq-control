@@ -4,7 +4,7 @@ import { FileText, Trash2, Upload } from "lucide-react";
 import { Card, StatCard, SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText } from "@/components/ui";
 import { useContract } from "@/features/contracts/api/useContract";
 import { useSaveContract } from "@/features/contracts/api/useSaveContract";
-import { useSubmitContract, useReviewContract } from "@/features/contracts/api/useContractApproval";
+import { useSubmitContract, useReviewContract, useSubmitPayment, useReviewPayment } from "@/features/contracts/api/useContractApproval";
 import {
   useAddLineItem,
   useDeleteLineItem,
@@ -19,7 +19,7 @@ import { useDepartments } from "@/features/company/api/useDepartments";
 import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
 import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
-import { STATUS_LABEL, STATUS_TONE } from "@/features/contracts/statusLabels";
+import { STATUS_LABEL, STATUS_TONE, PAYMENT_STATUS_LABEL, PAYMENT_STATUS_TONE } from "@/features/contracts/statusLabels";
 
 function numOrNull(v: string): number | null {
   const n = Number(v);
@@ -48,6 +48,11 @@ export function ContractScreen() {
     (m) => m.userId === profile.id && departments.find((d) => d.id === m.departmentId)?.type === "finance"
   );
   const canApproveContract = isOwner || isExecutive || isFinanceMember;
+
+  const submitPayment = useSubmitPayment(contractId);
+  const reviewPayment = useReviewPayment(contractId);
+  const [reviewingPaymentId, setReviewingPaymentId] = useState<string | null>(null);
+  const [paymentReviewNote, setPaymentReviewNote] = useState("");
 
   const [editingMain, setEditingMain] = useState(false);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -166,6 +171,12 @@ export function ContractScreen() {
     if (!contract || !projectId) return;
     await reviewContract.mutateAsync({ contractId: contract.id, projectId, approve, note: reviewNoteInput.trim() || null });
     setReviewNoteInput("");
+  };
+
+  const handleReviewPayment = async (paymentId: string, approve: boolean) => {
+    await reviewPayment.mutateAsync({ paymentId, approve, note: paymentReviewNote.trim() || null });
+    setReviewingPaymentId(null);
+    setPaymentReviewNote("");
   };
 
   const handleAddLineItem = async () => {
@@ -520,35 +531,88 @@ export function ContractScreen() {
             ) : (
               <div className="flex flex-col gap-1.5 mb-3">
                 {paymentBreakdowns.map(({ payment: p, gross, advanceDeduction, retentionDeduction, net }) => (
-                  <div key={p.id} className="flex items-center justify-between gap-2 text-sm bg-bg rounded-lg px-3 py-2">
-                    <label className="flex items-center gap-2 min-w-0 cursor-pointer flex-1">
-                      <input
-                        type="checkbox"
-                        checked={p.paid}
-                        onChange={(e) => togglePaymentPaid.mutate({ id: p.id, paid: e.target.checked })}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className={p.paid ? "text-ink-soft line-through truncate" : "text-ink truncate"}>
-                          {p.title} {p.isAdvancePayment && <span className="text-[10px] text-primary">(الدفعة المقدمة)</span>}
-                        </div>
-                        <div className="text-xs text-ink-soft">
-                          {p.dueDate ? fmt(p.dueDate) : "بدون موعد"} · إجمالي: {gross ? fmtMoney(gross) : p.percentage ? `${p.percentage}%` : "—"}
-                          {p.guaranteeNote ? ` · ${p.guaranteeNote}` : ""}
-                        </div>
-                        {(advanceDeduction > 0 || retentionDeduction > 0) && (
-                          <div className="text-xs mt-1 flex flex-wrap gap-x-3">
-                            {advanceDeduction > 0 && (
-                              <span className="text-warn">خصم استرداد الدفعة المقدمة: -{fmtMoney(advanceDeduction)}</span>
-                            )}
-                            {retentionDeduction > 0 && (
-                              <span className="text-warn">خصم ضمان الأعمال: -{fmtMoney(retentionDeduction)}</span>
-                            )}
-                            <span className="text-ink font-semibold">الصافي المستحق: {fmtMoney(net)}</span>
+                  <div key={p.id} className="bg-bg rounded-lg px-3 py-2">
+                    <div className="flex items-center justify-between gap-2 text-sm">
+                      <label className="flex items-center gap-2 min-w-0 cursor-pointer flex-1">
+                        <input
+                          type="checkbox"
+                          checked={p.paid}
+                          disabled={!p.paid && p.status !== "approved"}
+                          title={p.status !== "approved" && !p.paid ? "لازم اعتماد الدفعة أولاً قبل تسجيلها كمدفوعة" : undefined}
+                          onChange={(e) => togglePaymentPaid.mutate({ id: p.id, paid: e.target.checked })}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={p.paid ? "text-ink-soft line-through truncate" : "text-ink truncate"}>{p.title}</span>
+                            {p.isAdvancePayment && <span className="text-[10px] text-primary">(الدفعة المقدمة)</span>}
+                            <span className={`text-[10px] font-semibold rounded-full px-1.5 py-0.5 ${PAYMENT_STATUS_TONE[p.status]}`}>
+                              {PAYMENT_STATUS_LABEL[p.status]}
+                            </span>
                           </div>
+                          <div className="text-xs text-ink-soft">
+                            {p.dueDate ? fmt(p.dueDate) : "بدون موعد"} · إجمالي: {gross ? fmtMoney(gross) : p.percentage ? `${p.percentage}%` : "—"}
+                            {p.guaranteeNote ? ` · ${p.guaranteeNote}` : ""}
+                          </div>
+                          {(advanceDeduction > 0 || retentionDeduction > 0) && (
+                            <div className="text-xs mt-1 flex flex-wrap gap-x-3">
+                              {advanceDeduction > 0 && (
+                                <span className="text-warn">خصم استرداد الدفعة المقدمة: -{fmtMoney(advanceDeduction)}</span>
+                              )}
+                              {retentionDeduction > 0 && (
+                                <span className="text-warn">خصم ضمان الأعمال: -{fmtMoney(retentionDeduction)}</span>
+                              )}
+                              <span className="text-ink font-semibold">الصافي المستحق: {fmtMoney(net)}</span>
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {p.status === "pending" && (
+                          <SecondaryButton
+                            onClick={() => submitPayment.mutate(p.id)}
+                            disabled={submitPayment.isPending}
+                            className="text-[11px] px-2 py-1"
+                          >
+                            تقديم للاعتماد
+                          </SecondaryButton>
                         )}
+                        {p.status === "submitted" && canApproveContract && (
+                          <SecondaryButton
+                            onClick={() => setReviewingPaymentId(reviewingPaymentId === p.id ? null : p.id)}
+                            className="text-[11px] px-2 py-1"
+                          >
+                            مراجعة الاعتماد
+                          </SecondaryButton>
+                        )}
+                        <IconButton icon={Trash2} label="حذف الدفعة" tone="critical" onClick={() => deletePayment.mutate(p.id)} />
                       </div>
-                    </label>
-                    <IconButton icon={Trash2} label="حذف الدفعة" tone="critical" onClick={() => deletePayment.mutate(p.id)} />
+                    </div>
+
+                    {reviewingPaymentId === p.id && (
+                      <div className="mt-2 pt-2 border-t border-line/60">
+                        <TextInput
+                          value={paymentReviewNote}
+                          onChange={(e) => setPaymentReviewNote(e.target.value)}
+                          placeholder="ملاحظة الاعتماد/الرفض (اختياري)"
+                        />
+                        <div className="flex gap-2 mt-2">
+                          <PrimaryButton
+                            onClick={() => handleReviewPayment(p.id, true)}
+                            disabled={reviewPayment.isPending}
+                            className="w-auto px-3 py-1.5 text-xs"
+                          >
+                            اعتماد
+                          </PrimaryButton>
+                          <SecondaryButton
+                            onClick={() => handleReviewPayment(p.id, false)}
+                            disabled={reviewPayment.isPending}
+                            className="text-xs px-3 py-1.5"
+                          >
+                            رفض
+                          </SecondaryButton>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

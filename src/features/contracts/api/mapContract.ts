@@ -57,6 +57,12 @@ export function mapPayment(row: PaymentRow): ContractPayment {
     guaranteeNote: row.guarantee_note,
     order: row.order,
     isAdvancePayment: row.is_advance_payment,
+    status: row.status,
+    submittedBy: row.submitted_by,
+    submittedAt: row.submitted_at,
+    reviewedBy: row.reviewed_by,
+    reviewedAt: row.reviewed_at,
+    reviewNote: row.review_note,
   };
 }
 

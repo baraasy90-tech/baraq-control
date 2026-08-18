@@ -1,4 +1,4 @@
-import type { ContractStatus } from "@/types/domain";
+import type { ContractStatus, PaymentApprovalStatus } from "@/types/domain";
 
 export const STATUS_LABEL: Record<ContractStatus, string> = {
   draft: "مسودة",
@@ -10,6 +10,20 @@ export const STATUS_LABEL: Record<ContractStatus, string> = {
 export const STATUS_TONE: Record<ContractStatus, string> = {
   draft: "text-ink-soft bg-bg",
   pending_approval: "text-warn bg-warn-bg",
+  approved: "text-accent bg-accent-bg",
+  rejected: "text-critical bg-critical-bg",
+};
+
+export const PAYMENT_STATUS_LABEL: Record<PaymentApprovalStatus, string> = {
+  pending: "قيد الإعداد",
+  submitted: "مُقدَّمة للاعتماد",
+  approved: "معتمدة",
+  rejected: "مرفوضة",
+};
+
+export const PAYMENT_STATUS_TONE: Record<PaymentApprovalStatus, string> = {
+  pending: "text-ink-soft bg-bg",
+  submitted: "text-warn bg-warn-bg",
   approved: "text-accent bg-accent-bg",
   rejected: "text-critical bg-critical-bg",
 };
