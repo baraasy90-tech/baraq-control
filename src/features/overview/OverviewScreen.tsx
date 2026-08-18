@@ -3,6 +3,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { Card, StatCard, SecondaryButton } from "@/components/ui";
 import { useCompany } from "@/features/company/useCompany";
 import { useCompanyOverview } from "@/features/overview/api/useCompanyOverview";
+import { useCompanyApprovals } from "@/features/contracts/api/useCompanyApprovals";
 import { fmt } from "@/utils/dates";
 import { fmtMoney } from "@/utils/money";
 
@@ -69,15 +70,22 @@ export function OverviewScreen() {
   const navigate = useNavigate();
   const { company } = useCompany();
   const overviewQuery = useCompanyOverview(company.id);
+  const approvalsQuery = useCompanyApprovals(company.id);
   const data = overviewQuery.data;
 
   const totalProjects = data?.projects.length ?? 0;
   const totalTasks = data ? Object.values(data.taskStatusCounts).reduce((a, b) => a + b, 0) : 0;
 
+  const approvals = approvalsQuery.data ?? [];
+  const pendingApprovals = approvals.filter((a) => a.status === "pending_pm_approval" || a.status === "pending_finance_approval");
+  const overdueApprovals = pendingApprovals
+    .filter((a) => (a.daysAtCurrentStage ?? 0) >= 5)
+    .sort((a, b) => (b.daysAtCurrentStage ?? 0) - (a.daysAtCurrentStage ?? 0));
+
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6 gap-2">
-        <h1 className="text-lg sm:text-xl font-bold text-ink">نظرة عامة على الأقسام</h1>
+        <h1 className="text-lg sm:text-xl font-bold text-ink">اللوحة التنفيذية</h1>
         <SecondaryButton onClick={() => navigate("/")} className="text-sm">
           رجوع
         </SecondaryButton>
@@ -119,6 +127,19 @@ export function OverviewScreen() {
               label="بنود بانتظار الاستلام"
               value={data.pendingReceivingCount}
               tone={data.pendingReceivingCount > 0 ? "warn" : undefined}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            <StatCard
+              label="اعتمادات معلّقة (عقود/دفعات)"
+              value={pendingApprovals.length}
+              tone={pendingApprovals.length > 0 ? "warn" : undefined}
+            />
+            <StatCard
+              label="اعتمادات متأخرة (5+ أيام)"
+              value={overdueApprovals.length}
+              tone={overdueApprovals.length > 0 ? "critical" : undefined}
             />
           </div>
 
@@ -177,6 +198,28 @@ export function OverviewScreen() {
                       <div className="text-sm font-semibold text-ink">{uc.activityName}</div>
                       <div className="text-xs text-ink-soft">
                         {uc.projectName} · يبدأ خلال {uc.daysToStart} يوم
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            <Card>
+              <h3 className="text-sm font-bold text-ink mb-3">اعتمادات متأخرة (5+ أيام)</h3>
+              {overdueApprovals.length === 0 ? (
+                <p className="text-sm text-ink-soft">لا توجد اعتمادات متأخرة حالياً 👍</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {overdueApprovals.slice(0, 8).map((a) => (
+                    <button
+                      key={`${a.kind}-${a.id}`}
+                      onClick={() => navigate(`/projects/${a.projectId}/contract/${a.contractId}`)}
+                      className="text-right bg-critical-bg rounded-lg px-3 py-2 cursor-pointer border-none"
+                    >
+                      <div className="text-sm font-semibold text-ink">{a.title}</div>
+                      <div className="text-xs text-ink-soft">
+                        {a.projectName} · منذ {a.daysAtCurrentStage} يوم
                       </div>
                     </button>
                   ))}

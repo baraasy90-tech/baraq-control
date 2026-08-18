@@ -26,7 +26,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "المشاريع", icon: LayoutGrid },
   { to: "/tasks", label: "المهام", icon: ListChecks },
   { to: "/approvals", label: "الاعتمادات", icon: ClipboardCheck },
-  { to: "/overview", label: "نظرة عامة", icon: LayoutDashboard },
+  { to: "/overview", label: "اللوحة التنفيذية", icon: LayoutDashboard },
   { to: "/departments", label: "الأقسام", icon: Building2 },
   { to: "/structure", label: "الهيكلة", icon: Network },
   { to: "/control-panel", label: "لوحة التحكم", icon: Settings },
