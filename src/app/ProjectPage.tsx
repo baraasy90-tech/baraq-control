@@ -1,4 +1,16 @@
 import { useNavigate, useParams } from "react-router-dom";
+import type { ComponentType } from "react";
+import {
+  CalendarClock,
+  PackageCheck,
+  Wallet,
+  FileText,
+  Package,
+  Folder,
+  Users,
+  Layers,
+  Palette,
+} from "lucide-react";
 import { useProject } from "@/features/projects/api/useProject";
 import { useUpdateProject } from "@/features/projects/api/useUpdateProject";
 import { useCompany } from "@/features/company/useCompany";
@@ -55,16 +67,16 @@ export function ProjectPage() {
   const doneDuration = roots.filter((a) => a.done).reduce((s, a) => s + a.durationDays, 0);
   const overallPercent = totalDuration > 0 ? (doneDuration / totalDuration) * 100 : 0;
 
-  const navButtons: { label: string; onClick: () => void }[] = [
-    { label: "الجدول الزمني للمشروع", onClick: () => navigate(`/projects/${project.id}/admin`) },
-    { label: "الاستلام", onClick: () => navigate(`/projects/${project.id}/receiving`) },
-    { label: "الميزانية", onClick: () => navigate(`/projects/${project.id}/budget`) },
-    { label: "العقود", onClick: () => navigate(`/projects/${project.id}/contract`) },
-    { label: "اعتماد المواد والمشتريات", onClick: () => navigate(`/projects/${project.id}/materials`) },
-    { label: "المستندات", onClick: () => navigate(`/projects/${project.id}/documents`) },
-    { label: "الفريق", onClick: () => navigate(`/projects/${project.id}/team`) },
-    { label: "النطاقات", onClick: () => navigate(`/projects/${project.id}/scope`) },
-    { label: "المظهر", onClick: () => navigate(`/projects/${project.id}/appearance`) },
+  const navTiles: { label: string; icon: ComponentType<{ size?: number; strokeWidth?: number }>; onClick: () => void }[] = [
+    { label: "الجدول الزمني للمشروع", icon: CalendarClock, onClick: () => navigate(`/projects/${project.id}/admin`) },
+    { label: "الاستلام", icon: PackageCheck, onClick: () => navigate(`/projects/${project.id}/receiving`) },
+    { label: "الميزانية", icon: Wallet, onClick: () => navigate(`/projects/${project.id}/budget`) },
+    { label: "العقود", icon: FileText, onClick: () => navigate(`/projects/${project.id}/contract`) },
+    { label: "اعتماد المواد والمشتريات", icon: Package, onClick: () => navigate(`/projects/${project.id}/materials`) },
+    { label: "المستندات", icon: Folder, onClick: () => navigate(`/projects/${project.id}/documents`) },
+    { label: "الفريق", icon: Users, onClick: () => navigate(`/projects/${project.id}/team`) },
+    { label: "النطاقات", icon: Layers, onClick: () => navigate(`/projects/${project.id}/scope`) },
+    { label: "المظهر", icon: Palette, onClick: () => navigate(`/projects/${project.id}/appearance`) },
   ];
 
   return (
@@ -84,12 +96,22 @@ export function ProjectPage() {
         </SecondaryButton>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-6">
-        {navButtons.map((btn) => (
-          <SecondaryButton key={btn.label} onClick={btn.onClick} className="text-sm">
-            {btn.label}
-          </SecondaryButton>
-        ))}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-6">
+        {navTiles.map((tile) => {
+          const Icon = tile.icon;
+          return (
+            <button
+              key={tile.label}
+              onClick={tile.onClick}
+              className="flex flex-col items-center gap-2 text-center bg-panel border border-line/60 shadow-sm rounded-xl p-4 cursor-pointer hover:border-primary/40 hover:bg-primary-bg/40 transition-colors"
+            >
+              <span className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary-bg text-primary shrink-0">
+                <Icon size={18} strokeWidth={2.2} />
+              </span>
+              <span className="text-xs font-semibold text-ink leading-tight">{tile.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
