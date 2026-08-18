@@ -94,20 +94,13 @@ export function BudgetScreen({ project }: { project: Project }) {
 
               {selectedRollup && (
                 <div className="grid grid-cols-3 gap-2 mb-4">
-                  <div className="bg-bg border border-line/60 rounded-lg p-3">
-                    <div className="text-xs text-ink-soft mb-1">مخطط</div>
-                    <div className="text-sm font-bold text-ink font-mono">{fmtMoney(selectedRollup.planned)}</div>
-                  </div>
-                  <div className="bg-bg border border-line/60 rounded-lg p-3">
-                    <div className="text-xs text-ink-soft mb-1">فعلي</div>
-                    <div className="text-sm font-bold text-ink font-mono">{fmtMoney(selectedRollup.actual)}</div>
-                  </div>
-                  <div className="bg-bg border border-line/60 rounded-lg p-3">
-                    <div className="text-xs text-ink-soft mb-1">الفرق ({selectedRollup.variancePct}%)</div>
-                    <div className={`text-sm font-bold font-mono ${selectedRollup.variance < 0 ? "text-critical" : "text-ink"}`}>
-                      {fmtMoney(selectedRollup.variance)}
-                    </div>
-                  </div>
+                  <StatCard label="مخطط" value={fmtMoney(selectedRollup.planned)} />
+                  <StatCard label="فعلي" value={fmtMoney(selectedRollup.actual)} />
+                  <StatCard
+                    label={`الفرق (${selectedRollup.variancePct}%)`}
+                    value={fmtMoney(selectedRollup.variance)}
+                    tone={selectedRollup.variance < 0 ? "critical" : undefined}
+                  />
                 </div>
               )}
 
