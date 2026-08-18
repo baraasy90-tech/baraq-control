@@ -11,7 +11,7 @@ export function useSubmitContract() {
       if (!user) throw new Error("not authenticated");
       const { error } = await supabase
         .from("contracts")
-        .update({ status: "pending_approval", submitted_by: user.id, submitted_at: new Date().toISOString() })
+        .update({ status: "pending_pm_approval", submitted_by: user.id, submitted_at: new Date().toISOString() })
         .eq("id", contractId);
       if (error) throw error;
       return { projectId };
@@ -62,7 +62,7 @@ export function useSubmitPayment(contractId: string | undefined) {
       if (!user) throw new Error("not authenticated");
       const { error } = await supabase
         .from("contract_payments")
-        .update({ status: "submitted", submitted_by: user.id, submitted_at: new Date().toISOString() })
+        .update({ status: "pending_pm_approval", submitted_by: user.id, submitted_at: new Date().toISOString() })
         .eq("id", paymentId);
       if (error) throw error;
     },

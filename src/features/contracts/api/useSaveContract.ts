@@ -49,7 +49,17 @@ export function useSaveContract() {
         retention_percentage: input.retentionPercentage,
         retention_released: input.retentionReleased,
         retention_release_note: input.retentionReleaseNote,
-        ...(input.resetToDraft ? { status: "draft" as const, reviewed_by: null, reviewed_at: null, review_note: null } : {}),
+        ...(input.resetToDraft
+          ? {
+              status: "draft" as const,
+              pm_reviewed_by: null,
+              pm_reviewed_at: null,
+              pm_review_note: null,
+              finance_reviewed_by: null,
+              finance_reviewed_at: null,
+              finance_review_note: null,
+            }
+          : {}),
       };
 
       if (input.id) {

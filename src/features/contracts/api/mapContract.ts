@@ -27,9 +27,12 @@ export function mapContract(row: ContractRow): Contract {
     status: row.status,
     submittedBy: row.submitted_by,
     submittedAt: row.submitted_at,
-    reviewedBy: row.reviewed_by,
-    reviewedAt: row.reviewed_at,
-    reviewNote: row.review_note,
+    pmReviewedBy: row.pm_reviewed_by,
+    pmReviewedAt: row.pm_reviewed_at,
+    pmReviewNote: row.pm_review_note,
+    financeReviewedBy: row.finance_reviewed_by,
+    financeReviewedAt: row.finance_reviewed_at,
+    financeReviewNote: row.finance_review_note,
   };
 }
 
@@ -60,9 +63,12 @@ export function mapPayment(row: PaymentRow): ContractPayment {
     status: row.status,
     submittedBy: row.submitted_by,
     submittedAt: row.submitted_at,
-    reviewedBy: row.reviewed_by,
-    reviewedAt: row.reviewed_at,
-    reviewNote: row.review_note,
+    pmReviewedBy: row.pm_reviewed_by,
+    pmReviewedAt: row.pm_reviewed_at,
+    pmReviewNote: row.pm_review_note,
+    financeReviewedBy: row.finance_reviewed_by,
+    financeReviewedAt: row.finance_reviewed_at,
+    financeReviewNote: row.finance_review_note,
   };
 }
 

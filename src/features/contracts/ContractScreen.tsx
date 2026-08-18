@@ -48,10 +48,18 @@ export function ContractScreen() {
   const isExecutive = members.some(
     (m) => m.userId === profile.id && departments.find((d) => d.id === m.departmentId)?.type === "executive"
   );
-  const isFinanceMember = members.some(
-    (m) => m.userId === profile.id && departments.find((d) => d.id === m.departmentId)?.type === "finance"
+  const isPmDeptHead = members.some(
+    (m) =>
+      m.userId === profile.id &&
+      m.role === "head" &&
+      departments.find((d) => d.id === m.departmentId)?.type === "project_management"
   );
-  const canApproveContract = isOwner || isExecutive || isFinanceMember;
+  const isFinanceDeptHead = members.some(
+    (m) =>
+      m.userId === profile.id && m.role === "head" && departments.find((d) => d.id === m.departmentId)?.type === "finance"
+  );
+  const canPmApprove = isOwner || isExecutive || isPmDeptHead;
+  const canFinanceApprove = isOwner || isExecutive || isFinanceDeptHead;
 
   const submitPayment = useSubmitPayment(contractId);
   const reviewPayment = useReviewPayment(contractId);
@@ -301,30 +309,63 @@ export function ContractScreen() {
             )}
           </div>
 
-          {contract.status === "pending_approval" && canApproveContract && (
-            <div className="mt-3 pt-3 border-t border-line/60">
-              <TextInput
-                value={reviewNoteInput}
-                onChange={(e) => setReviewNoteInput(e.target.value)}
-                placeholder="ملاحظة الاعتماد/الرفض (اختياري)"
-              />
-              <div className="flex gap-2 mt-2">
-                <PrimaryButton onClick={() => handleReview(true)} disabled={reviewContract.isPending} className="w-auto px-4 py-2 text-xs">
-                  اعتماد العقد
-                </PrimaryButton>
-                <SecondaryButton onClick={() => handleReview(false)} disabled={reviewContract.isPending} className="text-xs px-3 py-2">
-                  رفض
-                </SecondaryButton>
+          {contract.status === "pending_pm_approval" &&
+            (canPmApprove ? (
+              <div className="mt-3 pt-3 border-t border-line/60">
+                <p className="text-xs text-ink-soft mb-2">اعتماد أولي — رئيس قسم إدارة المشاريع</p>
+                <TextInput
+                  value={reviewNoteInput}
+                  onChange={(e) => setReviewNoteInput(e.target.value)}
+                  placeholder="ملاحظة الاعتماد/الرفض (اختياري)"
+                />
+                <div className="flex gap-2 mt-2">
+                  <PrimaryButton onClick={() => handleReview(true)} disabled={reviewContract.isPending} className="w-auto px-4 py-2 text-xs">
+                    اعتماد وتحويل للمالية
+                  </PrimaryButton>
+                  <SecondaryButton onClick={() => handleReview(false)} disabled={reviewContract.isPending} className="text-xs px-3 py-2">
+                    رفض
+                  </SecondaryButton>
+                </div>
               </div>
+            ) : (
+              <p className="text-xs text-ink-soft mt-2">بانتظار اعتماد رئيس قسم إدارة المشاريع.</p>
+            ))}
+
+          {contract.status === "pending_finance_approval" &&
+            (canFinanceApprove ? (
+              <div className="mt-3 pt-3 border-t border-line/60">
+                <p className="text-xs text-ink-soft mb-2">
+                  اعتُمد مبدئياً من إدارة المشاريع — الاعتماد المالي النهائي
+                </p>
+                <TextInput
+                  value={reviewNoteInput}
+                  onChange={(e) => setReviewNoteInput(e.target.value)}
+                  placeholder="ملاحظة الاعتماد/الرفض (اختياري)"
+                />
+                <div className="flex gap-2 mt-2">
+                  <PrimaryButton onClick={() => handleReview(true)} disabled={reviewContract.isPending} className="w-auto px-4 py-2 text-xs">
+                    الاعتماد النهائي
+                  </PrimaryButton>
+                  <SecondaryButton onClick={() => handleReview(false)} disabled={reviewContract.isPending} className="text-xs px-3 py-2">
+                    رفض
+                  </SecondaryButton>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-ink-soft mt-2">اعتُمد مبدئياً من إدارة المشاريع — بانتظار الاعتماد المالي النهائي.</p>
+            ))}
+
+          {contract.status === "rejected" && contract.financeReviewNote && (
+            <p className="text-xs text-ink-soft mt-2">سبب الرفض (المالية): {contract.financeReviewNote}</p>
+          )}
+          {contract.status === "rejected" && !contract.financeReviewNote && contract.pmReviewNote && (
+            <p className="text-xs text-ink-soft mt-2">سبب الرفض (إدارة المشاريع): {contract.pmReviewNote}</p>
+          )}
+          {contract.status === "approved" && (
+            <div className="text-xs text-ink-soft mt-2">
+              {contract.pmReviewNote && <p>ملاحظة إدارة المشاريع: {contract.pmReviewNote}</p>}
+              {contract.financeReviewNote && <p>ملاحظة المالية: {contract.financeReviewNote}</p>}
             </div>
-          )}
-
-          {contract.status === "pending_approval" && !canApproveContract && (
-            <p className="text-xs text-ink-soft mt-2">بانتظار اعتماد مدير الحساب أو الإدارة المالية.</p>
-          )}
-
-          {(contract.status === "approved" || contract.status === "rejected") && contract.reviewNote && (
-            <p className="text-xs text-ink-soft mt-2">ملاحظة الاعتماد: {contract.reviewNote}</p>
           )}
         </Card>
       )}
@@ -600,12 +641,13 @@ export function ContractScreen() {
                             تقديم للاعتماد
                           </SecondaryButton>
                         )}
-                        {p.status === "submitted" && canApproveContract && (
+                        {((p.status === "pending_pm_approval" && canPmApprove) ||
+                          (p.status === "pending_finance_approval" && canFinanceApprove)) && (
                           <SecondaryButton
                             onClick={() => setReviewingPaymentId(reviewingPaymentId === p.id ? null : p.id)}
                             className="text-[11px] px-2 py-1"
                           >
-                            مراجعة الاعتماد
+                            {p.status === "pending_pm_approval" ? "اعتماد أولي" : "الاعتماد المالي النهائي"}
                           </SecondaryButton>
                         )}
                         <IconButton icon={Trash2} label="حذف الدفعة" tone="critical" onClick={() => deletePayment.mutate(p.id)} />

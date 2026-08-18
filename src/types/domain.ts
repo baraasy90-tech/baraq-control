@@ -265,12 +265,15 @@ export interface Contract {
   status: ContractStatus;
   submittedBy: string | null;
   submittedAt: string | null;
-  reviewedBy: string | null;
-  reviewedAt: string | null;
-  reviewNote: string | null;
+  pmReviewedBy: string | null;
+  pmReviewedAt: string | null;
+  pmReviewNote: string | null;
+  financeReviewedBy: string | null;
+  financeReviewedAt: string | null;
+  financeReviewNote: string | null;
 }
 
-export type ContractStatus = "draft" | "pending_approval" | "approved" | "rejected";
+export type ContractStatus = "draft" | "pending_pm_approval" | "pending_finance_approval" | "approved" | "rejected";
 
 export interface ContractLineItem {
   id: string;
@@ -296,12 +299,15 @@ export interface ContractPayment {
   status: PaymentApprovalStatus;
   submittedBy: string | null;
   submittedAt: string | null;
-  reviewedBy: string | null;
-  reviewedAt: string | null;
-  reviewNote: string | null;
+  pmReviewedBy: string | null;
+  pmReviewedAt: string | null;
+  pmReviewNote: string | null;
+  financeReviewedBy: string | null;
+  financeReviewedAt: string | null;
+  financeReviewNote: string | null;
 }
 
-export type PaymentApprovalStatus = "pending" | "submitted" | "approved" | "rejected";
+export type PaymentApprovalStatus = "pending" | "pending_pm_approval" | "pending_finance_approval" | "approved" | "rejected";
 
 export interface ContractDeduction {
   id: string;
