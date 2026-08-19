@@ -1,12 +1,38 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { SecondaryButton } from "@/components/ui";
+import { Plus, Pencil, Trash2 } from "lucide-react";
+import { SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText, Modal } from "@/components/ui";
 import { useCompany } from "@/features/company/useCompany";
 import { useDepartments } from "@/features/company/api/useDepartments";
 import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
 import { useUpdateDepartment } from "@/features/company/api/useUpdateDepartment";
+import { useCreateDepartment } from "@/features/company/api/useCreateDepartment";
+import { useDeleteDepartment } from "@/features/company/api/useDeleteDepartment";
 import { useCompanyProjectAccess, type ProjectAccess } from "@/features/company/api/useCompanyProjectAccess";
-import type { Department, MemberRole } from "@/types/domain";
+import type { Department, DepartmentType, MemberRole } from "@/types/domain";
+
+const DEPARTMENT_TYPE_LABEL: Record<DepartmentType, string> = {
+  project_management: "إدارة المشاريع",
+  finance: "الإدارة المالية",
+  hr: "الموارد البشرية",
+  executive: "مدير الحساب",
+  custom: "قسم مخصص",
+};
+
+function getDescendantIds(departments: Department[], rootId: string): Set<string> {
+  const result = new Set<string>();
+  const queue = [rootId];
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    for (const d of departments) {
+      if (d.parentDepartmentId === id && !result.has(d.id)) {
+        result.add(d.id);
+        queue.push(d.id);
+      }
+    }
+  }
+  return result;
+}
 
 const PROJECT_COLOR_PALETTE = [
   "#2E6FE8",
@@ -126,10 +152,24 @@ export function StructureScreen() {
   const accessQuery = useCompanyProjectAccess(company.id);
   const projectAccess = accessQuery.data ?? [];
   const updateDepartment = useUpdateDepartment();
+  const createDepartment = useCreateDepartment();
+  const deleteDepartment = useDeleteDepartment(company.id);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const [dragState, setDragState] = useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
   const [livePositions, setLivePositions] = useState<Record<string, Pos>>({});
+
+  const [creating, setCreating] = useState(false);
+  const [newDeptName, setNewDeptName] = useState("");
+  const [newDeptType, setNewDeptType] = useState<DepartmentType>("custom");
+  const [newDeptParentId, setNewDeptParentId] = useState("");
+  const [createError, setCreateError] = useState("");
+
+  const [editingDept, setEditingDept] = useState<Department | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editParentId, setEditParentId] = useState("");
+  const [editError, setEditError] = useState("");
+  const [confirmDeleteDept, setConfirmDeleteDept] = useState<Department | null>(null);
 
   const isOwner = company.createdBy === profile.id;
   const isExecutive = members.some(
@@ -140,6 +180,7 @@ export function StructureScreen() {
   );
 
   const canSeeAll = isOwner || isExecutive;
+  const canEdit = isOwner;
 
   function collectSubtree(rootId: string, acc: Set<string>) {
     acc.add(rootId);
@@ -159,7 +200,7 @@ export function StructureScreen() {
     ? departments.filter((d) => !d.parentDepartmentId || !visibleIds.has(d.parentDepartmentId))
     : departments.filter((d) => headDepartmentIds.has(d.id));
 
-  const canDrag = (deptId: string) => canSeeAll || headDepartmentIds.has(deptId) || visibleIds.has(deptId);
+  const canDrag = (_deptId: string) => canEdit;
 
   const scopedProjectAccess = projectAccess
     .map((p) => ({ ...p, members: p.members.filter((m) => visibleIds.size > 0 && members.some((dm) => dm.userId === m.userId && visibleIds.has(dm.departmentId))) }))
@@ -232,6 +273,64 @@ export function StructureScreen() {
     setLivePositions((prev) => ({ ...prev, [deptId]: pos }));
   };
 
+  const openCreate = () => {
+    setNewDeptName("");
+    setNewDeptType("custom");
+    setNewDeptParentId("");
+    setCreateError("");
+    setCreating(true);
+  };
+
+  const handleCreate = async () => {
+    if (!newDeptName.trim()) return;
+    setCreateError("");
+    try {
+      await createDepartment.mutateAsync({
+        companyId: company.id,
+        name: newDeptName.trim(),
+        type: newDeptType,
+        parentDepartmentId: newDeptParentId || null,
+      });
+      setCreating(false);
+    } catch {
+      setCreateError("تعذّر إنشاء القسم، حاول مجدداً");
+    }
+  };
+
+  const openEdit = (dept: Department) => {
+    setEditingDept(dept);
+    setEditName(dept.name);
+    setEditParentId(dept.parentDepartmentId ?? "");
+    setEditError("");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingDept || !editName.trim()) return;
+    setEditError("");
+    try {
+      await updateDepartment.mutateAsync({
+        id: editingDept.id,
+        companyId: company.id,
+        name: editName.trim(),
+        parentDepartmentId: editParentId || null,
+      });
+      setEditingDept(null);
+    } catch {
+      setEditError("تعذّر حفظ التعديل، حاول مجدداً");
+    }
+  };
+
+  const handleDeleteDept = async () => {
+    if (!confirmDeleteDept) return;
+    try {
+      await deleteDepartment.mutateAsync(confirmDeleteDept.id);
+      setConfirmDeleteDept(null);
+      setEditingDept(null);
+    } catch {
+      setConfirmDeleteDept(null);
+    }
+  };
+
   const isLoading = departmentsQuery.isLoading || membersQuery.isLoading || accessQuery.isLoading;
 
   const lines: { x1: number; y1: number; x2: number; y2: number; key: string }[] = [];
@@ -262,20 +361,28 @@ export function StructureScreen() {
     <div className="min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-2 gap-2">
         <h1 className="text-lg sm:text-xl font-bold text-ink">{canSeeAll ? "هيكلة الشركة" : "هيكلة القسم"}</h1>
-        <SecondaryButton onClick={() => navigate("/")} className="text-sm">
-          رجوع
-        </SecondaryButton>
+        <div className="flex items-center gap-2 shrink-0">
+          {canEdit && (
+            <SecondaryButton onClick={openCreate} className="text-sm inline-flex items-center gap-1.5">
+              <Plus size={15} strokeWidth={2.5} /> إضافة قسم
+            </SecondaryButton>
+          )}
+          <SecondaryButton onClick={() => navigate("/")} className="text-sm">
+            رجوع
+          </SecondaryButton>
+        </div>
       </div>
       <p className="text-xs text-ink-soft mb-6">
-        محرر رسم حر — اسحب أي صندوق لأي مكان تريده، ويُحفظ موقعه تلقائياً. الخطوط تعكس التبعية الفعلية (من القسم
-        الأعلى)، والموقع على اللوحة اختيارك الكامل.
+        {canEdit
+          ? "محرر رسم حر — أضف أقساماً جديدة، اسحب أي صندوق لأي مكان تريده (يُحفظ تلقائياً)، أو اضغط أيقونة التعديل على أي قسم لتغيير اسمه أو القسم الأب التابع له. الخطوط تعكس التبعية الفعلية."
+          : "عرض فقط — إضافة الأقسام وتحريكها وربط علاقاتها متاح لمدير الحساب فقط. الخطوط تعكس التبعية الفعلية بين الأقسام."}
       </p>
 
       {isLoading && <p className="text-sm text-ink-soft">جارٍ التحميل...</p>}
 
       {!isLoading && roots.length === 0 && (
         <div className="bg-panel border border-dashed border-line rounded-xl p-10 text-center text-sm text-ink-soft">
-          {canSeeAll ? "لا توجد أقسام بعد" : "هذه الشاشة مخصصة للإدارة التنفيذية ورؤساء الأقسام"}
+          {canEdit ? 'لا توجد أقسام بعد — اضغط "إضافة قسم" أعلاه لإنشاء أول قسم' : canSeeAll ? "لا توجد أقسام بعد" : "هذه الشاشة مخصصة للإدارة التنفيذية ورؤساء الأقسام"}
         </div>
       )}
 
@@ -335,6 +442,21 @@ export function StructureScreen() {
                       zIndex: dragState?.id === dept.id ? 2 : 1,
                     }}
                   >
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEdit(dept);
+                        }}
+                        title="تعديل القسم"
+                        className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-panel border border-line/70 text-ink-soft flex items-center justify-center cursor-pointer shadow-sm hover:text-ink"
+                        style={{ zIndex: 3 }}
+                      >
+                        <Pencil size={12} />
+                      </button>
+                    )}
                     <div dir="rtl" className="text-center">
                       <div className="text-sm font-bold truncate">{dept.name}</div>
                       {head ? (
@@ -396,6 +518,107 @@ export function StructureScreen() {
             )}
           </div>
         </>
+      )}
+
+      {creating && (
+        <Modal title="قسم جديد" onClose={() => setCreating(false)}>
+          <FieldLabel>اسم القسم</FieldLabel>
+          <TextInput value={newDeptName} onChange={(e) => setNewDeptName(e.target.value)} autoFocus />
+          <div className="mb-3" />
+          <FieldLabel>نوع القسم</FieldLabel>
+          <select
+            value={newDeptType}
+            onChange={(e) => setNewDeptType(e.target.value as DepartmentType)}
+            className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink"
+          >
+            {Object.entries(DEPARTMENT_TYPE_LABEL).map(([key, label]) => (
+              <option key={key} value={key}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <div className="mb-3" />
+          <FieldLabel>القسم الأب (اختياري)</FieldLabel>
+          <select
+            value={newDeptParentId}
+            onChange={(e) => setNewDeptParentId(e.target.value)}
+            className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink"
+          >
+            <option value="">بدون — قسم رئيسي تابع للشركة مباشرة</option>
+            {allDepartments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+          <ErrorText>{createError}</ErrorText>
+          <div className="flex gap-2 mt-4">
+            <PrimaryButton onClick={handleCreate} disabled={!newDeptName.trim() || createDepartment.isPending} className="flex-1">
+              {createDepartment.isPending ? "جارٍ الإنشاء..." : "إنشاء"}
+            </PrimaryButton>
+            <SecondaryButton onClick={() => setCreating(false)} className="flex-1">
+              إلغاء
+            </SecondaryButton>
+          </div>
+        </Modal>
+      )}
+
+      {editingDept && (
+        <Modal title={`تعديل — ${editingDept.name}`} onClose={() => setEditingDept(null)}>
+          <FieldLabel>اسم القسم</FieldLabel>
+          <TextInput value={editName} onChange={(e) => setEditName(e.target.value)} autoFocus />
+          <div className="mb-3" />
+          <FieldLabel>القسم الأب</FieldLabel>
+          <select
+            value={editParentId}
+            onChange={(e) => setEditParentId(e.target.value)}
+            className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink"
+          >
+            <option value="">بدون — قسم رئيسي تابع للشركة مباشرة</option>
+            {allDepartments
+              .filter((d) => d.id !== editingDept.id && !getDescendantIds(allDepartments, editingDept.id).has(d.id))
+              .map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+          </select>
+          <ErrorText>{editError}</ErrorText>
+          <div className="flex gap-2 mt-4">
+            <PrimaryButton onClick={handleSaveEdit} disabled={!editName.trim() || updateDepartment.isPending} className="flex-1">
+              {updateDepartment.isPending ? "جارٍ الحفظ..." : "حفظ"}
+            </PrimaryButton>
+            <SecondaryButton onClick={() => setEditingDept(null)} className="flex-1">
+              إلغاء
+            </SecondaryButton>
+            <IconButton
+              icon={Trash2}
+              label="حذف القسم"
+              tone="critical"
+              onClick={() => setConfirmDeleteDept(editingDept)}
+            />
+          </div>
+        </Modal>
+      )}
+
+      {confirmDeleteDept && (
+        <Modal title="تأكيد الحذف" onClose={() => setConfirmDeleteDept(null)}>
+          <p className="text-sm text-ink-soft mb-5">
+            هل أنت متأكد من حذف قسم "{confirmDeleteDept.name}"؟ سيتم فك ارتباط أي أقسام أو أعضاء تابعين له.
+          </p>
+          <div className="flex gap-2">
+            <SecondaryButton onClick={() => setConfirmDeleteDept(null)} className="flex-1">
+              إلغاء
+            </SecondaryButton>
+            <button
+              onClick={handleDeleteDept}
+              disabled={deleteDepartment.isPending}
+              className="flex-1 py-2.5 rounded-lg bg-critical text-white border-none font-bold text-sm cursor-pointer disabled:opacity-50"
+            >
+              {deleteDepartment.isPending ? "جارٍ الحذف..." : "حذف نهائياً"}
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );
