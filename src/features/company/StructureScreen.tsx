@@ -95,8 +95,8 @@ function ProjectDots({ dots, selectedProjectId }: { dots: UserProjectDot[] | und
 }
 
 const NODE_WIDTH = 190;
-const NODE_HEIGHT = 96;
-const CANVAS_PADDING = 80;
+const NODE_HEIGHT = 128;
+const CANVAS_PADDING = 100;
 const CANVAS_MIN_WIDTH = 700;
 const CANVAS_MIN_HEIGHT = 420;
 
@@ -453,7 +453,7 @@ export function StructureScreen() {
         <>
           <div
             ref={canvasWrapperRef}
-            className={`bg-panel border border-line/60 shadow-sm rounded-xl mb-2 ${fitScale <= 0.45 ? "overflow-auto" : "overflow-hidden"}`}
+            className="bg-panel border border-line/60 shadow-sm rounded-xl mb-2 overflow-auto"
             style={{ maxHeight: "70vh", height: canvasHeight * fitScale }}
           >
             <div
