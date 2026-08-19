@@ -13,6 +13,7 @@ import {
   ChevronsRight,
   ChevronsLeft,
   PenLine,
+  Package,
 } from "lucide-react";
 import { useCompany } from "@/features/company/useCompany";
 import { QuickSignOutButton } from "@/features/auth/QuickSignOutButton";
@@ -29,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "المشاريع", icon: LayoutGrid },
   { to: "/tasks", label: "المهام", icon: ListChecks },
   { to: "/approvals", label: "الاعتمادات", icon: ClipboardCheck },
+  { to: "/material-approvals", label: "طلبات المواد", icon: Package },
   { to: "/overview", label: "اللوحة التنفيذية", icon: LayoutDashboard },
   { to: "/departments", label: "الأقسام", icon: Building2 },
   { to: "/structure", label: "الهيكلة", icon: Network },

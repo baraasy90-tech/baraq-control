@@ -34,6 +34,9 @@ const ProjectContractDetailPage = lazy(() =>
   import("@/app/ProjectContractDetailPage").then((m) => ({ default: m.ProjectContractDetailPage }))
 );
 const ApprovalsPage = lazy(() => import("@/app/ApprovalsPage").then((m) => ({ default: m.ApprovalsPage })));
+const MaterialApprovalsPage = lazy(() =>
+  import("@/app/MaterialApprovalsPage").then((m) => ({ default: m.MaterialApprovalsPage }))
+);
 const ProjectMaterialsPage = lazy(() =>
   import("@/app/ProjectMaterialsPage").then((m) => ({ default: m.ProjectMaterialsPage }))
 );
@@ -51,6 +54,7 @@ export const router = createBrowserRouter([
       { path: "control-panel", element: <ControlPanelPage /> },
       { path: "tasks", element: <TasksPage /> },
       { path: "approvals", element: <ApprovalsPage /> },
+      { path: "material-approvals", element: <MaterialApprovalsPage /> },
       { path: "overview", element: <OverviewPage /> },
       { path: "departments", element: <DepartmentsPage /> },
       { path: "structure", element: <StructurePage /> },
