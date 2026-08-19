@@ -12,10 +12,12 @@ import {
   X,
   ChevronsRight,
   ChevronsLeft,
+  PenLine,
 } from "lucide-react";
 import { useCompany } from "@/features/company/useCompany";
 import { QuickSignOutButton } from "@/features/auth/QuickSignOutButton";
-import type { Company } from "@/types/domain";
+import { MySignatureModal } from "@/features/company/MySignatureModal";
+import type { Company, Profile } from "@/types/domain";
 
 interface NavItem {
   to: string;
@@ -81,11 +83,27 @@ function SidebarNav({ collapsed, pathname, onNavigate }: { collapsed: boolean; p
   );
 }
 
+function SignatureRow({ profile, collapsed, onOpen }: { profile: Profile; collapsed: boolean; onOpen: () => void }) {
+  return (
+    <button
+      onClick={onOpen}
+      title="توقيعي"
+      className={`flex items-center gap-2 border-none bg-transparent text-ink-soft text-xs font-semibold py-2.5 cursor-pointer hover:bg-bg transition-colors ${
+        collapsed ? "justify-center px-0" : "px-4"
+      }`}
+    >
+      <PenLine size={16} strokeWidth={2.2} />
+      {!collapsed && <span className="truncate">{profile.signatureUrl ? "توقيعي" : "إضافة توقيعي"}</span>}
+    </button>
+  );
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { company } = useCompany();
+  const { company, profile } = useCompany();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [signatureOpen, setSignatureOpen] = useState(false);
 
   return (
     <div className="min-h-screen flex bg-bg">
@@ -97,6 +115,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <SidebarBrand company={company} collapsed={collapsed} />
         <SidebarNav collapsed={collapsed} pathname={location.pathname} />
         <div className="border-t border-line/60">
+          <SignatureRow profile={profile} collapsed={collapsed} onOpen={() => setSignatureOpen(true)} />
           <QuickSignOutButton collapsed={collapsed} />
         </div>
         <button
@@ -123,6 +142,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             <SidebarNav collapsed={false} pathname={location.pathname} onNavigate={() => setMobileOpen(false)} />
             <div className="border-t border-line/60">
+              <SignatureRow profile={profile} collapsed={false} onOpen={() => setSignatureOpen(true)} />
               <QuickSignOutButton collapsed={false} />
             </div>
           </div>
@@ -151,6 +171,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <main className="flex-1 min-w-0">{children}</main>
       </div>
+
+      {signatureOpen && <MySignatureModal profile={profile} onClose={() => setSignatureOpen(false)} />}
     </div>
   );
 }

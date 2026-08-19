@@ -40,7 +40,7 @@ export function useProfile() {
     queryFn: async (): Promise<{ profile: Profile; company: Company | null }> => {
       const { data: profileRow, error: profileError } = await supabase
         .from("profiles")
-        .select("id, full_name, company_id")
+        .select("id, full_name, company_id, signature_url")
         .eq("id", user!.id)
         .single();
       if (profileError) throw profileError;
@@ -57,7 +57,12 @@ export function useProfile() {
       }
 
       return {
-        profile: { id: profileRow.id, fullName: profileRow.full_name, companyId: profileRow.company_id },
+        profile: {
+          id: profileRow.id,
+          fullName: profileRow.full_name,
+          companyId: profileRow.company_id,
+          signatureUrl: profileRow.signature_url,
+        },
         company,
       };
     },

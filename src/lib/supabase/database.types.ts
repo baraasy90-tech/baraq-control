@@ -58,12 +58,14 @@ export interface Database {
           full_name: string;
           company_id: string | null;
           created_at: string;
+          signature_url: string | null;
         };
         Insert: {
           id: string;
           full_name?: string;
           company_id?: string | null;
           created_at?: string;
+          signature_url?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
         Relationships: [];
@@ -493,6 +495,17 @@ export interface Database {
           finance_reviewed_by: string | null;
           finance_reviewed_at: string | null;
           finance_review_note: string | null;
+          settlement_status: "open" | "pending_pm_approval" | "pending_finance_approval" | "settled" | "rejected";
+          settlement_note: string | null;
+          settlement_submitted_by: string | null;
+          settlement_submitted_at: string | null;
+          settlement_pm_reviewed_by: string | null;
+          settlement_pm_reviewed_at: string | null;
+          settlement_pm_review_note: string | null;
+          settlement_finance_reviewed_by: string | null;
+          settlement_finance_reviewed_at: string | null;
+          settlement_finance_review_note: string | null;
+          settled_at: string | null;
         };
         Insert: {
           id?: string;
@@ -520,6 +533,17 @@ export interface Database {
           finance_reviewed_by?: string | null;
           finance_reviewed_at?: string | null;
           finance_review_note?: string | null;
+          settlement_status?: "open" | "pending_pm_approval" | "pending_finance_approval" | "settled" | "rejected";
+          settlement_note?: string | null;
+          settlement_submitted_by?: string | null;
+          settlement_submitted_at?: string | null;
+          settlement_pm_reviewed_by?: string | null;
+          settlement_pm_reviewed_at?: string | null;
+          settlement_pm_review_note?: string | null;
+          settlement_finance_reviewed_by?: string | null;
+          settlement_finance_reviewed_at?: string | null;
+          settlement_finance_review_note?: string | null;
+          settled_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["contracts"]["Insert"]>;
         Relationships: [];
@@ -798,6 +822,14 @@ export interface Database {
       };
       review_contract_extra_work: {
         Args: { p_extra_work_id: string; p_approve: boolean; p_note: string | null };
+        Returns: undefined;
+      };
+      submit_contract_settlement: {
+        Args: { p_contract_id: string; p_note: string | null };
+        Returns: undefined;
+      };
+      review_contract_settlement: {
+        Args: { p_contract_id: string; p_approve: boolean; p_note: string | null };
         Returns: undefined;
       };
       submit_material_sample: {

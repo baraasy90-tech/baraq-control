@@ -24,6 +24,10 @@ import { STATUS_LABEL, STATUS_TONE, PAYMENT_STATUS_LABEL, PAYMENT_STATUS_TONE } 
 import { printRetentionCertificate } from "@/features/contracts/lib/printRetentionCertificate";
 import { ExtraWorksSection } from "@/features/contracts/ExtraWorksSection";
 import { useExtraWorks } from "@/features/contracts/api/useExtraWorks";
+import { useProfilesByIds } from "@/features/company/api/useProfilesByIds";
+import { approverTitle } from "@/features/company/lib/approverTitle";
+import { ApproverBadge } from "@/features/contracts/ApproverBadge";
+import { SettlementSection } from "@/features/contracts/SettlementSection";
 
 function numOrNull(v: string): number | null {
   const n = Number(v);
@@ -250,6 +254,16 @@ export function ContractScreen() {
     .filter((e) => e.status === "approved")
     .reduce((sum, e) => sum + e.amount, 0);
 
+  const approverProfilesQuery = useProfilesByIds([
+    contract?.submittedBy,
+    contract?.pmReviewedBy,
+    contract?.financeReviewedBy,
+    contract?.settlementSubmittedBy,
+    contract?.settlementPmReviewedBy,
+    contract?.settlementFinanceReviewedBy,
+  ]);
+  const approverProfiles = approverProfilesQuery.data ?? new Map();
+
   const payments = bundle?.payments ?? [];
   const advancePaymentAmount = payments.find((p) => p.isAdvancePayment)?.amount ?? 0;
   const advanceDeductionPctValue: number = contract?.advanceDeductionPercentage ?? 0;
@@ -369,9 +383,31 @@ export function ContractScreen() {
             <p className="text-xs text-ink-soft mt-2">سبب الرفض (إدارة المشاريع): {contract.pmReviewNote}</p>
           )}
           {contract.status === "approved" && (
-            <div className="text-xs text-ink-soft mt-2">
-              {contract.pmReviewNote && <p>ملاحظة إدارة المشاريع: {contract.pmReviewNote}</p>}
-              {contract.financeReviewNote && <p>ملاحظة المالية: {contract.financeReviewNote}</p>}
+            <div className="mt-3 pt-3 border-t border-line/60 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <ApproverBadge
+                label="اعتماد إدارة المشاريع"
+                userId={contract.pmReviewedBy}
+                title={
+                  contract.pmReviewedBy
+                    ? approverTitle(contract.pmReviewedBy, "project_management", company, departments, members)
+                    : ""
+                }
+                profiles={approverProfiles}
+                at={contract.pmReviewedAt}
+                note={contract.pmReviewNote}
+              />
+              <ApproverBadge
+                label="الاعتماد المالي النهائي"
+                userId={contract.financeReviewedBy}
+                title={
+                  contract.financeReviewedBy
+                    ? approverTitle(contract.financeReviewedBy, "finance", company, departments, members)
+                    : ""
+                }
+                profiles={approverProfiles}
+                at={contract.financeReviewedAt}
+                note={contract.financeReviewNote}
+              />
             </div>
           )}
         </Card>
@@ -637,11 +673,11 @@ export function ContractScreen() {
                           </div>
                           {(advanceDeduction > 0 || retentionDeduction > 0) && (
                             <div className="text-xs mt-1 flex flex-wrap gap-x-3">
-                              {advanceDeduction > 0 && (
-                                <span className="text-warn">خصم استرداد الدفعة المقدمة: -{fmtMoney(advanceDeduction)}</span>
-                              )}
                               {retentionDeduction > 0 && (
                                 <span className="text-warn">خصم ضمان الأعمال: -{fmtMoney(retentionDeduction)}</span>
+                              )}
+                              {advanceDeduction > 0 && (
+                                <span className="text-warn">خصم استرداد الدفعة المقدمة: -{fmtMoney(advanceDeduction)}</span>
                               )}
                               <span className="text-ink font-semibold">الصافي المستحق: {fmtMoney(net)}</span>
                             </div>
@@ -754,6 +790,21 @@ export function ContractScreen() {
               )}
             </Card>
           )}
+
+          <SettlementSection
+            contract={contract}
+            projectName={project?.name ?? ""}
+            company={company}
+            departments={departments}
+            members={members}
+            canPmApprove={canPmApprove}
+            canFinanceApprove={canFinanceApprove}
+            originalValue={contract.totalValue ?? 0}
+            approvedExtraWorksTotal={approvedExtraWorksTotal}
+            totalDeductions={totalDeductions}
+            retentionHeld={totalRetentionWithheld}
+            totalPaidNet={paymentBreakdowns.filter((b) => b.payment.paid).reduce((s, b) => s + b.net, 0)}
+          />
 
           <Card>
             <h2 className="text-sm font-bold text-ink mb-3">خصومات على المقاول (مخالفات)</h2>

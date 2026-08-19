@@ -36,6 +36,7 @@ export interface Profile {
   id: string;
   fullName: string;
   companyId: string | null;
+  signatureUrl: string | null;
 }
 
 export type DepartmentType = "project_management" | "finance" | "hr" | "executive" | "custom";
@@ -271,7 +272,20 @@ export interface Contract {
   financeReviewedBy: string | null;
   financeReviewedAt: string | null;
   financeReviewNote: string | null;
+  settlementStatus: SettlementStatus;
+  settlementNote: string | null;
+  settlementSubmittedBy: string | null;
+  settlementSubmittedAt: string | null;
+  settlementPmReviewedBy: string | null;
+  settlementPmReviewedAt: string | null;
+  settlementPmReviewNote: string | null;
+  settlementFinanceReviewedBy: string | null;
+  settlementFinanceReviewedAt: string | null;
+  settlementFinanceReviewNote: string | null;
+  settledAt: string | null;
 }
+
+export type SettlementStatus = "open" | "pending_pm_approval" | "pending_finance_approval" | "settled" | "rejected";
 
 export type ContractStatus = "draft" | "pending_pm_approval" | "pending_finance_approval" | "approved" | "rejected";
 

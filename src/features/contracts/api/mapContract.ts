@@ -33,6 +33,17 @@ export function mapContract(row: ContractRow): Contract {
     financeReviewedBy: row.finance_reviewed_by,
     financeReviewedAt: row.finance_reviewed_at,
     financeReviewNote: row.finance_review_note,
+    settlementStatus: row.settlement_status,
+    settlementNote: row.settlement_note,
+    settlementSubmittedBy: row.settlement_submitted_by,
+    settlementSubmittedAt: row.settlement_submitted_at,
+    settlementPmReviewedBy: row.settlement_pm_reviewed_by,
+    settlementPmReviewedAt: row.settlement_pm_reviewed_at,
+    settlementPmReviewNote: row.settlement_pm_review_note,
+    settlementFinanceReviewedBy: row.settlement_finance_reviewed_by,
+    settlementFinanceReviewedAt: row.settlement_finance_reviewed_at,
+    settlementFinanceReviewNote: row.settlement_finance_review_note,
+    settledAt: row.settled_at,
   };
 }
 
