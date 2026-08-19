@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText, Modal } from "@/components/ui";
+import { SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText, Modal, ExportMenu } from "@/components/ui";
+import { FileText } from "lucide-react";
+import { printOrgChart, type OrgChartNode } from "@/features/company/lib/printOrgChart";
 import { useCompany } from "@/features/company/useCompany";
 import { useDepartments } from "@/features/company/api/useDepartments";
 import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
@@ -152,6 +154,8 @@ export function StructureScreen() {
   const deleteDepartment = useDeleteDepartment(company.id);
 
   const canvasRef = useRef<HTMLDivElement>(null);
+  const canvasWrapperRef = useRef<HTMLDivElement>(null);
+  const [fitScale, setFitScale] = useState(1);
   const [dragState, setDragState] = useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
   const [livePositions, setLivePositions] = useState<Record<string, Pos>>({});
 
@@ -221,6 +225,27 @@ export function StructureScreen() {
   const canvasHeight = Math.max(CANVAS_MIN_HEIGHT, maxY + CANVAS_PADDING);
 
   const companyPos: Pos = { x: canvasWidth / 2 - NODE_WIDTH / 2, y: 20 };
+
+  useEffect(() => {
+    const wrapper = canvasWrapperRef.current;
+    if (!wrapper) return;
+    const MIN_SCALE = 0.45;
+    const update = () => {
+      const availableWidth = wrapper.clientWidth - 8;
+      const availableHeight = window.innerHeight * 0.62;
+      const scaleW = availableWidth / canvasWidth;
+      const scaleH = availableHeight / canvasHeight;
+      setFitScale(Math.max(MIN_SCALE, Math.min(1, scaleW, scaleH)));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(wrapper);
+    window.addEventListener("resize", update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [canvasWidth, canvasHeight]);
 
   useEffect(() => {
     if (!dragState) return;
@@ -329,6 +354,21 @@ export function StructureScreen() {
 
   const isLoading = departmentsQuery.isLoading || membersQuery.isLoading || accessQuery.isLoading;
 
+  const buildOrgNode = (dept: Department): OrgChartNode => ({
+    id: dept.id,
+    name: dept.name,
+    typeLabel: DEPARTMENT_TYPE_LABEL[dept.type],
+    typeColor: DEPARTMENT_TYPE_COLOR[dept.type],
+    members: members
+      .filter((m) => m.departmentId === dept.id)
+      .map((m) => ({ fullName: m.fullName, roleLabel: roleLabel(dept, m.role), isHead: m.role === "head" })),
+    children: departments.filter((d) => d.parentDepartmentId === dept.id).map(buildOrgNode),
+  });
+
+  const handleExportOrgChart = () => {
+    printOrgChart({ companyName: company.name, roots: roots.map(buildOrgNode) });
+  };
+
   const lines: { x1: number; y1: number; x2: number; y2: number; key: string }[] = [];
   for (const dept of roots) {
     const p = getPos(dept.id);
@@ -358,6 +398,9 @@ export function StructureScreen() {
       <div className="flex items-center justify-between mb-4 gap-2">
         <h1 className="text-lg sm:text-xl font-bold text-ink">الأقسام والهيكلة</h1>
         <div className="flex items-center gap-2 shrink-0">
+          {tab === "chart" && roots.length > 0 && (
+            <ExportMenu options={[{ label: "تصدير PDF", icon: FileText, onSelect: handleExportOrgChart }]} />
+          )}
           {tab === "chart" && canEdit && (
             <SecondaryButton onClick={openCreate} className="text-sm inline-flex items-center gap-1.5">
               <Plus size={15} strokeWidth={2.5} /> إضافة قسم
@@ -408,12 +451,16 @@ export function StructureScreen() {
 
       {!isLoading && roots.length > 0 && (
         <>
-          <div className="bg-panel border border-line/60 shadow-sm rounded-xl mb-2 overflow-auto" style={{ maxHeight: "70vh" }}>
+          <div
+            ref={canvasWrapperRef}
+            className={`bg-panel border border-line/60 shadow-sm rounded-xl mb-2 ${fitScale <= 0.45 ? "overflow-auto" : "overflow-hidden"}`}
+            style={{ maxHeight: "70vh", height: canvasHeight * fitScale }}
+          >
             <div
               ref={canvasRef}
               dir="ltr"
               className="relative"
-              style={{ width: canvasWidth, height: canvasHeight, touchAction: "none" }}
+              style={{ width: canvasWidth, height: canvasHeight, touchAction: "none", transform: `scale(${fitScale})`, transformOrigin: "top left" }}
             >
               <svg
                 width={canvasWidth}
