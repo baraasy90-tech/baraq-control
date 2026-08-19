@@ -114,26 +114,61 @@ interface Pos {
   y: number;
 }
 
-function computeDefaultPositions(roots: Department[], departments: Department[]): Map<string, Pos> {
-  const positions = new Map<string, Pos>();
-  let column = 0;
+const GAP_X = 40;
+const LEVEL_GAP_Y = NODE_HEIGHT + 70;
 
-  function place(dept: Department, depth: number) {
+/** عرض الشجرة الفرعية لكل قسم (بعدد أوراقها) — يُحسب من الأسفل للأعلى ليضمن عدم
+ * تداخل أي فرعين مهما كان عمق الشجرة أو عدد الأبناء. */
+function computeSubtreeWidth(deptId: string, departments: Department[], memo: Map<string, number>): number {
+  const cached = memo.get(deptId);
+  if (cached !== undefined) return cached;
+  const children = departments.filter((d) => d.parentDepartmentId === deptId);
+  if (children.length === 0) {
+    memo.set(deptId, NODE_WIDTH + GAP_X);
+    return NODE_WIDTH + GAP_X;
+  }
+  const width = children.reduce((sum, c) => sum + computeSubtreeWidth(c.id, departments, memo), 0);
+  const finalWidth = Math.max(width, NODE_WIDTH + GAP_X);
+  memo.set(deptId, finalWidth);
+  return finalWidth;
+}
+
+/** يحلّ موقع كل قسم من الأعلى للأسفل: يحترم أي موقع محفوظ يدوياً (سحب سابق)، ويضع
+ * أي قسم بلا موقع محفوظ في منتصف أبناء *موقعه الفعلي* (وليس عموداً افتراضياً منفصلاً)
+ * — هذا يمنع بالضبط مشكلة الخطوط المتقاطعة حين يُسحب قسم أب ثم يُضاف له ابن جديد. */
+function resolveTreePositions(roots: Department[], departments: Department[]): { positions: Map<string, Pos>; totalWidth: number } {
+  const widthMemo = new Map<string, number>();
+  for (const d of departments) computeSubtreeWidth(d.id, departments, widthMemo);
+
+  const positions = new Map<string, Pos>();
+
+  function place(dept: Department, centerX: number, depth: number) {
+    const stored = dept.positionX != null && dept.positionY != null ? { x: dept.positionX, y: dept.positionY } : null;
+    const x = stored ? stored.x : centerX - NODE_WIDTH / 2;
+    const y = stored ? stored.y : 140 + depth * LEVEL_GAP_Y;
+    positions.set(dept.id, { x, y });
+
+    const anchorCenterX = x + NODE_WIDTH / 2;
     const children = departments.filter((d) => d.parentDepartmentId === dept.id);
-    if (children.length === 0) {
-      positions.set(dept.id, { x: 80 + column * (NODE_WIDTH + 40), y: 140 + depth * (NODE_HEIGHT + 70) });
-      column++;
-      return;
+    if (children.length === 0) return;
+    const totalChildWidth = children.reduce((s, c) => s + (widthMemo.get(c.id) ?? NODE_WIDTH + GAP_X), 0);
+    let cursor = anchorCenterX - totalChildWidth / 2;
+    for (const c of children) {
+      const w = widthMemo.get(c.id) ?? NODE_WIDTH + GAP_X;
+      place(c, cursor + w / 2, depth + 1);
+      cursor += w;
     }
-    const startColumn = column;
-    children.forEach((c) => place(c, depth + 1));
-    const endColumn = column - 1;
-    const centerColumn = (startColumn + endColumn) / 2;
-    positions.set(dept.id, { x: 80 + centerColumn * (NODE_WIDTH + 40), y: 140 + depth * (NODE_HEIGHT + 70) });
   }
 
-  roots.forEach((r) => place(r, 0));
-  return positions;
+  const totalRootsWidth = roots.reduce((s, r) => s + (widthMemo.get(r.id) ?? NODE_WIDTH + GAP_X), 0);
+  let cursor = 80;
+  for (const r of roots) {
+    const w = widthMemo.get(r.id) ?? NODE_WIDTH + GAP_X;
+    place(r, cursor + w / 2, 0);
+    cursor += w;
+  }
+
+  return { positions, totalWidth: Math.max(totalRootsWidth + 160, CANVAS_MIN_WIDTH) };
 }
 
 type Tab = "chart" | "activity";
@@ -209,19 +244,16 @@ export function StructureScreen() {
   const colorByProject = assignProjectColors(scopedProjectAccess);
   const projectDots = buildUserProjectDots(scopedProjectAccess, colorByProject);
 
-  const defaultPositions = computeDefaultPositions(roots, departments);
+  const { positions: resolvedPositions, totalWidth: treeWidth } = resolveTreePositions(roots, departments);
 
   const getPos = (deptId: string): Pos => {
     if (livePositions[deptId]) return livePositions[deptId];
-    const dept = departments.find((d) => d.id === deptId);
-    if (dept?.positionX != null && dept?.positionY != null) return { x: dept.positionX, y: dept.positionY };
-    return defaultPositions.get(deptId) ?? { x: 80, y: 140 };
+    return resolvedPositions.get(deptId) ?? { x: 80, y: 140 };
   };
 
   const deptPositions = departments.map((d) => getPos(d.id));
-  const maxX = deptPositions.length > 0 ? Math.max(...deptPositions.map((p) => p.x + NODE_WIDTH)) : NODE_WIDTH;
   const maxY = deptPositions.length > 0 ? Math.max(...deptPositions.map((p) => p.y + NODE_HEIGHT)) : NODE_HEIGHT;
-  const canvasWidth = Math.max(CANVAS_MIN_WIDTH, maxX + CANVAS_PADDING);
+  const canvasWidth = Math.max(CANVAS_MIN_WIDTH, treeWidth);
   const canvasHeight = Math.max(CANVAS_MIN_HEIGHT, maxY + CANVAS_PADDING);
 
   const companyPos: Pos = { x: canvasWidth / 2 - NODE_WIDTH / 2, y: 20 };
