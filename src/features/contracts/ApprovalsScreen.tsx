@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FileSpreadsheet } from "lucide-react";
 import { Card, SecondaryButton, StatCard } from "@/components/ui";
 import { useCompany } from "@/features/company/useCompany";
 import { useCompanyApprovals, type ApprovalItem, type ApprovalStatus } from "@/features/contracts/api/useCompanyApprovals";
 import { useCompanyMaterialRequests } from "@/features/procurement/api/useCompanyMaterialRequests";
 import { STATUS_LABEL, STATUS_TONE, PAYMENT_STATUS_LABEL, PAYMENT_STATUS_TONE } from "@/features/contracts/statusLabels";
 import { MATERIAL_STATUS_LABEL, MATERIAL_STATUS_TONE } from "@/features/procurement/statusLabels";
+import { exportToExcel } from "@/utils/exportExcel";
+import { todayISO } from "@/utils/dates";
 import type { ContractStatus, PaymentApprovalStatus, MaterialRequestStatus } from "@/types/domain";
 
 type Filter = "pending" | "approved" | "rejected" | "all";
@@ -239,15 +242,55 @@ function MaterialApprovalsView() {
 
 export function ApprovalsScreen() {
   const navigate = useNavigate();
+  const { company } = useCompany();
   const [section, setSection] = useState<Section>("contracts");
+  const [exporting, setExporting] = useState(false);
+  const approvalsQuery = useCompanyApprovals(company.id);
+  const materialsQuery = useCompanyMaterialRequests(company.id);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await exportToExcel(`الاعتمادات-${todayISO()}`, [
+        {
+          name: "العقود والدفعات",
+          rows: (approvalsQuery.data ?? []).map((item) => ({
+            "النوع": item.kind === "contract" ? "عقد" : "دفعة",
+            "البند": item.title,
+            "المشروع": item.projectName,
+            "الحالة": item.kind === "contract" ? STATUS_LABEL[item.status as ContractStatus] : PAYMENT_STATUS_LABEL[item.status as PaymentApprovalStatus],
+            "أيام بالمرحلة الحالية": item.daysAtCurrentStage ?? "",
+            "مدة اعتماد إدارة المشاريع (يوم)": item.pmStageDays ?? "",
+            "مدة الاعتماد المالي (يوم)": item.financeStageDays ?? "",
+          })),
+        },
+        {
+          name: "طلبات المواد",
+          rows: (materialsQuery.data ?? []).map((item) => ({
+            "المادة": item.request.itemName,
+            "المشروع": item.projectName,
+            "الحالة": MATERIAL_STATUS_LABEL[item.request.status],
+            "أيام بالمرحلة الحالية": item.daysAtCurrentStage ?? "",
+          })),
+        },
+      ]);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-4 gap-2">
         <h1 className="text-lg sm:text-xl font-bold text-ink">الاعتمادات</h1>
-        <SecondaryButton onClick={() => navigate("/")} className="text-sm">
-          رجوع
-        </SecondaryButton>
+        <div className="flex items-center gap-2 shrink-0">
+          <SecondaryButton onClick={handleExport} disabled={exporting} className="text-sm inline-flex items-center gap-1.5">
+            <FileSpreadsheet size={15} /> {exporting ? "جارٍ التصدير..." : "تصدير Excel"}
+          </SecondaryButton>
+          <SecondaryButton onClick={() => navigate("/")} className="text-sm">
+            رجوع
+          </SecondaryButton>
+        </div>
       </div>
 
       <div className="flex gap-2 mb-6">

@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { FileSpreadsheet } from "lucide-react";
 import { Card, StatCard, SecondaryButton } from "@/components/ui";
 import { useCompany } from "@/features/company/useCompany";
 import { useCompanyOverview } from "@/features/overview/api/useCompanyOverview";
 import { useCompanyApprovals } from "@/features/contracts/api/useCompanyApprovals";
-import { fmt } from "@/utils/dates";
+import { fmt, todayISO } from "@/utils/dates";
 import { fmtMoney } from "@/utils/money";
+import { exportToExcel } from "@/utils/exportExcel";
 
 const PROJECT_STATUS_COLORS: Record<string, string> = { preparing: "#DFA22E", active: "#2E6FE8", completed: "#2E9E52" };
 const PROJECT_STATUS_LABEL: Record<string, string> = { preparing: "تحت التجهيز", active: "قائم", completed: "منتهٍ" };
@@ -82,13 +85,73 @@ export function OverviewScreen() {
     .filter((a) => (a.daysAtCurrentStage ?? 0) >= 5)
     .sort((a, b) => (b.daysAtCurrentStage ?? 0) - (a.daysAtCurrentStage ?? 0));
 
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    if (!data) return;
+    setExporting(true);
+    try {
+      await exportToExcel(`اللوحة-التنفيذية-${todayISO()}`, [
+        {
+          name: "ملخص",
+          rows: [
+            { "المؤشر": "إجمالي المشاريع", "القيمة": totalProjects },
+            { "المؤشر": "مراحل متأخرة", "القيمة": data.latePhases.length },
+            { "المؤشر": "طلبيات تحتاج توريداً قريباً", "القيمة": data.upcomingCritical.length },
+            { "المؤشر": "مهام متأخرة", "القيمة": data.overdueTaskCount },
+            { "المؤشر": "إجمالي المخطط", "القيمة": data.budget.planned },
+            { "المؤشر": "إجمالي الفعلي", "القيمة": data.budget.actual },
+            { "المؤشر": "الفرق", "القيمة": data.budget.variance },
+            { "المؤشر": "بنود بانتظار الاستلام", "القيمة": data.pendingReceivingCount },
+            { "المؤشر": "اعتمادات معلّقة", "القيمة": pendingApprovals.length },
+            { "المؤشر": "اعتمادات متأخرة (5+ أيام)", "القيمة": overdueApprovals.length },
+          ],
+        },
+        {
+          name: "المشاريع",
+          rows: data.projects.map((p) => ({
+            "اسم المشروع": p.name,
+            "الحالة": PROJECT_STATUS_LABEL[p.status] ?? p.status,
+            "المدير": p.managerName,
+            "الموقع": p.location,
+          })),
+        },
+        {
+          name: "مراحل متأخرة",
+          rows: data.latePhases.map((lp) => ({
+            "المشروع": lp.projectName,
+            "المرحلة": lp.activityName,
+            "كان يفترض ينتهي": fmt(lp.end),
+          })),
+        },
+        {
+          name: "اعتمادات متأخرة",
+          rows: overdueApprovals.map((a) => ({
+            "المشروع": a.projectName,
+            "البند": a.title,
+            "متأخرة منذ (يوم)": a.daysAtCurrentStage,
+          })),
+        },
+      ]);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6 gap-2">
         <h1 className="text-lg sm:text-xl font-bold text-ink">اللوحة التنفيذية</h1>
-        <SecondaryButton onClick={() => navigate("/")} className="text-sm">
-          رجوع
-        </SecondaryButton>
+        <div className="flex items-center gap-2 shrink-0">
+          {data && (
+            <SecondaryButton onClick={handleExport} disabled={exporting} className="text-sm inline-flex items-center gap-1.5">
+              <FileSpreadsheet size={15} /> {exporting ? "جارٍ التصدير..." : "تصدير Excel"}
+            </SecondaryButton>
+          )}
+          <SecondaryButton onClick={() => navigate("/")} className="text-sm">
+            رجوع
+          </SecondaryButton>
+        </div>
       </div>
 
       {overviewQuery.isLoading && <p className="text-sm text-ink-soft">جارٍ التحميل...</p>}

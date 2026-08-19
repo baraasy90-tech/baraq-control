@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, FileSpreadsheet } from "lucide-react";
 import { Card, StatCard, SecondaryButton, PrimaryButton, IconButton, Modal, ErrorText } from "@/components/ui";
 import { BudgetTree } from "@/features/budget/BudgetTree";
 import { AddActualEntryForm } from "@/features/budget/AddActualEntryForm";
@@ -11,7 +11,8 @@ import { computeBudgetRollup, getPlannedAmount } from "@/features/budget/lib/bud
 import { useContracts } from "@/features/contracts/api/useContract";
 import { BudgetVarianceBanner } from "@/features/budget/BudgetVarianceBanner";
 import { fmtMoney } from "@/utils/money";
-import { fmt } from "@/utils/dates";
+import { fmt, todayISO } from "@/utils/dates";
+import { exportToExcel } from "@/utils/exportExcel";
 import type { Project } from "@/types/domain";
 
 const SOURCE_LABEL: Record<string, string> = { contract: "عقد مقاول", purchase: "شراء مباشر", other: "أخرى" };
@@ -29,6 +30,7 @@ export function BudgetScreen({ project }: { project: Project }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [error, setError] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   const activities = activitiesQuery.data ?? [];
   const selected = activities.find((a) => a.id === selectedId) ?? null;
@@ -55,11 +57,50 @@ export function BudgetScreen({ project }: { project: Project }) {
     }
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await exportToExcel(`الميزانية-${project.name}-${todayISO()}`, [
+        {
+          name: "الميزانية",
+          rows: activities.map((a) => {
+            const r = computeBudgetRollup(a.id, activities);
+            return {
+              "البند": a.name,
+              "مخطط": r.planned,
+              "فعلي": r.actual,
+              "الفرق": r.planned - r.actual,
+            };
+          }),
+        },
+        {
+          name: "الدفعات الفعلية",
+          rows: activities.flatMap((a) =>
+            a.actualEntries.map((entry) => ({
+              "البند": a.name,
+              "التاريخ": fmt(entry.date),
+              "المبلغ": entry.amount,
+              "المصدر": SOURCE_LABEL[entry.source] ?? entry.source,
+              "ملاحظة": entry.note ?? "",
+            }))
+          ),
+        },
+      ]);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-lg font-bold text-ink truncate">الميزانية — {project.name}</h1>
-        <SecondaryButton onClick={() => navigate(`/projects/${project.id}`)}>رجوع</SecondaryButton>
+        <div className="flex items-center gap-2 shrink-0">
+          <SecondaryButton onClick={handleExport} disabled={exporting} className="inline-flex items-center gap-1.5">
+            <FileSpreadsheet size={15} /> {exporting ? "جارٍ التصدير..." : "تصدير Excel"}
+          </SecondaryButton>
+          <SecondaryButton onClick={() => navigate(`/projects/${project.id}`)}>رجوع</SecondaryButton>
+        </div>
       </div>
 
       <BudgetVarianceBanner
