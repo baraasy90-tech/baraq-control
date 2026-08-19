@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FileSpreadsheet } from "lucide-react";
-import { Card, SecondaryButton, StatCard } from "@/components/ui";
+import { Card, SecondaryButton, StatCard, ExportMenu } from "@/components/ui";
 import { useCompany } from "@/features/company/useCompany";
 import { useCompanyApprovals, type ApprovalItem, type ApprovalStatus } from "@/features/contracts/api/useCompanyApprovals";
 import { useCompanyMaterialRequests } from "@/features/procurement/api/useCompanyMaterialRequests";
@@ -284,9 +284,7 @@ export function ApprovalsScreen() {
       <div className="flex items-center justify-between mb-4 gap-2">
         <h1 className="text-lg sm:text-xl font-bold text-ink">الاعتمادات</h1>
         <div className="flex items-center gap-2 shrink-0">
-          <SecondaryButton onClick={handleExport} disabled={exporting} className="text-sm inline-flex items-center gap-1.5">
-            <FileSpreadsheet size={15} /> {exporting ? "جارٍ التصدير..." : "تصدير Excel"}
-          </SecondaryButton>
+          <ExportMenu pending={exporting} options={[{ label: "تصدير Excel", icon: FileSpreadsheet, onSelect: handleExport }]} />
           <SecondaryButton onClick={() => navigate("/")} className="text-sm">
             رجوع
           </SecondaryButton>

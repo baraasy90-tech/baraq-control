@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Trash2, FileSpreadsheet } from "lucide-react";
-import { Card, StatCard, SecondaryButton, PrimaryButton, IconButton, Modal, ErrorText } from "@/components/ui";
+import { Card, StatCard, SecondaryButton, PrimaryButton, IconButton, Modal, ErrorText, ExportMenu } from "@/components/ui";
 import { BudgetTree } from "@/features/budget/BudgetTree";
 import { AddActualEntryForm } from "@/features/budget/AddActualEntryForm";
 import { useActivities } from "@/features/schedule/api/useActivities";
@@ -96,9 +96,7 @@ export function BudgetScreen({ project }: { project: Project }) {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-lg font-bold text-ink truncate">الميزانية — {project.name}</h1>
         <div className="flex items-center gap-2 shrink-0">
-          <SecondaryButton onClick={handleExport} disabled={exporting} className="inline-flex items-center gap-1.5">
-            <FileSpreadsheet size={15} /> {exporting ? "جارٍ التصدير..." : "تصدير Excel"}
-          </SecondaryButton>
+          <ExportMenu pending={exporting} options={[{ label: "تصدير Excel", icon: FileSpreadsheet, onSelect: handleExport }]} />
           <SecondaryButton onClick={() => navigate(`/projects/${project.id}`)}>رجوع</SecondaryButton>
         </div>
       </div>

@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { FileSpreadsheet } from "lucide-react";
-import { Card, StatCard, SecondaryButton } from "@/components/ui";
+import { FileSpreadsheet, FileText } from "lucide-react";
+import { Card, StatCard, SecondaryButton, ExportMenu } from "@/components/ui";
 import { useCompany } from "@/features/company/useCompany";
 import { useCompanyOverview } from "@/features/overview/api/useCompanyOverview";
 import { useCompanyApprovals } from "@/features/contracts/api/useCompanyApprovals";
 import { fmt, todayISO } from "@/utils/dates";
 import { fmtMoney } from "@/utils/money";
 import { exportToExcel } from "@/utils/exportExcel";
+import { printExecutiveReport } from "@/features/overview/lib/printExecutiveReport";
 
 const PROJECT_STATUS_COLORS: Record<string, string> = { preparing: "#DFA22E", active: "#2E6FE8", completed: "#2E9E52" };
 const PROJECT_STATUS_LABEL: Record<string, string> = { preparing: "تحت التجهيز", active: "قائم", completed: "منتهٍ" };
@@ -138,15 +139,44 @@ export function OverviewScreen() {
     }
   };
 
+  const handleExportPdf = () => {
+    if (!data) return;
+    printExecutiveReport({
+      companyName: company.name,
+      kpis: [
+        { label: "إجمالي المشاريع", value: String(totalProjects) },
+        { label: "مراحل متأخرة", value: String(data.latePhases.length) },
+        { label: "طلبيات تحتاج توريداً قريباً", value: String(data.upcomingCritical.length) },
+        { label: "مهام متأخرة", value: String(data.overdueTaskCount) },
+        { label: "إجمالي المخطط", value: fmtMoney(data.budget.planned) },
+        { label: "إجمالي الفعلي", value: fmtMoney(data.budget.actual) },
+        { label: "الفرق", value: fmtMoney(data.budget.variance) },
+        { label: "اعتمادات معلّقة", value: String(pendingApprovals.length) },
+        { label: "اعتمادات متأخرة (5+ أيام)", value: String(overdueApprovals.length) },
+      ],
+      latePhases: data.latePhases.map((lp) => ({ project: lp.projectName, detail: `${lp.activityName} — كان يفترض ينتهي ${fmt(lp.end)}` })),
+      criticalItems: data.upcomingCritical.map((uc) => ({
+        project: uc.projectName,
+        detail: `${uc.activityName} — يبدأ خلال ${uc.daysToStart} يوم`,
+      })),
+      overdueApprovals: overdueApprovals.map((a) => ({ project: a.projectName, detail: `${a.title} — منذ ${a.daysAtCurrentStage} يوم` })),
+      print: company.print,
+    });
+  };
+
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6 gap-2">
         <h1 className="text-lg sm:text-xl font-bold text-ink">اللوحة التنفيذية</h1>
         <div className="flex items-center gap-2 shrink-0">
           {data && (
-            <SecondaryButton onClick={handleExport} disabled={exporting} className="text-sm inline-flex items-center gap-1.5">
-              <FileSpreadsheet size={15} /> {exporting ? "جارٍ التصدير..." : "تصدير Excel"}
-            </SecondaryButton>
+            <ExportMenu
+              pending={exporting}
+              options={[
+                { label: "تصدير Excel", icon: FileSpreadsheet, onSelect: handleExport },
+                { label: "تصدير PDF", icon: FileText, onSelect: handleExportPdf },
+              ]}
+            />
           )}
           <SecondaryButton onClick={() => navigate("/")} className="text-sm">
             رجوع

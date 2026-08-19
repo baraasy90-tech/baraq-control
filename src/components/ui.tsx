@@ -1,5 +1,6 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from "react";
 import clsx from "clsx";
+import { Download } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export function AuthCard({ children, title, eyebrow }: { children: ReactNode; title: string; eyebrow: string }) {
@@ -55,6 +56,59 @@ export function SecondaryButton(props: ButtonHTMLAttributes<HTMLButtonElement>) 
         props.className
       )}
     />
+  );
+}
+
+export interface ExportOption {
+  label: string;
+  icon: LucideIcon;
+  onSelect: () => void;
+  disabled?: boolean;
+}
+
+/** زر تصدير موحّد لكل الصيغ (Excel/PDF/Primavera...) — يفتح قائمة بالخيارات المتاحة
+ * بدل زر منفصل لكل صيغة. */
+export function ExportMenu({ options, label = "تصدير", pending }: { options: ExportOption[]; label?: string; pending?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  return (
+    <div className="relative shrink-0" ref={ref}>
+      <SecondaryButton onClick={() => setOpen((v) => !v)} disabled={pending} className="text-sm inline-flex items-center gap-1.5">
+        <Download size={15} /> {pending ? "جارٍ التصدير..." : label}
+      </SecondaryButton>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 bg-panel border border-line/60 rounded-lg shadow-lg py-1 z-20 min-w-[180px]">
+          {options.map((o) => {
+            const Icon = o.icon;
+            return (
+              <button
+                key={o.label}
+                type="button"
+                disabled={o.disabled}
+                onClick={() => {
+                  setOpen(false);
+                  o.onSelect();
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-bg cursor-pointer bg-transparent border-none text-right disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Icon size={14} className="shrink-0" />
+                {o.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

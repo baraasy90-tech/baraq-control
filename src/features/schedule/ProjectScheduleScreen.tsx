@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
-import { ChevronUp, ChevronDown, Plus, Pencil, Trash2 } from "lucide-react";
-import { SecondaryButton, PrimaryButton, IconButton, Card, Modal, ErrorText } from "@/components/ui";
+import { ChevronUp, ChevronDown, Plus, Pencil, Trash2, FileCode } from "lucide-react";
+import { SecondaryButton, PrimaryButton, IconButton, Card, Modal, ErrorText, ExportMenu } from "@/components/ui";
 import { useActivities } from "@/features/schedule/api/useActivities";
 import { useCreateActivity } from "@/features/schedule/api/useCreateActivity";
 import { useUpdateActivity } from "@/features/schedule/api/useUpdateActivity";
@@ -337,9 +337,9 @@ function CreateTab({
         <SecondaryButton onClick={() => navigate(`/projects/${project.id}/import`)} className="text-sm">
           إرفاق الجدول الزمني
         </SecondaryButton>
-        <SecondaryButton onClick={handleExportXer} disabled={roots.length === 0} className="text-sm">
-          تصدير لبريمافيرا (XER)
-        </SecondaryButton>
+        <ExportMenu
+          options={[{ label: "تصدير لبريمافيرا (XER)", icon: FileCode, onSelect: handleExportXer, disabled: roots.length === 0 }]}
+        />
         <PrimaryButton onClick={() => openCreate(null)} className="w-auto px-4 py-2 text-sm inline-flex items-center gap-1.5">
           <Plus size={15} strokeWidth={2.5} /> مرحلة رئيسية
         </PrimaryButton>
