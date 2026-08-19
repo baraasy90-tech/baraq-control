@@ -648,16 +648,19 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["audit_log"]["Insert"]>;
         Relationships: [];
       };
-      hr_requests: {
+      internal_requests: {
         Row: {
           id: string;
           company_id: string;
           user_id: string;
-          type: "leave" | "contract_renewal" | "other";
+          department_id: string | null;
+          target_user_id: string | null;
+          type: "leave" | "contract_renewal" | "other" | null;
           title: string;
           description: string | null;
           start_date: string | null;
           end_date: string | null;
+          attachment_url: string | null;
           status: "pending" | "approved" | "rejected";
           reviewed_by: string | null;
           reviewed_at: string | null;
@@ -668,18 +671,21 @@ export interface Database {
           id?: string;
           company_id: string;
           user_id: string;
-          type: "leave" | "contract_renewal" | "other";
+          department_id?: string | null;
+          target_user_id?: string | null;
+          type?: "leave" | "contract_renewal" | "other" | null;
           title: string;
           description?: string | null;
           start_date?: string | null;
           end_date?: string | null;
+          attachment_url?: string | null;
           status?: "pending" | "approved" | "rejected";
           reviewed_by?: string | null;
           reviewed_at?: string | null;
           review_note?: string | null;
           created_at?: string;
         };
-        Update: Partial<Database["public"]["Tables"]["hr_requests"]["Insert"]>;
+        Update: Partial<Database["public"]["Tables"]["internal_requests"]["Insert"]>;
         Relationships: [];
       };
       contract_extra_works: {
@@ -898,7 +904,7 @@ export interface Database {
         Args: { p_contract_id: string; p_approve: boolean; p_note: string | null };
         Returns: undefined;
       };
-      review_hr_request: {
+      review_internal_request: {
         Args: { p_request_id: string; p_approve: boolean; p_note: string | null };
         Returns: undefined;
       };

@@ -1,18 +1,21 @@
 import type { Database } from "@/lib/supabase/database.types";
-import type { HrRequest } from "@/types/domain";
+import type { InternalRequest } from "@/types/domain";
 
-type Row = Database["public"]["Tables"]["hr_requests"]["Row"];
+type Row = Database["public"]["Tables"]["internal_requests"]["Row"];
 
-export function mapHrRequest(row: Row): HrRequest {
+export function mapInternalRequest(row: Row): InternalRequest {
   return {
     id: row.id,
     companyId: row.company_id,
     userId: row.user_id,
+    departmentId: row.department_id,
+    targetUserId: row.target_user_id,
     type: row.type,
     title: row.title,
     description: row.description,
     startDate: row.start_date,
     endDate: row.end_date,
+    attachmentUrl: row.attachment_url,
     status: row.status,
     reviewedBy: row.reviewed_by,
     reviewedAt: row.reviewed_at,

@@ -290,8 +290,8 @@ export interface Contract {
 
 export type SettlementStatus = "open" | "pending_pm_approval" | "pending_finance_approval" | "settled" | "rejected";
 
-export type HrRequestType = "leave" | "contract_renewal" | "other";
-export type HrRequestStatus = "pending" | "approved" | "rejected";
+export type InternalRequestType = "leave" | "contract_renewal" | "other";
+export type InternalRequestStatus = "pending" | "approved" | "rejected";
 
 export type AuditAction = "insert" | "update" | "delete";
 
@@ -307,16 +307,19 @@ export interface AuditLogEntry {
   createdAt: string;
 }
 
-export interface HrRequest {
+export interface InternalRequest {
   id: string;
   companyId: string;
   userId: string;
-  type: HrRequestType;
+  departmentId: string | null;
+  targetUserId: string | null;
+  type: InternalRequestType | null;
   title: string;
   description: string | null;
   startDate: string | null;
   endDate: string | null;
-  status: HrRequestStatus;
+  attachmentUrl: string | null;
+  status: InternalRequestStatus;
   reviewedBy: string | null;
   reviewedAt: string | null;
   reviewNote: string | null;
