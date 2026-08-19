@@ -14,6 +14,7 @@ import {
   ChevronsLeft,
 } from "lucide-react";
 import { useCompany } from "@/features/company/useCompany";
+import { QuickSignOutButton } from "@/features/auth/QuickSignOutButton";
 import type { Company } from "@/types/domain";
 
 interface NavItem {
@@ -95,6 +96,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         <SidebarBrand company={company} collapsed={collapsed} />
         <SidebarNav collapsed={collapsed} pathname={location.pathname} />
+        <div className="border-t border-line/60">
+          <QuickSignOutButton collapsed={collapsed} />
+        </div>
         <button
           onClick={() => setCollapsed((c) => !c)}
           className="flex items-center justify-center gap-2 border-none border-t border-line/60 bg-transparent text-ink-soft text-xs font-semibold py-3 cursor-pointer hover:bg-bg"
@@ -118,6 +122,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
             <SidebarNav collapsed={false} pathname={location.pathname} onNavigate={() => setMobileOpen(false)} />
+            <div className="border-t border-line/60">
+              <QuickSignOutButton collapsed={false} />
+            </div>
           </div>
           <button
             aria-label="إغلاق القائمة"

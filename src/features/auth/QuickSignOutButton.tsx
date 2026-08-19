@@ -1,16 +1,16 @@
 import { useState } from "react";
-import { Lock } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 
-/** زر تسجيل خروج سريع ثابت الموقع، متاح من أي شاشة — لحماية الحساب فوراً عند مغادرة
- * الجهاز أو أثناء اجتماع بحضور ضيوف لا يجب أن يروا بيانات الشركة. */
-export function QuickSignOutButton() {
+/** زر تسجيل الخروج — يظهر أسفل القائمة الجانبية (AppShell)، متاح من أي شاشة لحماية
+ * الحساب فوراً عند مغادرة الجهاز أو أثناء اجتماع بحضور ضيوف لا يجب أن يروا بيانات الشركة. */
+export function QuickSignOutButton({ collapsed = false }: { collapsed?: boolean }) {
   const [confirming, setConfirming] = useState(false);
 
   if (confirming) {
     return (
-      <div className="fixed top-2 left-2 z-40 flex items-center gap-1.5 bg-panel border border-line/60 shadow-sm rounded-lg px-2 py-1.5">
-        <span className="text-[11px] text-ink-soft">تأكيد الخروج؟</span>
+      <div className={`flex items-center gap-1.5 px-2 py-2 ${collapsed ? "flex-col" : ""}`}>
+        {!collapsed && <span className="text-[11px] text-ink-soft shrink-0">تأكيد الخروج؟</span>}
         <button
           onClick={() => supabase.auth.signOut()}
           className="text-[11px] font-bold text-white bg-critical rounded px-2 py-1 border-none cursor-pointer"
@@ -31,10 +31,12 @@ export function QuickSignOutButton() {
     <button
       onClick={() => setConfirming(true)}
       title="تسجيل الخروج / حماية الحساب"
-      className="fixed top-2 left-2 z-40 flex items-center gap-1 bg-panel/90 border border-line/60 shadow-sm rounded-lg px-2 py-1.5 text-[11px] text-ink-soft cursor-pointer hover:text-ink"
+      className={`flex items-center gap-2 border-none bg-transparent text-critical text-xs font-semibold py-2.5 cursor-pointer hover:bg-critical-bg transition-colors ${
+        collapsed ? "justify-center px-0" : "px-4"
+      }`}
     >
-      <Lock size={12} strokeWidth={2.5} />
-      خروج
+      <LogOut size={16} strokeWidth={2.2} />
+      {!collapsed && "تسجيل الخروج"}
     </button>
   );
 }
