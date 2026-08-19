@@ -61,7 +61,7 @@ function PendingJoinOrOnboarding() {
 
 function BrandMark() {
   return (
-    <div className="fixed bottom-2 left-2 z-40 pointer-events-none select-none text-[10px] font-mono font-semibold tracking-[0.15em] text-ink-soft/35">
+    <div className="fixed top-2 left-2 z-30 pointer-events-none select-none text-[10px] font-mono font-semibold tracking-[0.15em] text-ink-soft/35">
       BARAQ CONTROL
     </div>
   );

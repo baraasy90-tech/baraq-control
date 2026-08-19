@@ -45,7 +45,7 @@ export function SupportChatWidget() {
   return (
     <>
       {open && (
-        <div className="fixed bottom-20 right-4 z-40 w-[90vw] max-w-sm h-[70vh] max-h-[520px] bg-panel border border-line/60 shadow-xl rounded-2xl flex flex-col overflow-hidden">
+        <div className="fixed bottom-20 left-4 z-40 w-[90vw] max-w-sm h-[70vh] max-h-[520px] bg-panel border border-line/60 shadow-xl rounded-2xl flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-line/60 shrink-0">
             <h3 className="text-sm font-bold text-ink">مساعد الدعم</h3>
             <button
@@ -100,7 +100,7 @@ export function SupportChatWidget() {
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label="مساعد الدعم"
-        className="fixed bottom-4 right-4 z-40 w-12 h-12 rounded-full bg-ink text-white border-none shadow-lg cursor-pointer flex items-center justify-center hover:opacity-90"
+        className="fixed bottom-4 left-4 z-40 w-12 h-12 rounded-full bg-ink text-white border-none shadow-lg cursor-pointer flex items-center justify-center hover:opacity-90"
       >
         {open ? <X size={20} /> : <MessageCircle size={20} />}
       </button>
