@@ -616,6 +616,32 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["contract_payments"]["Insert"]>;
         Relationships: [];
       };
+      audit_log: {
+        Row: {
+          id: string;
+          company_id: string;
+          table_name: string;
+          record_id: string;
+          action: "insert" | "update" | "delete";
+          actor_id: string | null;
+          old_data: Record<string, unknown> | null;
+          new_data: Record<string, unknown> | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          table_name: string;
+          record_id: string;
+          action: "insert" | "update" | "delete";
+          actor_id?: string | null;
+          old_data?: Record<string, unknown> | null;
+          new_data?: Record<string, unknown> | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["audit_log"]["Insert"]>;
+        Relationships: [];
+      };
       hr_requests: {
         Row: {
           id: string;

@@ -290,6 +290,20 @@ export type SettlementStatus = "open" | "pending_pm_approval" | "pending_finance
 export type HrRequestType = "leave" | "contract_renewal" | "other";
 export type HrRequestStatus = "pending" | "approved" | "rejected";
 
+export type AuditAction = "insert" | "update" | "delete";
+
+export interface AuditLogEntry {
+  id: string;
+  companyId: string;
+  tableName: string;
+  recordId: string;
+  action: AuditAction;
+  actorId: string | null;
+  oldData: Record<string, unknown> | null;
+  newData: Record<string, unknown> | null;
+  createdAt: string;
+}
+
 export interface HrRequest {
   id: string;
   companyId: string;

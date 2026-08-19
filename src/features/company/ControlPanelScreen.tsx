@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
-import { Palette, Printer, Users, Network, Archive as ArchiveIcon, CalendarDays } from "lucide-react";
+import { Palette, Printer, Users, Network, Archive as ArchiveIcon, CalendarDays, ShieldCheck } from "lucide-react";
+import { AuditLogSection } from "@/features/company/AuditLogSection";
 import { FieldLabel, TextInput, PrimaryButton, SecondaryButton, ErrorText } from "@/components/ui";
 import { useUpdateCompany } from "@/features/company/useUpdateCompany";
 import { ArchiveStorageFields, isArchiveConfigValid } from "@/features/company/ArchiveStorageFields";
@@ -37,7 +38,7 @@ const COUNTRY_OPTIONS: { code: string; label: string }[] = [
   { code: "GB", label: "المملكة المتحدة" },
 ];
 
-type SectionKey = "appearance" | "print" | "team" | "structure" | "archive" | "calendars";
+type SectionKey = "appearance" | "print" | "team" | "structure" | "archive" | "calendars" | "audit";
 
 const SECTIONS: { key: SectionKey; label: string; icon: typeof Palette }[] = [
   { key: "appearance", label: "المظهر", icon: Palette },
@@ -46,6 +47,7 @@ const SECTIONS: { key: SectionKey; label: string; icon: typeof Palette }[] = [
   { key: "structure", label: "الهيكلة", icon: Network },
   { key: "archive", label: "الأرشفة", icon: ArchiveIcon },
   { key: "calendars", label: "التقاويم والمناسبات", icon: CalendarDays },
+  { key: "audit", label: "سجل التدقيق", icon: ShieldCheck },
 ];
 
 function SectionCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
@@ -324,6 +326,12 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
               <CustomCalendarsSection companyId={company.id} />
               <CompanyHolidaysSection companyId={company.id} />
             </>
+          )}
+
+          {activeSection === "audit" && (
+            <SectionCard title="سجل التدقيق">
+              <AuditLogSection companyId={company.id} />
+            </SectionCard>
           )}
 
           {showSaveBar && (
