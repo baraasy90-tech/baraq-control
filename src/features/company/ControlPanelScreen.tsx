@@ -74,6 +74,7 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
     (m) => m.userId === profile?.id && departments.find((d) => d.id === m.departmentId)?.type === "executive"
   );
   const canManage = isOwner || isExecutive;
+  const isDeptHead = members.some((m) => m.userId === profile?.id && m.role === "head");
 
   const [activeSection, setActiveSection] = useState<SectionKey>("appearance");
   const [name, setName] = useState(company.name);
@@ -152,7 +153,7 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
 
   const showSaveBar = activeSection === "appearance" || activeSection === "print" || activeSection === "archive";
 
-  if (!canManage) {
+  if (!canManage && isDeptHead) {
     return (
       <div className="min-h-screen p-4 sm:p-5 max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
@@ -165,10 +166,25 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
             <h2 className="text-base font-bold text-ink">{company.name}</h2>
           </div>
           <p className="text-xs text-ink-soft">
-            بيانات الشركة (الاسم، الشعار، الأرشفة، الطباعة) يديرها مدير الحساب أو الإدارة التنفيذية فقط.
+            بيانات الشركة (الاسم، الشعار، الأرشفة، الطباعة) يديرها مدير الحساب أو الإدارة التنفيذية فقط. كرئيس قسم، يمكنك
+            إدارة دعوات وأعضاء قسمك.
           </p>
         </div>
         <TeamSection companyId={company.id} />
+      </div>
+    );
+  }
+
+  if (!canManage && !isDeptHead) {
+    return (
+      <div className="min-h-screen p-4 sm:p-5 max-w-2xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-xl font-bold text-ink">لوحة التحكم</h1>
+          <SecondaryButton onClick={onBack}>رجوع</SecondaryButton>
+        </div>
+        <div className="bg-panel border border-line/60 shadow-sm rounded-xl p-6 text-center text-sm text-ink-soft">
+          لوحة التحكم متاحة لمدير الحساب، الإدارة التنفيذية، ورؤساء الأقسام فقط.
+        </div>
       </div>
     );
   }
