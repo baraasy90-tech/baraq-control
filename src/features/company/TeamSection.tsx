@@ -18,6 +18,7 @@ const DEPARTMENT_TYPE_LABEL: Record<DepartmentType, string> = {
   finance: "الإدارة المالية",
   hr: "الموارد البشرية",
   executive: "مدير الحساب",
+  procurement: "المشتريات",
   custom: "قسم مخصص",
 };
 

@@ -39,7 +39,7 @@ export interface Profile {
   signatureUrl: string | null;
 }
 
-export type DepartmentType = "project_management" | "finance" | "hr" | "executive" | "custom";
+export type DepartmentType = "project_management" | "finance" | "hr" | "executive" | "procurement" | "custom";
 export type MemberRole = "member" | "head";
 
 export interface Department {
@@ -286,6 +286,25 @@ export interface Contract {
 }
 
 export type SettlementStatus = "open" | "pending_pm_approval" | "pending_finance_approval" | "settled" | "rejected";
+
+export type HrRequestType = "leave" | "contract_renewal" | "other";
+export type HrRequestStatus = "pending" | "approved" | "rejected";
+
+export interface HrRequest {
+  id: string;
+  companyId: string;
+  userId: string;
+  type: HrRequestType;
+  title: string;
+  description: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  status: HrRequestStatus;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+  createdAt: string;
+}
 
 export type ContractStatus = "draft" | "pending_pm_approval" | "pending_finance_approval" | "approved" | "rejected";
 

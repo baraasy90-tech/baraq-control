@@ -133,7 +133,7 @@ export interface Database {
           id: string;
           company_id: string;
           name: string;
-          type: "project_management" | "finance" | "hr" | "executive" | "custom";
+          type: "project_management" | "finance" | "hr" | "executive" | "procurement" | "custom";
           head_label: string | null;
           member_label: string | null;
           parent_department_id: string | null;
@@ -145,7 +145,7 @@ export interface Database {
           id?: string;
           company_id: string;
           name: string;
-          type?: "project_management" | "finance" | "hr" | "executive" | "custom";
+          type?: "project_management" | "finance" | "hr" | "executive" | "procurement" | "custom";
           head_label?: string | null;
           member_label?: string | null;
           parent_department_id?: string | null;
@@ -616,6 +616,40 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["contract_payments"]["Insert"]>;
         Relationships: [];
       };
+      hr_requests: {
+        Row: {
+          id: string;
+          company_id: string;
+          user_id: string;
+          type: "leave" | "contract_renewal" | "other";
+          title: string;
+          description: string | null;
+          start_date: string | null;
+          end_date: string | null;
+          status: "pending" | "approved" | "rejected";
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          review_note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          user_id: string;
+          type: "leave" | "contract_renewal" | "other";
+          title: string;
+          description?: string | null;
+          start_date?: string | null;
+          end_date?: string | null;
+          status?: "pending" | "approved" | "rejected";
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          review_note?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["hr_requests"]["Insert"]>;
+        Relationships: [];
+      };
       contract_extra_works: {
         Row: {
           id: string;
@@ -830,6 +864,10 @@ export interface Database {
       };
       review_contract_settlement: {
         Args: { p_contract_id: string; p_approve: boolean; p_note: string | null };
+        Returns: undefined;
+      };
+      review_hr_request: {
+        Args: { p_request_id: string; p_approve: boolean; p_note: string | null };
         Returns: undefined;
       };
       submit_material_sample: {
