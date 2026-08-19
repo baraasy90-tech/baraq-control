@@ -11,16 +11,8 @@ import { useUpdateDepartmentMember } from "@/features/company/api/useUpdateDepar
 import { useUpdateDepartment } from "@/features/company/api/useUpdateDepartment";
 import { useDeleteDepartment } from "@/features/company/api/useDeleteDepartment";
 import { useCompany } from "@/features/company/useCompany";
+import { DEPARTMENT_TYPE_LABEL } from "@/features/company/departmentTypeLabels";
 import type { Department, DepartmentType, MemberRole } from "@/types/domain";
-
-const DEPARTMENT_TYPE_LABEL: Record<DepartmentType, string> = {
-  project_management: "إدارة المشاريع",
-  finance: "الإدارة المالية",
-  hr: "الموارد البشرية",
-  executive: "مدير الحساب",
-  procurement: "المشتريات",
-  custom: "قسم مخصص",
-};
 
 const ROLE_LABEL: Record<MemberRole, string> = { member: "عضو", head: "رئيس القسم" };
 

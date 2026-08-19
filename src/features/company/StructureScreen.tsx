@@ -9,16 +9,9 @@ import { useUpdateDepartment } from "@/features/company/api/useUpdateDepartment"
 import { useCreateDepartment } from "@/features/company/api/useCreateDepartment";
 import { useDeleteDepartment } from "@/features/company/api/useDeleteDepartment";
 import { useCompanyProjectAccess, type ProjectAccess } from "@/features/company/api/useCompanyProjectAccess";
+import { DEPARTMENT_TYPE_LABEL, DEPARTMENT_TYPE_COLOR } from "@/features/company/departmentTypeLabels";
+import { DepartmentActivityView } from "@/features/company/DepartmentsScreen";
 import type { Department, DepartmentType, MemberRole } from "@/types/domain";
-
-const DEPARTMENT_TYPE_LABEL: Record<DepartmentType, string> = {
-  project_management: "إدارة المشاريع",
-  finance: "الإدارة المالية",
-  hr: "الموارد البشرية",
-  executive: "مدير الحساب",
-  procurement: "المشتريات",
-  custom: "قسم مخصص",
-};
 
 function getDescendantIds(departments: Department[], rootId: string): Set<string> {
   const result = new Set<string>();
@@ -99,7 +92,6 @@ function ProjectDots({ dots, selectedProjectId }: { dots: UserProjectDot[] | und
   );
 }
 
-const NODE_COLOR = "#1c5d72";
 const NODE_WIDTH = 190;
 const NODE_HEIGHT = 96;
 const CANVAS_PADDING = 80;
@@ -142,8 +134,11 @@ function computeDefaultPositions(roots: Department[], departments: Department[])
   return positions;
 }
 
+type Tab = "chart" | "activity";
+
 export function StructureScreen() {
   const navigate = useNavigate();
+  const [tab, setTab] = useState<Tab>("chart");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const { company, profile } = useCompany();
   const departmentsQuery = useDepartments(company.id);
@@ -360,10 +355,10 @@ export function StructureScreen() {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-2 gap-2">
-        <h1 className="text-lg sm:text-xl font-bold text-ink">{canSeeAll ? "هيكلة الشركة" : "هيكلة القسم"}</h1>
+      <div className="flex items-center justify-between mb-4 gap-2">
+        <h1 className="text-lg sm:text-xl font-bold text-ink">الأقسام والهيكلة</h1>
         <div className="flex items-center gap-2 shrink-0">
-          {canEdit && (
+          {tab === "chart" && canEdit && (
             <SecondaryButton onClick={openCreate} className="text-sm inline-flex items-center gap-1.5">
               <Plus size={15} strokeWidth={2.5} /> إضافة قسم
             </SecondaryButton>
@@ -373,6 +368,30 @@ export function StructureScreen() {
           </SecondaryButton>
         </div>
       </div>
+
+      <div className="flex gap-2 mb-4">
+        {(
+          [
+            { key: "chart", label: "الهيكلة" },
+            { key: "activity", label: "نشاط الأعضاء" },
+          ] as { key: Tab; label: string }[]
+        ).map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`text-sm font-semibold px-3 py-1.5 rounded-lg cursor-pointer border ${
+              tab === t.key ? "border-primary bg-primary-bg text-ink" : "border-line/60 bg-panel text-ink-soft"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "activity" ? (
+        <DepartmentActivityView />
+      ) : (
+        <>
       <p className="text-xs text-ink-soft mb-6">
         {canEdit
           ? "محرر رسم حر — أضف أقساماً جديدة، اسحب أي صندوق لأي مكان تريده (يُحفظ تلقائياً)، أو اضغط أيقونة التعديل على أي قسم لتغيير اسمه أو القسم الأب التابع له. الخطوط تعكس التبعية الفعلية."
@@ -389,7 +408,7 @@ export function StructureScreen() {
 
       {!isLoading && roots.length > 0 && (
         <>
-          <div className="bg-panel border border-line/60 shadow-sm rounded-xl mb-8 overflow-auto" style={{ maxHeight: "70vh" }}>
+          <div className="bg-panel border border-line/60 shadow-sm rounded-xl mb-2 overflow-auto" style={{ maxHeight: "70vh" }}>
             <div
               ref={canvasRef}
               dir="ltr"
@@ -402,8 +421,23 @@ export function StructureScreen() {
                 className="absolute inset-0 pointer-events-none"
                 style={{ zIndex: 0 }}
               >
+                <defs>
+                  <marker id="structure-arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M0,0 L10,5 L0,10 z" fill="#9aa3b2" />
+                  </marker>
+                </defs>
                 {lines.map((l) => (
-                  <line key={l.key} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke="#c7cdd6" strokeWidth={2} />
+                  <line
+                    key={l.key}
+                    x1={l.x1}
+                    y1={l.y1}
+                    x2={l.x2}
+                    y2={l.y2 - 6}
+                    stroke="#9aa3b2"
+                    strokeWidth={1.5}
+                    strokeLinecap="round"
+                    markerEnd="url(#structure-arrow)"
+                  />
                 ))}
               </svg>
 
@@ -431,12 +465,11 @@ export function StructureScreen() {
                   <div
                     key={dept.id}
                     onPointerDown={(e) => startDrag(dept.id, e)}
-                    className="absolute rounded-lg px-4 py-3 text-white shadow-sm transition-shadow select-none"
+                    className="absolute rounded-xl px-4 py-3 bg-panel border border-line/70 shadow-sm transition-shadow select-none"
                     style={{
                       left: pos.x,
                       top: pos.y,
                       width: NODE_WIDTH,
-                      background: NODE_COLOR,
                       opacity: selectedProjectId !== null && !isMatched ? 0.4 : 1,
                       boxShadow: isMatched ? `0 0 0 3px ${uniqueDots.find((d) => d.projectId === selectedProjectId)?.color}` : undefined,
                       cursor: draggable ? (dragState?.id === dept.id ? "grabbing" : "grab") : "default",
@@ -459,15 +492,18 @@ export function StructureScreen() {
                       </button>
                     )}
                     <div dir="rtl" className="text-center">
-                      <div className="text-sm font-bold truncate">{dept.name}</div>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: DEPARTMENT_TYPE_COLOR[dept.type] }} />
+                        <span className="text-sm font-bold text-ink truncate">{dept.name}</span>
+                      </div>
                       {head ? (
-                        <div className="text-xs opacity-90 mt-1 truncate">
+                        <div className="text-xs text-ink-soft mt-1 truncate">
                           {roleLabel(dept, "head")}: {head.fullName}
                         </div>
                       ) : (
-                        <div className="text-xs opacity-70 mt-1">بدون {roleLabel(dept, "head")}</div>
+                        <div className="text-xs text-ink-soft/70 mt-1">بدون {roleLabel(dept, "head")}</div>
                       )}
-                      {rest.length > 0 && <div className="text-[11px] opacity-75 mt-0.5">+{rest.length} أعضاء آخرين</div>}
+                      {rest.length > 0 && <div className="text-[11px] text-ink-soft/80 mt-0.5">+{rest.length} أعضاء آخرين</div>}
                       {uniqueDots.length > 0 && (
                         <div className="mt-1.5">
                           <ProjectDots dots={uniqueDots} selectedProjectId={selectedProjectId} />
@@ -478,6 +514,15 @@ export function StructureScreen() {
                 );
               })}
             </div>
+          </div>
+
+          <div className="flex items-center gap-4 flex-wrap text-xs text-ink-soft mb-8 px-1">
+            {[...new Set(departments.map((d) => d.type))].map((type) => (
+              <div key={type} className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: DEPARTMENT_TYPE_COLOR[type] }} />
+                {DEPARTMENT_TYPE_LABEL[type]}
+              </div>
+            ))}
           </div>
 
           <div>
@@ -518,6 +563,8 @@ export function StructureScreen() {
               </div>
             )}
           </div>
+        </>
+      )}
         </>
       )}
 

@@ -1,20 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { SecondaryButton, Card } from "@/components/ui";
+import { Card } from "@/components/ui";
 import { useCompany } from "@/features/company/useCompany";
 import { useDepartments } from "@/features/company/api/useDepartments";
 import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
 import { useMemberWorkSummaries } from "@/features/company/api/useMemberWork";
-import type { DepartmentType } from "@/types/domain";
-
-const DEPARTMENT_TYPE_LABEL: Record<DepartmentType, string> = {
-  project_management: "إدارة المشاريع",
-  finance: "الإدارة المالية",
-  hr: "الموارد البشرية",
-  executive: "مدير الحساب",
-  procurement: "المشتريات",
-  custom: "قسم مخصص",
-};
+import { DEPARTMENT_TYPE_LABEL } from "@/features/company/departmentTypeLabels";
 
 const ROLE_LABEL: Record<string, string> = { member: "عضو", head: "رئيس القسم" };
 
@@ -24,8 +14,8 @@ function roleLabel(dept: { headLabel: string | null; memberLabel: string | null 
   return dept.memberLabel || ROLE_LABEL.member;
 }
 
-export function DepartmentsScreen() {
-  const navigate = useNavigate();
+/** محتوى تبويب "نشاط الأعضاء" — يُعرض داخل شاشة الأقسام والهيكلة الموحّدة. */
+export function DepartmentActivityView() {
   const { company, profile } = useCompany();
   const departmentsQuery = useDepartments(company.id);
   const allDepartments = departmentsQuery.data ?? [];
@@ -52,14 +42,8 @@ export function DepartmentsScreen() {
   const isLoading = departmentsQuery.isLoading || membersQuery.isLoading;
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-2 gap-2">
-        <h1 className="text-lg sm:text-xl font-bold text-ink">الأقسام</h1>
-        <SecondaryButton onClick={() => navigate("/")} className="text-sm">
-          رجوع
-        </SecondaryButton>
-      </div>
-      <p className="text-xs text-ink-soft mb-6">
+    <div>
+      <p className="text-xs text-ink-soft mb-4">
         عرض للاطلاع على نشاط الأعضاء ونسب الإنجاز فقط — لا يمكن اعتماد أو إنجاز أي مرحلة من هذه الشاشة.
       </p>
 
@@ -73,7 +57,7 @@ export function DepartmentsScreen() {
 
       {!isLoading && canSeeAll && departments.length === 0 && (
         <div className="bg-panel border border-dashed border-line rounded-xl p-10 text-center text-sm text-ink-soft">
-          لا توجد أقسام بعد — يمكنك إنشاء قسم جديد من لوحة التحكم
+          لا توجد أقسام بعد — أضِف قسماً من تبويب "الهيكلة"
         </div>
       )}
 

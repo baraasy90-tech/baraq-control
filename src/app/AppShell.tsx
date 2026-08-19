@@ -5,7 +5,6 @@ import {
   ListChecks,
   ClipboardCheck,
   LayoutDashboard,
-  Building2,
   Network,
   Settings,
   Menu,
@@ -13,7 +12,6 @@ import {
   ChevronsRight,
   ChevronsLeft,
   PenLine,
-  Package,
   UserRound,
 } from "lucide-react";
 import { useCompany } from "@/features/company/useCompany";
@@ -28,15 +26,13 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  { to: "/overview", label: "اللوحة التنفيذية", icon: LayoutDashboard },
   { to: "/", label: "المشاريع", icon: LayoutGrid },
   { to: "/tasks", label: "المهام", icon: ListChecks },
   { to: "/approvals", label: "الاعتمادات", icon: ClipboardCheck },
-  { to: "/material-approvals", label: "طلبات المواد", icon: Package },
   { to: "/my-requests", label: "طلباتي", icon: UserRound },
-  { to: "/overview", label: "اللوحة التنفيذية", icon: LayoutDashboard },
-  { to: "/departments", label: "الأقسام", icon: Building2 },
-  { to: "/structure", label: "الهيكلة", icon: Network },
   { to: "/control-panel", label: "لوحة التحكم", icon: Settings },
+  { to: "/structure", label: "الأقسام والهيكلة", icon: Network },
 ];
 
 function isNavItemActive(pathname: string, to: string): boolean {

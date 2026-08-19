@@ -36,8 +36,7 @@ export function HomePage() {
       );
 
     if (isOwner || isExecutive) return <Navigate to="/overview" replace />;
-    if (isHeadOf("project_management") || isHeadOf("finance")) return <Navigate to="/approvals" replace />;
-    if (isHeadOf("procurement")) return <Navigate to="/material-approvals" replace />;
+    if (isHeadOf("project_management") || isHeadOf("finance") || isHeadOf("procurement")) return <Navigate to="/approvals" replace />;
     if (isHeadOf("hr")) return <Navigate to="/my-requests" replace />;
   }
 

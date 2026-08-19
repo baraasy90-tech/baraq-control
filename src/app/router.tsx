@@ -1,5 +1,5 @@
 import { lazy } from "react";
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppRoot } from "@/app/AppRoot";
 import { JoinScreen } from "@/features/auth/JoinScreen";
 
@@ -7,7 +7,6 @@ const HomePage = lazy(() => import("@/app/HomePage").then((m) => ({ default: m.H
 const ControlPanelPage = lazy(() => import("@/app/ControlPanelPage").then((m) => ({ default: m.ControlPanelPage })));
 const TasksPage = lazy(() => import("@/app/TasksPage").then((m) => ({ default: m.TasksPage })));
 const OverviewPage = lazy(() => import("@/app/OverviewPage").then((m) => ({ default: m.OverviewPage })));
-const DepartmentsPage = lazy(() => import("@/app/DepartmentsPage").then((m) => ({ default: m.DepartmentsPage })));
 const StructurePage = lazy(() => import("@/app/StructurePage").then((m) => ({ default: m.StructurePage })));
 const ProjectPage = lazy(() => import("@/app/ProjectPage").then((m) => ({ default: m.ProjectPage })));
 const ProjectAppearancePage = lazy(() =>
@@ -34,9 +33,6 @@ const ProjectContractDetailPage = lazy(() =>
   import("@/app/ProjectContractDetailPage").then((m) => ({ default: m.ProjectContractDetailPage }))
 );
 const ApprovalsPage = lazy(() => import("@/app/ApprovalsPage").then((m) => ({ default: m.ApprovalsPage })));
-const MaterialApprovalsPage = lazy(() =>
-  import("@/app/MaterialApprovalsPage").then((m) => ({ default: m.MaterialApprovalsPage }))
-);
 const MyRequestsPage = lazy(() => import("@/app/MyRequestsPage").then((m) => ({ default: m.MyRequestsPage })));
 const ProjectMaterialsPage = lazy(() =>
   import("@/app/ProjectMaterialsPage").then((m) => ({ default: m.ProjectMaterialsPage }))
@@ -52,14 +48,14 @@ export const router = createBrowserRouter([
     element: <AppRoot />,
     children: [
       { index: true, element: <HomePage /> },
-      { path: "control-panel", element: <ControlPanelPage /> },
+      { path: "overview", element: <OverviewPage /> },
       { path: "tasks", element: <TasksPage /> },
       { path: "approvals", element: <ApprovalsPage /> },
-      { path: "material-approvals", element: <MaterialApprovalsPage /> },
+      { path: "material-approvals", element: <Navigate to="/approvals" replace /> },
       { path: "my-requests", element: <MyRequestsPage /> },
-      { path: "overview", element: <OverviewPage /> },
-      { path: "departments", element: <DepartmentsPage /> },
       { path: "structure", element: <StructurePage /> },
+      { path: "departments", element: <Navigate to="/structure" replace /> },
+      { path: "control-panel", element: <ControlPanelPage /> },
       { path: "projects/:id", element: <ProjectPage /> },
       { path: "projects/:id/appearance", element: <ProjectAppearancePage /> },
       { path: "projects/:id/scope", element: <ProjectScopePage /> },
