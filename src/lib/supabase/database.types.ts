@@ -27,6 +27,7 @@ export interface Database {
           print_margin_left: number;
           print_margin_right: number;
           header_color: string;
+          vat_rate: number;
         };
         Insert: {
           id?: string;
@@ -48,6 +49,7 @@ export interface Database {
           print_margin_left?: number;
           print_margin_right?: number;
           header_color?: string;
+          vat_rate?: number;
         };
         Update: Partial<Database["public"]["Tables"]["companies"]["Insert"]>;
         Relationships: [];
@@ -506,6 +508,8 @@ export interface Database {
           settlement_finance_reviewed_at: string | null;
           settlement_finance_review_note: string | null;
           settled_at: string | null;
+          vat_inclusive: boolean;
+          vat_rate: number | null;
         };
         Insert: {
           id?: string;
@@ -544,6 +548,8 @@ export interface Database {
           settlement_finance_reviewed_at?: string | null;
           settlement_finance_review_note?: string | null;
           settled_at?: string | null;
+          vat_inclusive?: boolean;
+          vat_rate?: number | null;
         };
         Update: Partial<Database["public"]["Tables"]["contracts"]["Insert"]>;
         Relationships: [];

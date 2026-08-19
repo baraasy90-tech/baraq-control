@@ -81,6 +81,7 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
   const [activeSection, setActiveSection] = useState<SectionKey>("appearance");
   const [name, setName] = useState(company.name);
   const [countryCode, setCountryCode] = useState(company.countryCode);
+  const [vatRate, setVatRate] = useState(company.vatRate.toString());
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoError, setLogoError] = useState("");
   const [folderName, setFolderName] = useState(company.archiveFolderName);
@@ -146,6 +147,7 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
         printMarginLeft: print.marginLeft,
         printMarginRight: print.marginRight,
         headerColor,
+        vatRate: vatRate.trim() === "" || Number.isNaN(Number(vatRate)) ? company.vatRate : Number(vatRate),
       });
       setSaved(true);
     } catch {
@@ -318,6 +320,21 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
                     className="w-auto px-4 py-2 text-xs"
                   >
                     {updateCompany.isPending || uploading ? "جارٍ الحفظ..." : "حفظ الدولة"}
+                  </PrimaryButton>
+                  <ErrorText>{submitError}</ErrorText>
+                  {saved && <p className="text-xs text-accent mt-1">تم الحفظ بنجاح</p>}
+                </div>
+              </SectionCard>
+
+              <SectionCard
+                title="ضريبة القيمة المضافة"
+                description="النسبة المركزية المستخدمة عند إدخال قيمة عقد جديد — تتغيّر هذه النسبة بأي وقت حسب توجهات الدولة، دون أن تؤثر على العقود المحفوظة سابقاً."
+              >
+                <FieldLabel>النسبة (%)</FieldLabel>
+                <TextInput type="number" step="0.01" value={vatRate} onChange={(e) => setVatRate(e.target.value)} />
+                <div className="mt-3">
+                  <PrimaryButton onClick={handleSave} disabled={updateCompany.isPending} className="w-auto px-4 py-2 text-xs">
+                    {updateCompany.isPending ? "جارٍ الحفظ..." : "حفظ النسبة"}
                   </PrimaryButton>
                   <ErrorText>{submitError}</ErrorText>
                   {saved && <p className="text-xs text-accent mt-1">تم الحفظ بنجاح</p>}

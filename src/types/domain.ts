@@ -30,6 +30,7 @@ export interface Company {
   archiveLocalPath: string | null;
   print: PrintSettings;
   headerColor: string;
+  vatRate: number;
 }
 
 export interface Profile {
@@ -283,6 +284,8 @@ export interface Contract {
   settlementFinanceReviewedAt: string | null;
   settlementFinanceReviewNote: string | null;
   settledAt: string | null;
+  vatInclusive: boolean;
+  vatRate: number | null;
 }
 
 export type SettlementStatus = "open" | "pending_pm_approval" | "pending_finance_approval" | "settled" | "rejected";

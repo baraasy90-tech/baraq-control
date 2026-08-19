@@ -19,6 +19,8 @@ export interface SaveContractInput {
   retentionPercentage: number | null;
   retentionReleased: boolean;
   retentionReleaseNote: string | null;
+  vatInclusive: boolean;
+  vatRate: number | null;
   resetToDraft?: boolean;
 }
 
@@ -49,6 +51,8 @@ export function useSaveContract() {
         retention_percentage: input.retentionPercentage,
         retention_released: input.retentionReleased,
         retention_release_note: input.retentionReleaseNote,
+        vat_inclusive: input.vatInclusive,
+        vat_rate: input.vatRate,
         ...(input.resetToDraft
           ? {
               status: "draft" as const,

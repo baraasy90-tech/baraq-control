@@ -28,6 +28,7 @@ import { useProfilesByIds } from "@/features/company/api/useProfilesByIds";
 import { approverTitle } from "@/features/company/lib/approverTitle";
 import { ApproverBadge } from "@/features/contracts/ApproverBadge";
 import { SettlementSection } from "@/features/contracts/SettlementSection";
+import { computeVat } from "@/features/contracts/lib/vat";
 
 function numOrNull(v: string): number | null {
   const n = Number(v);
@@ -78,6 +79,7 @@ export function ContractScreen() {
   const [startDate, setStartDate] = useState("");
   const [durationDays, setDurationDays] = useState("");
   const [totalValue, setTotalValue] = useState("");
+  const [vatInclusive, setVatInclusive] = useState(false);
   const [paymentTerms, setPaymentTerms] = useState("");
   const [hasAdvancePayment, setHasAdvancePayment] = useState(false);
   const [advancePct, setAdvancePct] = useState("");
@@ -126,6 +128,7 @@ export function ContractScreen() {
       setStartDate(contract.startDate ?? "");
       setDurationDays(contract.durationDays?.toString() ?? "");
       setTotalValue(contract.totalValue?.toString() ?? "");
+      setVatInclusive(contract.vatInclusive);
       setPaymentTerms(contract.paymentTerms ?? "");
       setHasAdvancePayment(contract.hasAdvancePayment);
       setAdvancePct(contract.advancePaymentPercentage?.toString() ?? "");
@@ -139,6 +142,7 @@ export function ContractScreen() {
       setStartDate("");
       setDurationDays("");
       setTotalValue("");
+      setVatInclusive(false);
       setPaymentTerms("");
       setHasAdvancePayment(false);
       setAdvancePct("");
@@ -164,6 +168,8 @@ export function ContractScreen() {
         startDate: startDate || null,
         durationDays: numOrNull(durationDays),
         totalValue: numOrNull(totalValue),
+        vatInclusive,
+        vatRate: company.vatRate,
         paymentTerms: paymentTerms || null,
         hasAdvancePayment,
         advancePaymentPercentage: numOrNull(advancePct),
@@ -454,6 +460,23 @@ export function ContractScreen() {
                 </div>
               )}
 
+              {contract.totalValue != null && contract.vatRate != null && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                  <StatCard
+                    label="القيمة بدون الضريبة"
+                    value={fmtMoney(computeVat(contract.totalValue, contract.vatInclusive, contract.vatRate).valueExcludingVat)}
+                  />
+                  <StatCard
+                    label={`ضريبة القيمة المضافة (${contract.vatRate}%)`}
+                    value={fmtMoney(computeVat(contract.totalValue, contract.vatInclusive, contract.vatRate).vatAmount)}
+                  />
+                  <StatCard
+                    label="القيمة شاملة الضريبة"
+                    value={fmtMoney(computeVat(contract.totalValue, contract.vatInclusive, contract.vatRate).valueIncludingVat)}
+                  />
+                </div>
+              )}
+
               {contract.paymentTerms && (
                 <div className="mb-4">
                   <FieldLabel>سياسة الدفعات</FieldLabel>
@@ -525,6 +548,17 @@ export function ContractScreen() {
               <FieldLabel>قيمة العقد الإجمالية</FieldLabel>
               <TextInput type="number" value={totalValue} onChange={(e) => setTotalValue(e.target.value)} />
             </div>
+          </div>
+
+          <div className="mb-4 bg-bg rounded-lg p-3">
+            <label className="flex items-center gap-2 text-sm text-ink cursor-pointer">
+              <input type="checkbox" checked={vatInclusive} onChange={(e) => setVatInclusive(e.target.checked)} />
+              القيمة المُدخلة شاملة ضريبة القيمة المضافة
+            </label>
+            <p className="text-xs text-ink-soft mt-1">
+              نسبة الضريبة المطبَّقة حالياً: {company.vatRate}% (تُدار من لوحة التحكم). عند عدم تفعيل الخيار، تُعتبر
+              القيمة أعلاه غير شاملة الضريبة وتُضاف الضريبة عليها.
+            </p>
           </div>
 
           <div className="mb-4">

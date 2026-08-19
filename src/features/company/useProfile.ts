@@ -28,6 +28,7 @@ export function mapCompany(row: CompanyRow): Company {
       marginRight: row.print_margin_right,
     },
     headerColor: row.header_color,
+    vatRate: row.vat_rate,
   };
 }
 

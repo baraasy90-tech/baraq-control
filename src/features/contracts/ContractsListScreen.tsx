@@ -10,10 +10,12 @@ import { BudgetVarianceBanner } from "@/features/budget/BudgetVarianceBanner";
 import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
 import { STATUS_LABEL, STATUS_TONE } from "@/features/contracts/statusLabels";
+import { useCompany } from "@/features/company/useCompany";
 
 export function ContractsListScreen() {
   const { id: projectId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { company } = useCompany();
   const contractsQuery = useContracts(projectId);
   const activitiesQuery = useActivities(projectId);
   const saveContract = useSaveContract();
@@ -46,6 +48,8 @@ export function ContractsListScreen() {
         retentionPercentage: null,
         retentionReleased: false,
         retentionReleaseNote: null,
+        vatInclusive: false,
+        vatRate: company.vatRate,
       });
       setCreating(false);
       setNewName("");

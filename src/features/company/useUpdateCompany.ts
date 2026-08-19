@@ -23,6 +23,7 @@ export interface UpdateCompanyInput {
   printMarginLeft?: number;
   printMarginRight?: number;
   headerColor?: string;
+  vatRate?: number;
 }
 
 export function useUpdateCompany() {
@@ -47,6 +48,7 @@ export function useUpdateCompany() {
       if (patch.printMarginLeft !== undefined) update.print_margin_left = patch.printMarginLeft;
       if (patch.printMarginRight !== undefined) update.print_margin_right = patch.printMarginRight;
       if (patch.headerColor !== undefined) update.header_color = patch.headerColor;
+      if (patch.vatRate !== undefined) update.vat_rate = patch.vatRate;
 
       const { error } = await supabase.from("companies").update(update).eq("id", id);
       if (error) throw error;

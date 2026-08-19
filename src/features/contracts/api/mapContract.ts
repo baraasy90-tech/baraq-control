@@ -44,6 +44,8 @@ export function mapContract(row: ContractRow): Contract {
     settlementFinanceReviewedAt: row.settlement_finance_reviewed_at,
     settlementFinanceReviewNote: row.settlement_finance_review_note,
     settledAt: row.settled_at,
+    vatInclusive: row.vat_inclusive,
+    vatRate: row.vat_rate,
   };
 }
 
