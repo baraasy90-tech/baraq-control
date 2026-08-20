@@ -10,7 +10,8 @@ import { useUpdateDepartment } from "@/features/company/api/useUpdateDepartment"
 import { useCreateDepartment } from "@/features/company/api/useCreateDepartment";
 import { useDeleteDepartment } from "@/features/company/api/useDeleteDepartment";
 import { useCompanyProjectAccess, type ProjectAccess } from "@/features/company/api/useCompanyProjectAccess";
-import { DEPARTMENT_TYPE_LABEL, DEPARTMENT_TYPE_COLOR } from "@/features/company/departmentTypeLabels";
+import { DEPARTMENT_TYPE_LABEL } from "@/features/company/departmentTypeLabels";
+import { computeBranchColors, branchLegend } from "@/features/company/lib/branchColors";
 import { DepartmentActivityView } from "@/features/company/DepartmentsScreen";
 import { OrgTreeChart } from "@/features/company/OrgTreeChart";
 import type { Department, DepartmentType, MemberRole } from "@/types/domain";
@@ -182,11 +183,13 @@ export function StructureScreen() {
 
   const isLoading = departmentsQuery.isLoading || membersQuery.isLoading || accessQuery.isLoading;
 
+  const branchColorMap = computeBranchColors(roots, departments);
+
   const buildOrgNode = (dept: Department): OrgChartNode => ({
     id: dept.id,
     name: dept.name,
     typeLabel: DEPARTMENT_TYPE_LABEL[dept.type],
-    typeColor: DEPARTMENT_TYPE_COLOR[dept.type],
+    typeColor: branchColorMap.get(dept.id) ?? "#5B6472",
     members: members
       .filter((m) => m.departmentId === dept.id)
       .map((m) => ({ fullName: m.fullName, roleLabel: roleLabel(dept, m.role), isHead: m.role === "head" })),
@@ -267,10 +270,10 @@ export function StructureScreen() {
               </div>
 
               <div className="flex items-center gap-4 flex-wrap text-xs text-ink-soft mb-8 px-1">
-                {[...new Set(departments.map((d) => d.type))].map((type) => (
-                  <div key={type} className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: DEPARTMENT_TYPE_COLOR[type] }} />
-                    {DEPARTMENT_TYPE_LABEL[type]}
+                {branchLegend(roots).map((b) => (
+                  <div key={b.name} className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: b.color }} />
+                    {b.name}
                   </div>
                 ))}
               </div>

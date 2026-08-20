@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
-import { DEPARTMENT_TYPE_COLOR } from "@/features/company/departmentTypeLabels";
+import { computeBranchColors } from "@/features/company/lib/branchColors";
 import type { Department, DepartmentMember, MemberRole } from "@/types/domain";
 
 const ROLE_LABEL: Record<string, string> = { member: "عضو", head: "رئيس القسم" };
@@ -16,11 +16,13 @@ function DeptCard({
   members,
   canEdit,
   onEdit,
+  color,
 }: {
   dept: Department;
   members: DepartmentMember[];
   canEdit: boolean;
   onEdit: (dept: Department) => void;
+  color: string;
 }) {
   const deptMembers = members.filter((m) => m.departmentId === dept.id);
   const head = deptMembers.find((m) => m.role === "head");
@@ -28,9 +30,10 @@ function DeptCard({
 
   return (
     <div
-      className={`relative bg-panel rounded-xl px-4 py-3 shadow-sm w-[190px] text-center ${
+      className={`relative bg-panel rounded-xl px-4 py-3 shadow-sm w-[190px] text-center border-r-[3px] ${
         head ? "border border-line/70" : "border border-dashed border-line"
       }`}
+      style={{ borderRightColor: color }}
     >
       {canEdit && (
         <button
@@ -43,7 +46,7 @@ function DeptCard({
         </button>
       )}
       <div className="flex items-center justify-center gap-1.5">
-        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: DEPARTMENT_TYPE_COLOR[dept.type] }} />
+        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
         <span className="text-sm font-bold text-ink truncate">{dept.name}</span>
       </div>
       {head ? (
@@ -64,21 +67,31 @@ function OrgTreeNode({
   members,
   canEdit,
   onEdit,
+  colorMap,
 }: {
   dept: Department;
   departments: Department[];
   members: DepartmentMember[];
   canEdit: boolean;
   onEdit: (dept: Department) => void;
+  colorMap: Map<string, string>;
 }) {
   const children = departments.filter((d) => d.parentDepartmentId === dept.id);
   return (
     <li>
-      <DeptCard dept={dept} members={members} canEdit={canEdit} onEdit={onEdit} />
+      <DeptCard dept={dept} members={members} canEdit={canEdit} onEdit={onEdit} color={colorMap.get(dept.id) ?? "#5B6472"} />
       {children.length > 0 && (
         <ul>
           {children.map((c) => (
-            <OrgTreeNode key={c.id} dept={c} departments={departments} members={members} canEdit={canEdit} onEdit={onEdit} />
+            <OrgTreeNode
+              key={c.id}
+              dept={c}
+              departments={departments}
+              members={members}
+              canEdit={canEdit}
+              onEdit={onEdit}
+              colorMap={colorMap}
+            />
           ))}
         </ul>
       )}
@@ -104,6 +117,7 @@ export function OrgTreeChart({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const treeRef = useRef<HTMLUListElement>(null);
   const [fit, setFit] = useState({ scale: 1, naturalWidth: 0, naturalHeight: 0 });
+  const colorMap = computeBranchColors(roots, departments);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -126,9 +140,22 @@ export function OrgTreeChart({
     return () => ro.disconnect();
   }, [roots, departments, members]);
 
+  const needsShrink = fit.scale < 1;
+
   return (
-    <div ref={wrapperRef} className="w-full overflow-hidden" style={{ height: fit.naturalHeight * fit.scale || undefined }}>
-      <div dir="ltr" style={{ transform: `scale(${fit.scale})`, transformOrigin: "top center", width: fit.naturalWidth || undefined }}>
+    <div
+      ref={wrapperRef}
+      className="w-full overflow-hidden"
+      style={{ height: needsShrink ? fit.naturalHeight * fit.scale : undefined }}
+    >
+      <div
+        dir="ltr"
+        style={
+          needsShrink
+            ? { transform: `scale(${fit.scale})`, transformOrigin: "top left", width: fit.naturalWidth }
+            : undefined
+        }
+      >
         <ul ref={treeRef} className="org-tree">
           <li>
             <div className="bg-navy rounded-xl px-5 py-3 text-white text-sm font-bold shadow-sm w-[190px] text-center">
@@ -137,7 +164,15 @@ export function OrgTreeChart({
             {roots.length > 0 && (
               <ul>
                 {roots.map((r) => (
-                  <OrgTreeNode key={r.id} dept={r} departments={departments} members={members} canEdit={canEdit} onEdit={onEdit} />
+                  <OrgTreeNode
+                    key={r.id}
+                    dept={r}
+                    departments={departments}
+                    members={members}
+                    canEdit={canEdit}
+                    onEdit={onEdit}
+                    colorMap={colorMap}
+                  />
                 ))}
               </ul>
             )}
