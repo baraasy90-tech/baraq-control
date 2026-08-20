@@ -1,4 +1,5 @@
 import { DECISION_META } from "@/features/receiving/decisionMeta";
+import { openPrintWindow } from "@/utils/printWindow";
 import type { ChecklistItem, PrintSettings, Submission } from "@/types/domain";
 
 function escapeHtml(s: string): string {
@@ -120,18 +121,7 @@ export function printSubmissionReport({
 </body>
 </html>`;
 
-  const printWindow = window.open("", "_blank");
-  if (!printWindow) return;
-  printWindow.document.open();
-  printWindow.document.write(html);
-  printWindow.document.close();
-
-  const triggerPrint = () => {
-    printWindow.focus();
-    printWindow.print();
-  };
-  printWindow.onload = triggerPrint;
-  setTimeout(triggerPrint, 800);
+  openPrintWindow(html);
 }
 
 function decisionColor(decision: Submission["decision"]): string {

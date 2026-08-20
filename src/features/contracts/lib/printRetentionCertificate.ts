@@ -1,4 +1,5 @@
 import { fmtMoney } from "@/utils/money";
+import { openPrintWindow } from "@/utils/printWindow";
 import type { PrintSettings } from "@/types/domain";
 
 function escapeHtml(s: string): string {
@@ -126,16 +127,5 @@ export function printRetentionCertificate({
 </body>
 </html>`;
 
-  const printWindow = window.open("", "_blank");
-  if (!printWindow) return;
-  printWindow.document.open();
-  printWindow.document.write(html);
-  printWindow.document.close();
-
-  const triggerPrint = () => {
-    printWindow.focus();
-    printWindow.print();
-  };
-  printWindow.onload = triggerPrint;
-  setTimeout(triggerPrint, 800);
+  openPrintWindow(html);
 }
