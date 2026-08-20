@@ -81,37 +81,46 @@ export function ProjectPage() {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-4 gap-2">
-        <div className="flex items-center gap-3 min-w-0">
-          <div
-            className="w-11 h-11 rounded-lg flex items-center justify-center text-xl shrink-0"
-            style={{ background: `${project.themeColor}1a` }}
-          >
-            {project.themeIcon}
-          </div>
-          <h1 className="text-lg font-bold text-ink truncate">{project.name}</h1>
-        </div>
-        <SecondaryButton onClick={() => navigate("/")} className="text-sm shrink-0">
-          رجوع للمشاريع
-        </SecondaryButton>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-6">
-        {navTiles.map((tile) => {
-          const Icon = tile.icon;
-          return (
-            <button
-              key={tile.label}
-              onClick={tile.onClick}
-              className="flex flex-col items-center gap-2 text-center bg-panel border border-line/60 shadow-sm rounded-xl p-4 cursor-pointer hover:border-primary/40 hover:bg-primary-bg/40 transition-colors"
+      <div
+        className="rounded-2xl p-4 sm:p-5 mb-6"
+        style={{ background: `${project.themeColor}0d`, border: `1px solid ${project.themeColor}33` }}
+      >
+        <div className="flex items-center justify-between mb-4 gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className="w-11 h-11 rounded-lg flex items-center justify-center text-xl shrink-0"
+              style={{ background: `${project.themeColor}1a` }}
             >
-              <span className="w-9 h-9 rounded-lg flex items-center justify-center bg-primary-bg text-primary shrink-0">
-                <Icon size={18} strokeWidth={2.2} />
-              </span>
-              <span className="text-xs font-semibold text-ink leading-tight">{tile.label}</span>
-            </button>
-          );
-        })}
+              {project.themeIcon}
+            </div>
+            <h1 className="text-lg font-bold text-ink truncate">{project.name}</h1>
+          </div>
+          <SecondaryButton onClick={() => navigate("/")} className="text-sm shrink-0">
+            رجوع للمشاريع
+          </SecondaryButton>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+          {navTiles.map((tile) => {
+            const Icon = tile.icon;
+            return (
+              <button
+                key={tile.label}
+                onClick={tile.onClick}
+                className="flex flex-col items-center gap-2 text-center bg-panel shadow-sm rounded-xl p-4 cursor-pointer hover:shadow-md transition-shadow"
+                style={{ border: `1px solid ${project.themeColor}26` }}
+              >
+                <span
+                  className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ background: `${project.themeColor}1a`, color: project.themeColor }}
+                >
+                  <Icon size={18} strokeWidth={2.2} />
+                </span>
+                <span className="text-xs font-semibold text-ink leading-tight">{tile.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
