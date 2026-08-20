@@ -12,6 +12,7 @@ export function mapCompany(row: CompanyRow): Company {
     createdBy: row.created_by,
     name: row.name,
     companyCode: row.company_code,
+    companyCodeExpiresAt: row.company_code_expires_at,
     countryCode: row.country_code,
     logoUrl: row.logo_url,
     archiveFolderName: row.archive_folder_name,

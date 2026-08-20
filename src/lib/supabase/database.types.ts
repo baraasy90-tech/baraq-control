@@ -12,6 +12,7 @@ export interface Database {
           created_by: string;
           name: string;
           company_code: string;
+          company_code_expires_at: string | null;
           country_code: string;
           logo_url: string | null;
           archive_folder_name: string;
@@ -34,6 +35,7 @@ export interface Database {
           created_by?: string;
           name: string;
           company_code?: string;
+          company_code_expires_at?: string | null;
           country_code?: string;
           logo_url?: string | null;
           archive_folder_name?: string;
@@ -971,6 +973,10 @@ export interface Database {
           p_archive_local_path: string | null;
         };
         Returns: Database["public"]["Tables"]["companies"]["Row"];
+      };
+      regenerate_company_code: {
+        Args: { p_company_id: string };
+        Returns: { result_company_code: string; result_expires_at: string }[];
       };
     };
     Enums: Record<string, never>;
