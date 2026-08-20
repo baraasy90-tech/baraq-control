@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Trash2, FileText } from "lucide-react";
 import { SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText, Modal, ExportMenu } from "@/components/ui";
-import { FileText } from "lucide-react";
 import { printOrgChart, type OrgChartNode } from "@/features/company/lib/printOrgChart";
 import { useCompany } from "@/features/company/useCompany";
 import { useDepartments } from "@/features/company/api/useDepartments";
@@ -13,6 +12,7 @@ import { useDeleteDepartment } from "@/features/company/api/useDeleteDepartment"
 import { useCompanyProjectAccess, type ProjectAccess } from "@/features/company/api/useCompanyProjectAccess";
 import { DEPARTMENT_TYPE_LABEL, DEPARTMENT_TYPE_COLOR } from "@/features/company/departmentTypeLabels";
 import { DepartmentActivityView } from "@/features/company/DepartmentsScreen";
+import { OrgTreeChart } from "@/features/company/OrgTreeChart";
 import type { Department, DepartmentType, MemberRole } from "@/types/domain";
 
 function getDescendantIds(departments: Department[], rootId: string): Set<string> {
@@ -49,57 +49,6 @@ function assignProjectColors(projectAccess: ProjectAccess[]): Map<string, string
   return map;
 }
 
-interface UserProjectDot {
-  projectId: string;
-  projectName: string;
-  color: string;
-}
-
-function buildUserProjectDots(projectAccess: ProjectAccess[], colorByProject: Map<string, string>): Map<string, UserProjectDot[]> {
-  const map = new Map<string, UserProjectDot[]>();
-  for (const p of projectAccess) {
-    const color = colorByProject.get(p.projectId)!;
-    for (const m of p.members) {
-      const list = map.get(m.userId) ?? [];
-      list.push({ projectId: p.projectId, projectName: p.projectName, color });
-      map.set(m.userId, list);
-    }
-  }
-  return map;
-}
-
-function ProjectDots({ dots, selectedProjectId }: { dots: UserProjectDot[] | undefined; selectedProjectId: string | null }) {
-  if (!dots || dots.length === 0) return null;
-  return (
-    <span className="inline-flex items-center justify-center gap-1 shrink-0">
-      {dots.map((d) => {
-        const isSelected = d.projectId === selectedProjectId;
-        const dimmed = selectedProjectId !== null && !isSelected;
-        return (
-          <span
-            key={d.projectId}
-            title={d.projectName}
-            className="rounded-full inline-block transition-all"
-            style={{
-              background: d.color,
-              width: isSelected ? 10 : 8,
-              height: isSelected ? 10 : 8,
-              opacity: dimmed ? 0.25 : 1,
-              boxShadow: isSelected ? "0 0 0 2px white" : undefined,
-            }}
-          />
-        );
-      })}
-    </span>
-  );
-}
-
-const NODE_WIDTH = 190;
-const NODE_HEIGHT = 128;
-const CANVAS_PADDING = 100;
-const CANVAS_MIN_WIDTH = 700;
-const CANVAS_MIN_HEIGHT = 420;
-
 const ROLE_LABEL: Record<string, string> = { member: "عضو", head: "رئيس القسم" };
 const PROJECT_ROLE_LABEL: Record<string, string> = { manager: "صلاحية كاملة (مدير مشروع)", member: "صلاحية عضو" };
 
@@ -107,68 +56,6 @@ function roleLabel(dept: { headLabel: string | null; memberLabel: string | null 
   if (!dept) return ROLE_LABEL[role];
   if (role === "head") return dept.headLabel || ROLE_LABEL.head;
   return dept.memberLabel || ROLE_LABEL.member;
-}
-
-interface Pos {
-  x: number;
-  y: number;
-}
-
-const GAP_X = 40;
-const LEVEL_GAP_Y = NODE_HEIGHT + 70;
-
-/** عرض الشجرة الفرعية لكل قسم (بعدد أوراقها) — يُحسب من الأسفل للأعلى ليضمن عدم
- * تداخل أي فرعين مهما كان عمق الشجرة أو عدد الأبناء. */
-function computeSubtreeWidth(deptId: string, departments: Department[], memo: Map<string, number>): number {
-  const cached = memo.get(deptId);
-  if (cached !== undefined) return cached;
-  const children = departments.filter((d) => d.parentDepartmentId === deptId);
-  if (children.length === 0) {
-    memo.set(deptId, NODE_WIDTH + GAP_X);
-    return NODE_WIDTH + GAP_X;
-  }
-  const width = children.reduce((sum, c) => sum + computeSubtreeWidth(c.id, departments, memo), 0);
-  const finalWidth = Math.max(width, NODE_WIDTH + GAP_X);
-  memo.set(deptId, finalWidth);
-  return finalWidth;
-}
-
-/** يحلّ موقع كل قسم من الأعلى للأسفل: يحترم أي موقع محفوظ يدوياً (سحب سابق)، ويضع
- * أي قسم بلا موقع محفوظ في منتصف أبناء *موقعه الفعلي* (وليس عموداً افتراضياً منفصلاً)
- * — هذا يمنع بالضبط مشكلة الخطوط المتقاطعة حين يُسحب قسم أب ثم يُضاف له ابن جديد. */
-function resolveTreePositions(roots: Department[], departments: Department[]): { positions: Map<string, Pos>; totalWidth: number } {
-  const widthMemo = new Map<string, number>();
-  for (const d of departments) computeSubtreeWidth(d.id, departments, widthMemo);
-
-  const positions = new Map<string, Pos>();
-
-  function place(dept: Department, centerX: number, depth: number) {
-    const stored = dept.positionX != null && dept.positionY != null ? { x: dept.positionX, y: dept.positionY } : null;
-    const x = stored ? stored.x : centerX - NODE_WIDTH / 2;
-    const y = stored ? stored.y : 140 + depth * LEVEL_GAP_Y;
-    positions.set(dept.id, { x, y });
-
-    const anchorCenterX = x + NODE_WIDTH / 2;
-    const children = departments.filter((d) => d.parentDepartmentId === dept.id);
-    if (children.length === 0) return;
-    const totalChildWidth = children.reduce((s, c) => s + (widthMemo.get(c.id) ?? NODE_WIDTH + GAP_X), 0);
-    let cursor = anchorCenterX - totalChildWidth / 2;
-    for (const c of children) {
-      const w = widthMemo.get(c.id) ?? NODE_WIDTH + GAP_X;
-      place(c, cursor + w / 2, depth + 1);
-      cursor += w;
-    }
-  }
-
-  const totalRootsWidth = roots.reduce((s, r) => s + (widthMemo.get(r.id) ?? NODE_WIDTH + GAP_X), 0);
-  let cursor = 80;
-  for (const r of roots) {
-    const w = widthMemo.get(r.id) ?? NODE_WIDTH + GAP_X;
-    place(r, cursor + w / 2, 0);
-    cursor += w;
-  }
-
-  return { positions, totalWidth: Math.max(totalRootsWidth + 160, CANVAS_MIN_WIDTH) };
 }
 
 type Tab = "chart" | "activity";
@@ -187,12 +74,6 @@ export function StructureScreen() {
   const updateDepartment = useUpdateDepartment();
   const createDepartment = useCreateDepartment();
   const deleteDepartment = useDeleteDepartment(company.id);
-
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const canvasWrapperRef = useRef<HTMLDivElement>(null);
-  const [fitScale, setFitScale] = useState(1);
-  const [dragState, setDragState] = useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
-  const [livePositions, setLivePositions] = useState<Record<string, Pos>>({});
 
   const [creating, setCreating] = useState(false);
   const [newDeptName, setNewDeptName] = useState("");
@@ -235,96 +116,11 @@ export function StructureScreen() {
     ? departments.filter((d) => !d.parentDepartmentId || !visibleIds.has(d.parentDepartmentId))
     : departments.filter((d) => headDepartmentIds.has(d.id));
 
-  const canDrag = (_deptId: string) => canEdit;
-
   const scopedProjectAccess = projectAccess
     .map((p) => ({ ...p, members: p.members.filter((m) => visibleIds.size > 0 && members.some((dm) => dm.userId === m.userId && visibleIds.has(dm.departmentId))) }))
     .filter((p) => p.members.length > 0);
 
   const colorByProject = assignProjectColors(scopedProjectAccess);
-  const projectDots = buildUserProjectDots(scopedProjectAccess, colorByProject);
-
-  const { positions: resolvedPositions, totalWidth: treeWidth } = resolveTreePositions(roots, departments);
-
-  const getPos = (deptId: string): Pos => {
-    if (livePositions[deptId]) return livePositions[deptId];
-    return resolvedPositions.get(deptId) ?? { x: 80, y: 140 };
-  };
-
-  const deptPositions = departments.map((d) => getPos(d.id));
-  const maxY = deptPositions.length > 0 ? Math.max(...deptPositions.map((p) => p.y + NODE_HEIGHT)) : NODE_HEIGHT;
-  const canvasWidth = Math.max(CANVAS_MIN_WIDTH, treeWidth);
-  const canvasHeight = Math.max(CANVAS_MIN_HEIGHT, maxY + CANVAS_PADDING);
-
-  const companyPos: Pos = { x: canvasWidth / 2 - NODE_WIDTH / 2, y: 20 };
-
-  useEffect(() => {
-    const wrapper = canvasWrapperRef.current;
-    if (!wrapper) return;
-    const MIN_SCALE = 0.45;
-    const update = () => {
-      const availableWidth = wrapper.clientWidth - 8;
-      const availableHeight = window.innerHeight * 0.62;
-      const scaleW = availableWidth / canvasWidth;
-      const scaleH = availableHeight / canvasHeight;
-      setFitScale(Math.max(MIN_SCALE, Math.min(1, scaleW, scaleH)));
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(wrapper);
-    window.addEventListener("resize", update);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", update);
-    };
-  }, [canvasWidth, canvasHeight]);
-
-  useEffect(() => {
-    if (!dragState) return;
-
-    const handleMove = (e: PointerEvent) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.offsetWidth / rect.width;
-      const scaleY = canvas.offsetHeight / rect.height;
-      let x = (e.clientX - rect.left) * scaleX - dragState.offsetX;
-      let y = (e.clientY - rect.top) * scaleY - dragState.offsetY;
-      x = Math.max(0, Math.min(x, canvas.offsetWidth - NODE_WIDTH));
-      y = Math.max(0, Math.min(y, canvas.offsetHeight - NODE_HEIGHT));
-      setLivePositions((prev) => ({ ...prev, [dragState.id]: { x, y } }));
-    };
-
-    const handleUp = () => {
-      const finalPos = livePositions[dragState.id];
-      if (finalPos) {
-        updateDepartment.mutate({ id: dragState.id, companyId: company.id, positionX: finalPos.x, positionY: finalPos.y });
-      }
-      setDragState(null);
-    };
-
-    window.addEventListener("pointermove", handleMove);
-    window.addEventListener("pointerup", handleUp);
-    return () => {
-      window.removeEventListener("pointermove", handleMove);
-      window.removeEventListener("pointerup", handleUp);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dragState, livePositions]);
-
-  const startDrag = (deptId: string, e: React.PointerEvent) => {
-    if (!canDrag(deptId)) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.offsetWidth / rect.width;
-    const scaleY = canvas.offsetHeight / rect.height;
-    const pos = getPos(deptId);
-    const pointerX = (e.clientX - rect.left) * scaleX;
-    const pointerY = (e.clientY - rect.top) * scaleY;
-    setDragState({ id: deptId, offsetX: pointerX - pos.x, offsetY: pointerY - pos.y });
-    setLivePositions((prev) => ({ ...prev, [deptId]: pos }));
-  };
 
   const openCreate = () => {
     setNewDeptName("");
@@ -401,30 +197,6 @@ export function StructureScreen() {
     printOrgChart({ companyName: company.name, roots: roots.map(buildOrgNode) });
   };
 
-  const lines: { x1: number; y1: number; x2: number; y2: number; key: string }[] = [];
-  for (const dept of roots) {
-    const p = getPos(dept.id);
-    lines.push({
-      key: `company-${dept.id}`,
-      x1: companyPos.x + NODE_WIDTH / 2,
-      y1: companyPos.y + 44,
-      x2: p.x + NODE_WIDTH / 2,
-      y2: p.y,
-    });
-  }
-  for (const dept of departments) {
-    if (!dept.parentDepartmentId || !visibleIds.has(dept.parentDepartmentId)) continue;
-    const parentPos = getPos(dept.parentDepartmentId);
-    const childPos = getPos(dept.id);
-    lines.push({
-      key: `${dept.parentDepartmentId}-${dept.id}`,
-      x1: parentPos.x + NODE_WIDTH / 2,
-      y1: parentPos.y + NODE_HEIGHT,
-      x2: childPos.x + NODE_WIDTH / 2,
-      y2: childPos.y,
-    });
-  }
-
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-4 gap-2">
@@ -467,183 +239,83 @@ export function StructureScreen() {
         <DepartmentActivityView />
       ) : (
         <>
-      <p className="text-xs text-ink-soft mb-6">
-        {canEdit
-          ? "محرر رسم حر — أضف أقساماً جديدة، اسحب أي صندوق لأي مكان تريده (يُحفظ تلقائياً)، أو اضغط أيقونة التعديل على أي قسم لتغيير اسمه أو القسم الأب التابع له. الخطوط تعكس التبعية الفعلية."
-          : "عرض فقط — إضافة الأقسام وتحريكها وربط علاقاتها متاح لمدير الحساب فقط. الخطوط تعكس التبعية الفعلية بين الأقسام."}
-      </p>
+          <p className="text-xs text-ink-soft mb-6">
+            {canEdit
+              ? 'شجرة تلقائية التوزيع — أضف أقساماً جديدة، واضغط أيقونة التعديل على أي قسم لتغيير اسمه أو القسم الأب التابع له. الإطار المتقطع يعني أن القسم بلا رئيس معيّن بعد.'
+              : "عرض فقط — إضافة الأقسام وربط علاقاتها متاح لمدير الحساب فقط."}
+          </p>
 
-      {isLoading && <p className="text-sm text-ink-soft">جارٍ التحميل...</p>}
+          {isLoading && <p className="text-sm text-ink-soft">جارٍ التحميل...</p>}
 
-      {!isLoading && roots.length === 0 && (
-        <div className="bg-panel border border-dashed border-line rounded-xl p-10 text-center text-sm text-ink-soft">
-          {canEdit ? 'لا توجد أقسام بعد — اضغط "إضافة قسم" أعلاه لإنشاء أول قسم' : canSeeAll ? "لا توجد أقسام بعد" : "هذه الشاشة مخصصة للإدارة التنفيذية ورؤساء الأقسام"}
-        </div>
-      )}
-
-      {!isLoading && roots.length > 0 && (
-        <>
-          <div
-            ref={canvasWrapperRef}
-            className="bg-panel border border-line/60 shadow-sm rounded-xl mb-2 overflow-auto"
-            style={{ maxHeight: "70vh", height: canvasHeight * fitScale }}
-          >
-            <div
-              ref={canvasRef}
-              dir="ltr"
-              className="relative"
-              style={{ width: canvasWidth, height: canvasHeight, touchAction: "none", transform: `scale(${fitScale})`, transformOrigin: "top left" }}
-            >
-              <svg
-                width={canvasWidth}
-                height={canvasHeight}
-                className="absolute inset-0 pointer-events-none"
-                style={{ zIndex: 0 }}
-              >
-                <defs>
-                  <marker id="structure-arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                    <path d="M0,0 L10,5 L0,10 z" fill="#9aa3b2" />
-                  </marker>
-                </defs>
-                {lines.map((l) => (
-                  <line
-                    key={l.key}
-                    x1={l.x1}
-                    y1={l.y1}
-                    x2={l.x2}
-                    y2={l.y2 - 6}
-                    stroke="#9aa3b2"
-                    strokeWidth={1.5}
-                    strokeLinecap="round"
-                    markerEnd="url(#structure-arrow)"
-                  />
-                ))}
-              </svg>
-
-              <div
-                className="absolute rounded-xl px-5 py-3 text-white text-sm font-bold shadow-sm bg-ink"
-                style={{ left: companyPos.x, top: companyPos.y, width: NODE_WIDTH, textAlign: "center", zIndex: 1 }}
-              >
-                <span dir="rtl">{company.name}</span>
-              </div>
-
-              {departments.map((dept) => {
-                const pos = getPos(dept.id);
-                const deptMembers = members.filter((m) => m.departmentId === dept.id);
-                const head = deptMembers.find((m) => m.role === "head");
-                const rest = deptMembers.filter((m) => m.role !== "head");
-                const allDots = [
-                  ...(projectDots.get(head?.userId ?? "") ?? []),
-                  ...rest.flatMap((m) => projectDots.get(m.userId) ?? []),
-                ];
-                const uniqueDots = [...new Map(allDots.map((d) => [d.projectId, d])).values()];
-                const isMatched = selectedProjectId !== null && uniqueDots.some((d) => d.projectId === selectedProjectId);
-                const draggable = canDrag(dept.id);
-
-                return (
-                  <div
-                    key={dept.id}
-                    onPointerDown={(e) => startDrag(dept.id, e)}
-                    className="absolute rounded-xl px-4 py-3 bg-panel border border-line/70 shadow-sm transition-shadow select-none"
-                    style={{
-                      left: pos.x,
-                      top: pos.y,
-                      width: NODE_WIDTH,
-                      opacity: selectedProjectId !== null && !isMatched ? 0.4 : 1,
-                      boxShadow: isMatched ? `0 0 0 3px ${uniqueDots.find((d) => d.projectId === selectedProjectId)?.color}` : undefined,
-                      cursor: draggable ? (dragState?.id === dept.id ? "grabbing" : "grab") : "default",
-                      zIndex: dragState?.id === dept.id ? 2 : 1,
-                    }}
-                  >
-                    {canEdit && (
-                      <button
-                        type="button"
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEdit(dept);
-                        }}
-                        title="تعديل القسم"
-                        className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-panel border border-line/70 text-ink-soft flex items-center justify-center cursor-pointer shadow-sm hover:text-ink"
-                        style={{ zIndex: 3 }}
-                      >
-                        <Pencil size={12} />
-                      </button>
-                    )}
-                    <div dir="rtl" className="text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: DEPARTMENT_TYPE_COLOR[dept.type] }} />
-                        <span className="text-sm font-bold text-ink truncate">{dept.name}</span>
-                      </div>
-                      {head ? (
-                        <div className="text-xs text-ink-soft mt-1 truncate">
-                          {roleLabel(dept, "head")}: {head.fullName}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-ink-soft/70 mt-1">بدون {roleLabel(dept, "head")}</div>
-                      )}
-                      {rest.length > 0 && <div className="text-[11px] text-ink-soft/80 mt-0.5">+{rest.length} أعضاء آخرين</div>}
-                      {uniqueDots.length > 0 && (
-                        <div className="mt-1.5">
-                          <ProjectDots dots={uniqueDots} selectedProjectId={selectedProjectId} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+          {!isLoading && roots.length === 0 && (
+            <div className="bg-panel border border-dashed border-line rounded-xl p-10 text-center text-sm text-ink-soft">
+              {canEdit ? 'لا توجد أقسام بعد — اضغط "إضافة قسم" أعلاه لإنشاء أول قسم' : canSeeAll ? "لا توجد أقسام بعد" : "هذه الشاشة مخصصة للإدارة التنفيذية ورؤساء الأقسام"}
             </div>
-          </div>
+          )}
 
-          <div className="flex items-center gap-4 flex-wrap text-xs text-ink-soft mb-8 px-1">
-            {[...new Set(departments.map((d) => d.type))].map((type) => (
-              <div key={type} className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: DEPARTMENT_TYPE_COLOR[type] }} />
-                {DEPARTMENT_TYPE_LABEL[type]}
+          {!isLoading && roots.length > 0 && (
+            <>
+              <div className="bg-panel border border-line/60 shadow-sm rounded-xl mb-2 p-6">
+                <OrgTreeChart
+                  companyName={company.name}
+                  roots={roots}
+                  departments={departments}
+                  members={members}
+                  canEdit={canEdit}
+                  onEdit={openEdit}
+                />
               </div>
-            ))}
-          </div>
 
-          <div>
-            <h2 className="text-sm font-bold text-ink mb-1">صلاحيات الوصول للمشاريع</h2>
-            <p className="text-xs text-ink-soft mb-3">
-              لكل مشروع لون مميز — نفس اللون يظهر كنقطة بجانب اسم أي عضو له وصول عليه في اللوحة أعلاه. اضغط على أي
-              مشروع أدناه لتظليل كل الأقسام والأعضاء المشتركين فيه مباشرة.
-            </p>
-            {scopedProjectAccess.length === 0 ? (
-              <p className="text-xs text-ink-soft">لا توجد مشاريع مرتبطة بأعضاء ضمن هذا النطاق بعد</p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {scopedProjectAccess.map((p) => {
-                  const isSelected = selectedProjectId === p.projectId;
-                  return (
-                    <div
-                      key={p.projectId}
-                      className="bg-panel border border-line/60 shadow-sm rounded-xl p-5 cursor-pointer transition-all"
-                      style={isSelected ? { boxShadow: `0 0 0 2px ${colorByProject.get(p.projectId)}` } : undefined}
-                      onClick={() => setSelectedProjectId(isSelected ? null : p.projectId)}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: colorByProject.get(p.projectId) }} />
-                        <h3 className="text-sm font-bold text-ink">{p.projectName}</h3>
-                        {isSelected && <span className="text-[10px] text-ink-soft mr-auto">مُظلَّل باللوحة ▲</span>}
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        {p.members.map((m) => (
-                          <div key={m.userId} className="flex items-center justify-between text-xs bg-bg rounded-lg px-3 py-2">
-                            <span className="text-ink">{m.fullName}</span>
-                            <span className="text-ink-soft">{PROJECT_ROLE_LABEL[m.role]}</span>
+              <div className="flex items-center gap-4 flex-wrap text-xs text-ink-soft mb-8 px-1">
+                {[...new Set(departments.map((d) => d.type))].map((type) => (
+                  <div key={type} className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: DEPARTMENT_TYPE_COLOR[type] }} />
+                    {DEPARTMENT_TYPE_LABEL[type]}
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <h2 className="text-sm font-bold text-ink mb-1">صلاحيات الوصول للمشاريع</h2>
+                <p className="text-xs text-ink-soft mb-3">
+                  لكل مشروع لون مميز — اضغط على أي مشروع أدناه لعرض الأعضاء المشتركين فيه.
+                </p>
+                {scopedProjectAccess.length === 0 ? (
+                  <p className="text-xs text-ink-soft">لا توجد مشاريع مرتبطة بأعضاء ضمن هذا النطاق بعد</p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {scopedProjectAccess.map((p) => {
+                      const isSelected = selectedProjectId === p.projectId;
+                      return (
+                        <div
+                          key={p.projectId}
+                          className="bg-panel border border-line/60 shadow-sm rounded-xl p-5 cursor-pointer transition-all"
+                          style={isSelected ? { boxShadow: `0 0 0 2px ${colorByProject.get(p.projectId)}` } : undefined}
+                          onClick={() => setSelectedProjectId(isSelected ? null : p.projectId)}
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: colorByProject.get(p.projectId) }} />
+                            <h3 className="text-sm font-bold text-ink">{p.projectName}</h3>
+                            {isSelected && <span className="text-[10px] text-ink-soft mr-auto">▲</span>}
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
+                          {isSelected && (
+                            <div className="flex flex-col gap-1.5">
+                              {p.members.map((m) => (
+                                <div key={m.userId} className="flex items-center justify-between text-xs bg-bg rounded-lg px-3 py-2">
+                                  <span className="text-ink">{m.fullName}</span>
+                                  <span className="text-ink-soft">{PROJECT_ROLE_LABEL[m.role]}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </>
-      )}
+            </>
+          )}
         </>
       )}
 

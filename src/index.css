@@ -57,3 +57,81 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* شجرة تنظيمية بروابط CSS بحتة — بلا سحب/تموضع يدوي، تلتف تلقائياً وتناسب أي مقاس
+   شاشة. تقنية معروفة: كل مستوى أبناء صف flex، وخط أفقي متصل يُرسم بحدود علوية على
+   عناصر li مع استثناء الطرفين، وخط عمودي يربط الأب بمنتصف ذلك الخط. */
+.org-tree,
+.org-tree ul {
+  display: flex;
+  justify-content: center;
+  padding-top: 28px;
+  position: relative;
+  list-style: none;
+  margin: 0;
+}
+
+.org-tree {
+  padding-top: 0;
+}
+
+.org-tree li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding: 28px 14px 0;
+}
+
+.org-tree li::before,
+.org-tree li::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 50%;
+  width: 50%;
+  height: 28px;
+  border-top: 1.5px solid var(--color-line);
+}
+
+.org-tree li::after {
+  right: auto;
+  left: 50%;
+  border-right: 1.5px solid var(--color-line);
+}
+
+.org-tree > li {
+  padding-top: 0;
+}
+
+.org-tree > li::before,
+.org-tree > li::after {
+  display: none;
+}
+
+.org-tree li:first-child::before {
+  border: none;
+}
+
+.org-tree li:last-child::after {
+  border: none;
+}
+
+.org-tree li:only-child {
+  padding-top: 0;
+}
+
+.org-tree li:only-child::before,
+.org-tree li:only-child::after {
+  display: none;
+}
+
+.org-tree ul::before {
+  content: "";
+  position: absolute;
+  top: -28px;
+  right: 50%;
+  border-right: 1.5px solid var(--color-line);
+  width: 0;
+  height: 28px;
+}
