@@ -3,19 +3,26 @@ import { Card } from "@/components/ui";
 import { fmtMoney } from "@/utils/money";
 import type { SCurvePoint } from "@/features/budget/lib/sCurve";
 
-export function SCurveChart({ points }: { points: SCurvePoint[] }) {
+export function SCurveChart({
+  points,
+  title = "منحنى الأداء التراكمي (مخطط مقابل فعلي)",
+  height = 320,
+  bare = false,
+}: {
+  points: SCurvePoint[];
+  title?: string;
+  height?: number;
+  bare?: boolean;
+}) {
   if (points.length === 0) {
-    return (
-      <Card>
-        <p className="text-sm text-ink-soft py-8 text-center">لا توجد بيانات كافية لرسم المنحنى بعد</p>
-      </Card>
-    );
+    const empty = <p className="text-sm text-ink-soft py-8 text-center">لا توجد بيانات كافية لرسم المنحنى بعد</p>;
+    return bare ? empty : <Card>{empty}</Card>;
   }
 
-  return (
-    <Card>
-      <h3 className="text-sm font-bold text-ink mb-4">منحنى الأداء التراكمي (مخطط مقابل فعلي)</h3>
-      <div className="h-80" dir="ltr">
+  const chart = (
+    <>
+      <h3 className="text-sm font-bold text-ink mb-4">{title}</h3>
+      <div style={{ height }} dir="ltr">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={points} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E5E2DA" />
@@ -28,6 +35,8 @@ export function SCurveChart({ points }: { points: SCurvePoint[] }) {
           </LineChart>
         </ResponsiveContainer>
       </div>
-    </Card>
+    </>
   );
+
+  return bare ? chart : <Card>{chart}</Card>;
 }

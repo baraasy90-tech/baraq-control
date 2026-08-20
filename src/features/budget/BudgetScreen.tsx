@@ -189,6 +189,21 @@ export function BudgetScreen({ project }: { project: Project }) {
                 </p>
               )}
 
+              {getPlannedAmount(selected) > 0 && schedule[selected.id] && (
+                <div className="mb-4">
+                  <SCurveChart
+                    points={computeSCurve(
+                      [selected],
+                      schedule,
+                      selected.actualEntries.map((e) => ({ date: e.date, amount: e.amount }))
+                    )}
+                    title="منحنى الأداء لهذا البند"
+                    height={220}
+                    bare
+                  />
+                </div>
+              )}
+
               <PrimaryButton onClick={() => setFormOpen(true)} className="w-auto px-4 py-2 text-sm mb-4 inline-flex items-center gap-1.5">
                 <Plus size={15} strokeWidth={2.5} /> إضافة دفعة فعلية
               </PrimaryButton>
