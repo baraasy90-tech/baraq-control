@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 import { DEPARTMENT_TYPE_COLOR } from "@/features/company/departmentTypeLabels";
 import type { Department, DepartmentMember, MemberRole } from "@/types/domain";
@@ -100,22 +101,49 @@ export function OrgTreeChart({
   canEdit: boolean;
   onEdit: (dept: Department) => void;
 }) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const treeRef = useRef<HTMLUListElement>(null);
+  const [fit, setFit] = useState({ scale: 1, naturalWidth: 0, naturalHeight: 0 });
+
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    const tree = treeRef.current;
+    if (!wrapper || !tree) return;
+
+    const update = () => {
+      // scrollWidth/scrollHeight يعكسان الحجم الطبيعي دائماً بغض النظر عن أي transform
+      // مطبّق على عنصر أب — القياس هنا دقيق دون الحاجة لإلغاء أي تصغير سابق يدوياً.
+      const naturalWidth = tree.scrollWidth;
+      const naturalHeight = tree.scrollHeight;
+      const availableWidth = wrapper.clientWidth;
+      const scale = naturalWidth > availableWidth && availableWidth > 0 ? availableWidth / naturalWidth : 1;
+      setFit({ scale, naturalWidth, naturalHeight });
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(wrapper);
+    return () => ro.disconnect();
+  }, [roots, departments, members]);
+
   return (
-    <div dir="ltr" className="overflow-x-auto">
-      <ul className="org-tree" style={{ minWidth: "fit-content" }}>
-        <li>
-          <div className="bg-navy rounded-xl px-5 py-3 text-white text-sm font-bold shadow-sm w-[190px] text-center">
-            <span dir="rtl">{companyName}</span>
-          </div>
-          {roots.length > 0 && (
-            <ul>
-              {roots.map((r) => (
-                <OrgTreeNode key={r.id} dept={r} departments={departments} members={members} canEdit={canEdit} onEdit={onEdit} />
-              ))}
-            </ul>
-          )}
-        </li>
-      </ul>
+    <div ref={wrapperRef} className="w-full overflow-hidden" style={{ height: fit.naturalHeight * fit.scale || undefined }}>
+      <div dir="ltr" style={{ transform: `scale(${fit.scale})`, transformOrigin: "top center", width: fit.naturalWidth || undefined }}>
+        <ul ref={treeRef} className="org-tree">
+          <li>
+            <div className="bg-navy rounded-xl px-5 py-3 text-white text-sm font-bold shadow-sm w-[190px] text-center">
+              <span dir="rtl">{companyName}</span>
+            </div>
+            {roots.length > 0 && (
+              <ul>
+                {roots.map((r) => (
+                  <OrgTreeNode key={r.id} dept={r} departments={departments} members={members} canEdit={canEdit} onEdit={onEdit} />
+                ))}
+              </ul>
+            )}
+          </li>
+        </ul>
+      </div>
     </div>
   );
 }
