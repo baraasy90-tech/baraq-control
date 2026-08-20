@@ -81,6 +81,9 @@ body {
   align-items: center;
   position: relative;
   padding: 28px 14px 0;
+  /* بدون هذا، يضغط flex الافتراضي البطاقات لتتقلّص وتتشوّه بدل الحفاظ على مقاسها
+     الطبيعي — وهو ما كان يُفسَد به قياس "الحجم الطبيعي" المستخدم لحساب التصغير. */
+  flex-shrink: 0;
 }
 
 .org-tree li::before,

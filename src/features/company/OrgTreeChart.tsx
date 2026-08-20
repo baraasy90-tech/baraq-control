@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 import { computeBranchColors } from "@/features/company/lib/branchColors";
 import type { Department, DepartmentMember, MemberRole } from "@/types/domain";
@@ -119,14 +119,15 @@ export function OrgTreeChart({
   const [fit, setFit] = useState({ scale: 1, naturalWidth: 0, naturalHeight: 0 });
   const colorMap = computeBranchColors(roots, departments);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const wrapper = wrapperRef.current;
     const tree = treeRef.current;
     if (!wrapper || !tree) return;
 
     const update = () => {
       // scrollWidth/scrollHeight يعكسان الحجم الطبيعي دائماً بغض النظر عن أي transform
-      // مطبّق على عنصر أب — القياس هنا دقيق دون الحاجة لإلغاء أي تصغير سابق يدوياً.
+      // مطبّق على عنصر أب — القياس هنا دقيق دون الحاجة لإلغاء أي تصغير سابق يدوياً،
+      // بشرط ألا يضغط flex العناصر لتتقلّص (محلول عبر flex-shrink:0 بملف الأنماط).
       const naturalWidth = tree.scrollWidth;
       const naturalHeight = tree.scrollHeight;
       const availableWidth = wrapper.clientWidth;
@@ -145,7 +146,7 @@ export function OrgTreeChart({
   return (
     <div
       ref={wrapperRef}
-      className="w-full overflow-hidden"
+      className="w-full overflow-auto"
       style={{ height: needsShrink ? fit.naturalHeight * fit.scale : undefined }}
     >
       <div
