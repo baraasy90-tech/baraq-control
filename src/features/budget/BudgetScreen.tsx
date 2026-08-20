@@ -9,7 +9,7 @@ import { useActivities } from "@/features/schedule/api/useActivities";
 import { useCreateBudgetEntry } from "@/features/budget/api/useCreateBudgetEntry";
 import { useDeleteBudgetEntry } from "@/features/budget/api/useDeleteBudgetEntry";
 import { computeBudgetRollup, getPlannedAmount } from "@/features/budget/lib/budget";
-import { computeSCurve } from "@/features/budget/lib/sCurve";
+import { computeSCurve, computeSCurveFromTotal } from "@/features/budget/lib/sCurve";
 import { useContracts } from "@/features/contracts/api/useContract";
 import { BudgetVarianceBanner } from "@/features/budget/BudgetVarianceBanner";
 import { useCompany } from "@/features/company/useCompany";
@@ -37,6 +37,7 @@ export function BudgetScreen({ project }: { project: Project }) {
   const deleteEntry = useDeleteBudgetEntry(project.id);
 
   const [tab, setTab] = useState<Tab>("budget");
+  const [scurveMode, setScurveMode] = useState<"detailed" | "auto">("detailed");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [error, setError] = useState("");
@@ -44,11 +45,14 @@ export function BudgetScreen({ project }: { project: Project }) {
 
   const activities = activitiesQuery.data ?? [];
   const schedule = computeSchedule(activities, customCalendars);
-  const sCurvePoints = computeSCurve(
-    activities,
-    schedule,
-    activities.flatMap((a) => a.actualEntries.map((e) => ({ date: e.date, amount: e.amount })))
-  );
+  const actualEntriesFlat = activities.flatMap((a) => a.actualEntries.map((e) => ({ date: e.date, amount: e.amount })));
+  const totalContractValueForCurve = (contractsQuery.data ?? [])
+    .filter((c) => c.status === "approved")
+    .reduce((sum, c) => sum + (c.totalValue ?? 0), 0);
+  const sCurvePoints =
+    scurveMode === "detailed"
+      ? computeSCurve(activities, schedule, actualEntriesFlat)
+      : computeSCurveFromTotal(totalContractValueForCurve, activities, schedule, actualEntriesFlat);
   const selected = activities.find((a) => a.id === selectedId) ?? null;
   const overallRollup = activities
     .filter((a) => a.parentId === null)
@@ -155,7 +159,28 @@ export function BudgetScreen({ project }: { project: Project }) {
       {activitiesQuery.isLoading && <p className="text-sm text-ink-soft">جارٍ التحميل...</p>}
 
       {tab === "scurve" ? (
-        <SCurveChart points={sCurvePoints} />
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs text-ink-soft">طريقة حساب المخطط:</span>
+            {(
+              [
+                { key: "detailed", label: "تفصيلي لكل بند" },
+                { key: "auto", label: "توزيع تلقائي من قيمة العقد" },
+              ] as { key: "detailed" | "auto"; label: string }[]
+            ).map((m) => (
+              <button
+                key={m.key}
+                onClick={() => setScurveMode(m.key)}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer border ${
+                  scurveMode === m.key ? "border-primary bg-primary-bg text-ink" : "border-line/60 bg-panel text-ink-soft"
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <SCurveChart points={sCurvePoints} />
+        </div>
       ) : (
       <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
         <Card className="lg:max-h-[70vh] lg:overflow-y-auto">
