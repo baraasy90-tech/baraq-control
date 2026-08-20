@@ -4,12 +4,17 @@ import { Plus, Trash2, FileSpreadsheet } from "lucide-react";
 import { Card, StatCard, SecondaryButton, PrimaryButton, IconButton, Modal, ErrorText, ExportMenu } from "@/components/ui";
 import { BudgetTree } from "@/features/budget/BudgetTree";
 import { AddActualEntryForm } from "@/features/budget/AddActualEntryForm";
+import { SCurveChart } from "@/features/budget/SCurveChart";
 import { useActivities } from "@/features/schedule/api/useActivities";
 import { useCreateBudgetEntry } from "@/features/budget/api/useCreateBudgetEntry";
 import { useDeleteBudgetEntry } from "@/features/budget/api/useDeleteBudgetEntry";
 import { computeBudgetRollup, getPlannedAmount } from "@/features/budget/lib/budget";
+import { computeSCurve } from "@/features/budget/lib/sCurve";
 import { useContracts } from "@/features/contracts/api/useContract";
 import { BudgetVarianceBanner } from "@/features/budget/BudgetVarianceBanner";
+import { useCompany } from "@/features/company/useCompany";
+import { useCustomCalendarMap } from "@/features/schedule/api/useCustomCalendars";
+import { computeSchedule } from "@/features/schedule/lib/schedule";
 import { fmtMoney } from "@/utils/money";
 import { fmt, todayISO } from "@/utils/dates";
 import { exportToExcel } from "@/utils/exportExcel";
@@ -17,22 +22,33 @@ import type { Project } from "@/types/domain";
 
 const SOURCE_LABEL: Record<string, string> = { contract: "عقد مقاول", purchase: "شراء مباشر", other: "أخرى" };
 
+type Tab = "budget" | "scurve";
+
 export function BudgetScreen({ project }: { project: Project }) {
   const navigate = useNavigate();
+  const { company } = useCompany();
   const activitiesQuery = useActivities(project.id);
   const contractsQuery = useContracts(project.id);
+  const customCalendars = useCustomCalendarMap(company.id);
   const totalContractValue = (contractsQuery.data ?? [])
     .filter((c) => c.status === "approved")
     .reduce((sum, c) => sum + (c.totalValue ?? 0), 0);
   const createEntry = useCreateBudgetEntry();
   const deleteEntry = useDeleteBudgetEntry(project.id);
 
+  const [tab, setTab] = useState<Tab>("budget");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false);
 
   const activities = activitiesQuery.data ?? [];
+  const schedule = computeSchedule(activities, customCalendars);
+  const sCurvePoints = computeSCurve(
+    activities,
+    schedule,
+    activities.flatMap((a) => a.actualEntries.map((e) => ({ date: e.date, amount: e.amount })))
+  );
   const selected = activities.find((a) => a.id === selectedId) ?? null;
   const overallRollup = activities
     .filter((a) => a.parentId === null)
@@ -117,8 +133,30 @@ export function BudgetScreen({ project }: { project: Project }) {
         />
       </div>
 
+      <div className="flex gap-2 mb-4">
+        {(
+          [
+            { key: "budget", label: "تفاصيل الميزانية" },
+            { key: "scurve", label: "منحنى الأداء (S-Curve)" },
+          ] as { key: Tab; label: string }[]
+        ).map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`text-sm font-semibold px-3 py-1.5 rounded-lg cursor-pointer border ${
+              tab === t.key ? "border-primary bg-primary-bg text-ink" : "border-line/60 bg-panel text-ink-soft"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       {activitiesQuery.isLoading && <p className="text-sm text-ink-soft">جارٍ التحميل...</p>}
 
+      {tab === "scurve" ? (
+        <SCurveChart points={sCurvePoints} />
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
         <Card className="lg:max-h-[70vh] lg:overflow-y-auto">
           <BudgetTree activities={activities} selectedId={selectedId} onSelect={(a) => setSelectedId(a.id)} />
@@ -179,6 +217,7 @@ export function BudgetScreen({ project }: { project: Project }) {
           )}
         </Card>
       </div>
+      )}
 
       {formOpen && selected && (
         <Modal title={`دفعة جديدة — ${selected.name}`} onClose={() => setFormOpen(false)}>
