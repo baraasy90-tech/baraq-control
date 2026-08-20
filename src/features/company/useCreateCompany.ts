@@ -18,23 +18,15 @@ export function useCreateCompany() {
   return useMutation({
     mutationFn: async (input: CreateCompanyInput) => {
       const { data: company, error: companyError } = await supabase
-        .from("companies")
-        .insert({
-          name: input.name,
-          logo_url: input.logoUrl,
-          archive_folder_name: input.archiveFolderName,
-          archive_storage_type: input.archiveStorageType,
-          archive_local_path: input.archiveLocalPath,
+        .rpc("create_company", {
+          p_name: input.name,
+          p_logo_url: input.logoUrl,
+          p_archive_folder_name: input.archiveFolderName,
+          p_archive_storage_type: input.archiveStorageType,
+          p_archive_local_path: input.archiveLocalPath,
         })
-        .select()
         .single();
       if (companyError) throw companyError;
-
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({ company_id: company.id })
-        .eq("id", user!.id);
-      if (profileError) throw profileError;
 
       return company;
     },
