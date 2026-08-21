@@ -10,7 +10,7 @@ export interface MaterialApprovalItem {
   projectId: string;
   projectName: string;
   phase: MaterialApprovalPhase | null;
-  /** الأيام المنقضية منذ بداية المرحلة الحالية، أو null لو الطلب ليس بانتظار أحد. */
+  /** الأيام المنقضية منذ بداية سلسلة الاعتماد النشطة، أو null لو الطلب ليس بانتظار أحد. */
   daysAtCurrentStage: number | null;
 }
 
@@ -18,19 +18,10 @@ function daysBetween(aIso: string, bIso: string): number {
   return Math.round((new Date(bIso).getTime() - new Date(aIso).getTime()) / 86400000);
 }
 
-function stageInfo(status: MaterialRequestStatus, r: MaterialRequest): { phase: MaterialApprovalPhase | null; stageStart: string | null } {
-  switch (status) {
-    case "sample_pending_pm_approval":
-      return { phase: "sample", stageStart: r.sampleSubmittedAt };
-    case "sample_pending_executive_approval":
-      return { phase: "sample", stageStart: r.samplePmReviewedAt };
-    case "purchase_pending_pm_approval":
-      return { phase: "purchase", stageStart: r.purchaseSubmittedAt };
-    case "purchase_pending_finance_approval":
-      return { phase: "purchase", stageStart: r.purchasePmReviewedAt };
-    default:
-      return { phase: null, stageStart: null };
-  }
+function phaseOf(status: MaterialRequestStatus): MaterialApprovalPhase | null {
+  if (status === "sample_pending") return "sample";
+  if (status === "purchase_pending") return "purchase";
+  return null;
 }
 
 /** كل طلبات المواد/المشتريات عبر مشاريع الشركة، مع تحديد المرحلة الحالية ومدتها —
@@ -51,17 +42,29 @@ export function useCompanyMaterialRequests(companyId: string | undefined) {
 
       const { data: rows, error } = await supabase.from("material_requests").select("*").in("project_id", projectIds);
       if (error) throw error;
+      if (rows.length === 0) return [];
+
+      const { data: chainRows, error: chainsError } = await supabase
+        .from("approval_chains")
+        .select("material_request_id, status, created_at")
+        .in(
+          "material_request_id",
+          rows.map((r) => r.id)
+        )
+        .eq("status", "pending");
+      if (chainsError) throw chainsError;
+      const chainStartByRequest = new Map(chainRows.map((c) => [c.material_request_id, c.created_at]));
 
       const now = new Date().toISOString();
       return rows
         .map(mapMaterialRequest)
         .map((r): MaterialApprovalItem => {
-          const { phase, stageStart } = stageInfo(r.status, r);
+          const stageStart = chainStartByRequest.get(r.id) ?? null;
           return {
             request: r,
             projectId: r.projectId,
             projectName: projectNameById.get(r.projectId) ?? "—",
-            phase,
+            phase: phaseOf(r.status),
             daysAtCurrentStage: stageStart ? daysBetween(stageStart, now) : null,
           };
         })

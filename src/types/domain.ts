@@ -411,12 +411,32 @@ export interface MaterialRequest {
   createdAt: string;
   status: MaterialRequestStatus;
 
-  samplePrice: number | null;
-  sampleReceivedAt: string | null;
+  quantity: number | null;
+  targetUnitPrice: number | null;
+  neededBy: string | null;
 
   attachmentsNote: string | null;
   quotePrice: number | null;
   quoteReceivedAt: string | null;
+}
+
+export interface MaterialRequestOption {
+  id: string;
+  materialRequestId: string;
+  description: string;
+  price: number | null;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export interface MaterialRequestAttachment {
+  id: string;
+  materialRequestId: string;
+  optionId: string | null;
+  fileUrl: string;
+  fileName: string;
+  uploadedBy: string | null;
+  uploadedAt: string;
 }
 
 export type ApprovalChainPhase = "sample" | "purchase";

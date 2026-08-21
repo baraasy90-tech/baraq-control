@@ -34,27 +34,29 @@ export function useCreateMaterialRequest() {
   });
 }
 
-export interface SaveSampleDetailsInput {
+export interface SaveSourcingDetailsInput {
   requestId: string;
   projectId: string;
   itemName: string;
   description: string | null;
-  samplePrice: number | null;
-  sampleReceivedAt: string | null;
+  quantity: number | null;
+  targetUnitPrice: number | null;
+  neededBy: string | null;
 }
 
-export function useSaveSampleDetails() {
+export function useSaveSourcingDetails() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: SaveSampleDetailsInput) => {
+    mutationFn: async (input: SaveSourcingDetailsInput) => {
       const { error } = await supabase
         .from("material_requests")
         .update({
           item_name: input.itemName,
           description: input.description,
-          sample_price: input.samplePrice,
-          sample_received_at: input.sampleReceivedAt,
+          quantity: input.quantity,
+          target_unit_price: input.targetUnitPrice,
+          needed_by: input.neededBy,
         })
         .eq("id", input.requestId);
       if (error) throw error;

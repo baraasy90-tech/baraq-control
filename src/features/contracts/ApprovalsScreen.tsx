@@ -145,12 +145,7 @@ function ContractApprovalsView() {
   );
 }
 
-const MATERIAL_PENDING_STATUSES: MaterialRequestStatus[] = [
-  "sample_pending_pm_approval",
-  "sample_pending_executive_approval",
-  "purchase_pending_pm_approval",
-  "purchase_pending_finance_approval",
-];
+const MATERIAL_PENDING_STATUSES: MaterialRequestStatus[] = ["sample_pending", "purchase_pending"];
 const MATERIAL_APPROVED_STATUSES: MaterialRequestStatus[] = ["sample_approved", "purchase_approved"];
 const MATERIAL_REJECTED_STATUSES: MaterialRequestStatus[] = ["sample_rejected", "purchase_rejected"];
 

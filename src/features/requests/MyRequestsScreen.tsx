@@ -13,7 +13,6 @@ import {
   useCreateInternalRequest,
   useReviewInternalRequest,
 } from "@/features/requests/api/useInternalRequests";
-import { DEPARTMENT_TYPE_LABEL } from "@/features/company/departmentTypeLabels";
 import { uploadFile, uniqueFileName } from "@/lib/supabase/storage";
 import { fmt } from "@/utils/dates";
 import type { InternalRequestType } from "@/types/domain";
@@ -33,6 +32,7 @@ export function MyRequestsScreen() {
 
   const departmentsQuery = useDepartments(company.id);
   const departments = departmentsQuery.data ?? [];
+  const rootDepartments = departments.filter((d) => !d.parentDepartmentId);
   const membersQuery = useDepartmentMembers(departments.map((d) => d.id));
   const members = membersQuery.data ?? [];
 
@@ -150,7 +150,7 @@ export function MyRequestsScreen() {
                       </span>
                     </div>
                     <div className="text-xs text-ink-soft mt-1">
-                      إلى: {dept ? DEPARTMENT_TYPE_LABEL[dept.type] + ` (${dept.name})` : "—"}
+                      إلى: {dept ? dept.name : "—"}
                       {target ? ` — ${target.fullName}` : ""}
                     </div>
                     {r.startDate && (
@@ -243,9 +243,9 @@ export function MyRequestsScreen() {
             className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink"
           >
             <option value="">اختر القسم...</option>
-            {departments.map((d) => (
+            {rootDepartments.map((d) => (
               <option key={d.id} value={d.id}>
-                {DEPARTMENT_TYPE_LABEL[d.type]} ({d.name})
+                {d.name}
               </option>
             ))}
           </select>

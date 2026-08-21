@@ -61,18 +61,14 @@ export function MaterialRequestsListScreen() {
                   <Package size={18} className="text-primary shrink-0" />
                   <div className="min-w-0">
                     <div className="text-sm font-bold text-ink truncate">{r.itemName}</div>
-                    <div className="text-xs text-ink-soft">
-                      {r.sampleReceivedAt ? `عينة: ${fmt(r.sampleReceivedAt)}` : "بدون تاريخ استلام عينة"}
-                    </div>
+                    <div className="text-xs text-ink-soft">{fmt(r.createdAt)}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${MATERIAL_STATUS_TONE[r.status]}`}>
                     {MATERIAL_STATUS_LABEL[r.status]}
                   </span>
-                  <span className="text-sm font-bold text-ink font-mono">
-                    {r.quotePrice ? fmtMoney(r.quotePrice) : r.samplePrice ? fmtMoney(r.samplePrice) : "—"}
-                  </span>
+                  <span className="text-sm font-bold text-ink font-mono">{r.quotePrice ? fmtMoney(r.quotePrice) : "—"}</span>
                 </div>
               </div>
             </Card>

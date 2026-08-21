@@ -770,8 +770,9 @@ export interface Database {
             | "purchase_pending"
             | "purchase_approved"
             | "purchase_rejected";
-          sample_price: number | null;
-          sample_received_at: string | null;
+          quantity: number | null;
+          target_unit_price: number | null;
+          needed_by: string | null;
           attachments_note: string | null;
           quote_price: number | null;
           quote_received_at: string | null;
@@ -791,13 +792,56 @@ export interface Database {
             | "purchase_pending"
             | "purchase_approved"
             | "purchase_rejected";
-          sample_price?: number | null;
-          sample_received_at?: string | null;
+          quantity?: number | null;
+          target_unit_price?: number | null;
+          needed_by?: string | null;
           attachments_note?: string | null;
           quote_price?: number | null;
           quote_received_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["material_requests"]["Insert"]>;
+        Relationships: [];
+      };
+      material_request_options: {
+        Row: {
+          id: string;
+          material_request_id: string;
+          description: string;
+          price: number | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          material_request_id: string;
+          description: string;
+          price?: number | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["material_request_options"]["Insert"]>;
+        Relationships: [];
+      };
+      material_request_attachments: {
+        Row: {
+          id: string;
+          material_request_id: string;
+          option_id: string | null;
+          file_url: string;
+          file_name: string;
+          uploaded_by: string | null;
+          uploaded_at: string;
+        };
+        Insert: {
+          id?: string;
+          material_request_id: string;
+          option_id?: string | null;
+          file_url: string;
+          file_name: string;
+          uploaded_by?: string | null;
+          uploaded_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["material_request_attachments"]["Insert"]>;
         Relationships: [];
       };
       approval_chains: {
@@ -932,8 +976,8 @@ export interface Database {
         Args: { p_request_id: string; p_approve: boolean; p_note: string | null };
         Returns: undefined;
       };
-      submit_material_sample_chain: {
-        Args: { p_request_id: string; p_steps: Json; p_note: string | null };
+      submit_material_sourcing: {
+        Args: { p_request_id: string; p_note: string | null };
         Returns: string;
       };
       submit_material_purchase_chain: {
