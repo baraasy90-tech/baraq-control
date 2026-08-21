@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
+import { getFileUrl } from "@/lib/supabase/storage";
 import type { Database } from "@/lib/supabase/database.types";
 import type { Company, Profile } from "@/types/domain";
 
@@ -63,7 +64,7 @@ export function useProfile() {
           id: profileRow.id,
           fullName: profileRow.full_name,
           companyId: profileRow.company_id,
-          signatureUrl: profileRow.signature_url,
+          signatureUrl: await getFileUrl("signatures", profileRow.signature_url),
         },
         company,
       };

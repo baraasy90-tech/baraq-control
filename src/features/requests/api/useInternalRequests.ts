@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { mapInternalRequest } from "@/features/requests/api/mapInternalRequest";
+import { getFileUrls } from "@/lib/supabase/storage";
 import type { InternalRequest, InternalRequestType } from "@/types/domain";
 
 /** طلبات المستخدم الحالي فقط (التي أرسلها بنفسه). */
@@ -15,7 +16,12 @@ export function useMyInternalRequests(userId: string | undefined) {
         .eq("user_id", userId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data.map(mapInternalRequest);
+      const urlByStored = await getFileUrls("documents", data.map((row) => row.attachment_url));
+      return data.map((row) => {
+        const req = mapInternalRequest(row);
+        req.attachmentUrl = row.attachment_url ? urlByStored.get(row.attachment_url) ?? null : null;
+        return req;
+      });
     },
   });
 }
@@ -33,7 +39,12 @@ export function useCompanyInternalRequests(companyId: string | undefined) {
         .eq("company_id", companyId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data.map(mapInternalRequest);
+      const urlByStored = await getFileUrls("documents", data.map((row) => row.attachment_url));
+      return data.map((row) => {
+        const req = mapInternalRequest(row);
+        req.attachmentUrl = row.attachment_url ? urlByStored.get(row.attachment_url) ?? null : null;
+        return req;
+      });
     },
   });
 }

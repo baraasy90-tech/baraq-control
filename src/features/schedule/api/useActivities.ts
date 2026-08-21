@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase/client";
 import { mapActivity, mapChecklistItem } from "@/features/schedule/api/mapActivity";
 import { mapChecklistResult, mapSubmission } from "@/features/receiving/api/mapSubmission";
 import { mapBudgetEntry } from "@/features/budget/api/mapBudgetEntry";
+import { getFileUrls } from "@/lib/supabase/storage";
 import type { Submission } from "@/types/domain";
 
 /**
@@ -42,6 +43,11 @@ export function useActivities(projectId: string | undefined) {
       if (resultsRes.error) throw resultsRes.error;
       if (imagesRes.error) throw imagesRes.error;
 
+      const signatureUrlByStored = await getFileUrls(
+        "signatures",
+        submissionsRes.data.map((s) => s.manager_signature_url)
+      );
+
       const checklistByActivity = new Map<string, ReturnType<typeof mapChecklistItem>[]>();
       for (const row of checklistRes.data) {
         const item = mapChecklistItem(row);
@@ -72,6 +78,9 @@ export function useActivities(projectId: string | undefined) {
           resultsBySubmission.get(row.id) ?? [],
           imagesBySubmission.get(row.id) ?? []
         );
+        submission.managerSignatureUrl = row.manager_signature_url
+          ? signatureUrlByStored.get(row.manager_signature_url) ?? null
+          : null;
         const list = submissionsByActivity.get(submission.activityId) ?? [];
         list.push(submission);
         submissionsByActivity.set(submission.activityId, list);
