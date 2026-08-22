@@ -178,8 +178,8 @@ export function StructureScreen() {
       await deleteDepartment.mutateAsync(confirmDeleteDept.id);
       setConfirmDeleteDept(null);
       setEditingDept(null);
-    } catch {
-      setDeleteError("تعذّر حذف القسم — يلزم صلاحية مالك الحساب أو الإدارة التنفيذية");
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "تعذّر حذف القسم، حاول مجدداً");
     }
   };
 
