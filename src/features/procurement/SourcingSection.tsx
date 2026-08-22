@@ -13,6 +13,7 @@ import {
 import type { ApprovalChainBundle } from "@/features/procurement/api/useApprovalChains";
 import type { Department, DepartmentMember, MaterialRequest } from "@/types/domain";
 import type { MiniProfile } from "@/features/company/api/useProfilesByIds";
+import type { CompanyMember } from "@/features/company/api/useCompanyMembers";
 import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
 import { getErrorMessage } from "@/utils/errors";
@@ -53,6 +54,7 @@ export function SourcingSection({
   isOrgManager,
   departments,
   members,
+  companyMembers,
   profilesById,
 }: {
   request: MaterialRequest;
@@ -61,6 +63,7 @@ export function SourcingSection({
   isOrgManager: boolean;
   departments: Department[];
   members: DepartmentMember[];
+  companyMembers: CompanyMember[];
   profilesById: Map<string, MiniProfile>;
 }) {
   const canEdit = request.status === "draft" || request.status === "sample_rejected";
@@ -238,6 +241,7 @@ export function SourcingSection({
             currentUserId={currentUserId}
             departments={departments}
             members={members}
+            companyMembers={companyMembers}
             profilesById={profilesById}
             isOrgManager={isOrgManager}
           />

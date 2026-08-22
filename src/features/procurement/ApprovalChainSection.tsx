@@ -11,6 +11,7 @@ import {
   useReviewApprovalStep,
 } from "@/features/procurement/api/useApprovalChainActions";
 import type { MiniProfile } from "@/features/company/api/useProfilesByIds";
+import type { CompanyMember } from "@/features/company/api/useCompanyMembers";
 import { fmt } from "@/utils/dates";
 import { getErrorMessage } from "@/utils/errors";
 
@@ -175,6 +176,7 @@ function StepRow({
   departments,
   members,
   membersOfDept,
+  companyMembers,
   profilesById,
   canRoute,
   canAct,
@@ -192,10 +194,15 @@ function StepRow({
   requestId: string;
   projectId: string;
   membersOfDept: DepartmentMember[];
+  companyMembers: CompanyMember[];
 }) {
   const routeStep = useRouteApprovalStep(requestId, projectId);
   const reviewStep = useReviewApprovalStep(requestId, projectId);
   const insertStep = useInsertApprovalStep(requestId, projectId);
+
+  const routeCandidates =
+    membersOfDept.length > 0 ? membersOfDept.map((m) => ({ id: m.userId, fullName: m.fullName })) : companyMembers;
+  const routeFallbackToCompany = membersOfDept.length === 0;
 
   const [routeUserId, setRouteUserId] = useState("");
   const [reviewNote, setReviewNote] = useState("");
@@ -225,26 +232,33 @@ function StepRow({
         <div className="text-xs text-critical mt-1 mr-6">سبب الرفض: {step.note}</div>
       )}
       {active && canRoute && (
-        <div className="mt-2 mr-6 flex items-center gap-2">
-          <select
-            value={routeUserId}
-            onChange={(e) => setRouteUserId(e.target.value)}
-            className="bg-panel border border-line/60 rounded-lg px-2 py-1.5 text-xs text-ink"
-          >
-            <option value="">وجّه إلى...</option>
-            {membersOfDept.map((m) => (
-              <option key={m.userId} value={m.userId}>
-                {m.fullName}
-              </option>
-            ))}
-          </select>
-          <SecondaryButton
-            disabled={!routeUserId || routeStep.isPending}
-            onClick={() => routeStep.mutate({ stepId: step.id, userId: routeUserId })}
-            className="text-xs px-3 py-1.5"
-          >
-            توجيه
-          </SecondaryButton>
+        <div className="mt-2 mr-6">
+          <div className="flex items-center gap-2">
+            <select
+              value={routeUserId}
+              onChange={(e) => setRouteUserId(e.target.value)}
+              className="bg-panel border border-line/60 rounded-lg px-2 py-1.5 text-xs text-ink"
+            >
+              <option value="">وجّه إلى...</option>
+              {routeCandidates.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.fullName}
+                </option>
+              ))}
+            </select>
+            <SecondaryButton
+              disabled={!routeUserId || routeStep.isPending}
+              onClick={() => routeStep.mutate({ stepId: step.id, userId: routeUserId })}
+              className="text-xs px-3 py-1.5"
+            >
+              توجيه
+            </SecondaryButton>
+          </div>
+          {routeFallbackToCompany && (
+            <p className="text-[11px] text-warn mt-1">
+              لا يوجد أعضاء مسجّلين بهذا القسم بعد — القائمة تعرض كل أعضاء الشركة مؤقتاً.
+            </p>
+          )}
         </div>
       )}
       {active && canAct && (
@@ -323,6 +337,7 @@ export function ApprovalStepsList({
   currentUserId,
   departments,
   members,
+  companyMembers,
   profilesById,
   isOrgManager,
 }: {
@@ -332,6 +347,7 @@ export function ApprovalStepsList({
   currentUserId: string;
   departments: Department[];
   members: DepartmentMember[];
+  companyMembers: CompanyMember[];
   profilesById: Map<string, MiniProfile>;
   isOrgManager: boolean;
 }) {
@@ -352,6 +368,7 @@ export function ApprovalStepsList({
             departments={departments}
             members={members}
             membersOfDept={step.departmentId ? members.filter((m) => m.departmentId === step.departmentId) : []}
+            companyMembers={companyMembers}
             profilesById={profilesById}
             currentUserId={currentUserId}
             canRoute={canRoute}
@@ -375,6 +392,7 @@ export function ApprovalChainSection({
   currentUserId,
   departments,
   members,
+  companyMembers,
   profilesById,
   isOrgManager,
 }: {
@@ -387,6 +405,7 @@ export function ApprovalChainSection({
   currentUserId: string;
   departments: Department[];
   members: DepartmentMember[];
+  companyMembers: CompanyMember[];
   profilesById: Map<string, MiniProfile>;
   isOrgManager: boolean;
 }) {
@@ -426,6 +445,7 @@ export function ApprovalChainSection({
             currentUserId={currentUserId}
             departments={departments}
             members={members}
+            companyMembers={companyMembers}
             profilesById={profilesById}
             isOrgManager={isOrgManager}
           />

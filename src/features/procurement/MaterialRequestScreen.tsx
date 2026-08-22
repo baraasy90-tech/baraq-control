@@ -9,6 +9,7 @@ import { SourcingSection } from "@/features/procurement/SourcingSection";
 import { useCompany } from "@/features/company/useCompany";
 import { useDepartments } from "@/features/company/api/useDepartments";
 import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
+import { useCompanyMembers } from "@/features/company/api/useCompanyMembers";
 import { useProfilesByIds } from "@/features/company/api/useProfilesByIds";
 import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
@@ -32,6 +33,8 @@ export function MaterialRequestScreen() {
   const rootDepartments = allDepartments.filter((d) => !d.parentDepartmentId);
   const membersQuery = useDepartmentMembers(allDepartments.map((d) => d.id));
   const members = membersQuery.data ?? [];
+  const companyMembersQuery = useCompanyMembers(company.id);
+  const companyMembers = companyMembersQuery.data ?? [];
   const isOwner = company.createdBy === profile.id;
   const isExecutive = members.some(
     (m) => m.userId === profile.id && allDepartments.find((d) => d.id === m.departmentId)?.type === "executive"
@@ -122,6 +125,7 @@ export function MaterialRequestScreen() {
           isOrgManager={isOrgManager}
           departments={rootDepartments}
           members={members}
+          companyMembers={companyMembers}
           profilesById={profilesById}
         />
       </Card>
@@ -161,6 +165,7 @@ export function MaterialRequestScreen() {
                 currentUserId={profile.id}
                 departments={rootDepartments}
                 members={members}
+                companyMembers={companyMembers}
                 profilesById={profilesById}
                 isOrgManager={isOrgManager}
               />
