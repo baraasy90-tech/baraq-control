@@ -18,6 +18,8 @@ export interface PrintSettings {
   marginRight: number;
 }
 
+export type SubscriptionStatus = "trial" | "active" | "expired" | "canceled";
+
 export interface Company {
   id: string;
   createdBy: string;
@@ -32,6 +34,20 @@ export interface Company {
   print: PrintSettings;
   headerColor: string;
   vatRate: number;
+  subscriptionStatus: SubscriptionStatus;
+  trialEndsAt: string;
+  subscriptionNote: string | null;
+}
+
+export interface CompanyBillingRow {
+  id: string;
+  name: string;
+  subscriptionStatus: SubscriptionStatus;
+  trialEndsAt: string;
+  subscriptionNote: string | null;
+  subscriptionUpdatedAt: string | null;
+  createdAt: string;
+  memberCount: number;
 }
 
 export interface Profile {

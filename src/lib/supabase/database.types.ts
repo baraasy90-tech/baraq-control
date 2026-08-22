@@ -29,6 +29,11 @@ export interface Database {
           print_margin_right: number;
           header_color: string;
           vat_rate: number;
+          subscription_status: "trial" | "active" | "expired" | "canceled";
+          trial_ends_at: string;
+          subscription_note: string | null;
+          subscription_updated_by: string | null;
+          subscription_updated_at: string | null;
         };
         Insert: {
           id?: string;
@@ -52,8 +57,19 @@ export interface Database {
           print_margin_right?: number;
           header_color?: string;
           vat_rate?: number;
+          subscription_status?: "trial" | "active" | "expired" | "canceled";
+          trial_ends_at?: string;
+          subscription_note?: string | null;
+          subscription_updated_by?: string | null;
+          subscription_updated_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["companies"]["Insert"]>;
+        Relationships: [];
+      };
+      platform_admins: {
+        Row: { user_id: string; created_at: string };
+        Insert: { user_id: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["platform_admins"]["Insert"]>;
         Relationships: [];
       };
       profiles: {
@@ -1007,6 +1023,27 @@ export interface Database {
       reset_contract_to_draft: {
         Args: { p_contract_id: string };
         Returns: undefined;
+      };
+      is_platform_admin: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      set_company_subscription: {
+        Args: { p_company_id: string; p_status: string; p_trial_ends_at: string | null; p_note: string | null };
+        Returns: undefined;
+      };
+      list_all_companies_billing: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          name: string;
+          subscription_status: "trial" | "active" | "expired" | "canceled";
+          trial_ends_at: string;
+          subscription_note: string | null;
+          subscription_updated_at: string | null;
+          created_at: string;
+          member_count: number;
+        }[];
       };
       create_company: {
         Args: {

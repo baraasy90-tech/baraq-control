@@ -31,6 +31,9 @@ export function mapCompany(row: CompanyRow): Company {
     },
     headerColor: row.header_color,
     vatRate: row.vat_rate,
+    subscriptionStatus: row.subscription_status,
+    trialEndsAt: row.trial_ends_at,
+    subscriptionNote: row.subscription_note,
   };
 }
 
