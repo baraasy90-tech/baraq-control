@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Package, Plus } from "lucide-react";
-import { Card, SecondaryButton, PrimaryButton, FieldLabel, TextInput, ErrorText, Modal } from "@/components/ui";
+import { Package, Plus, Trash2 } from "lucide-react";
+import { Card, SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText, Modal } from "@/components/ui";
 import { useMaterialRequests } from "@/features/procurement/api/useMaterialRequests";
-import { useCreateMaterialRequest } from "@/features/procurement/api/useSaveMaterialRequest";
+import { useCreateMaterialRequest, useDeleteMaterialRequest } from "@/features/procurement/api/useSaveMaterialRequest";
 import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
 import { getErrorMessage } from "@/utils/errors";
@@ -14,6 +14,7 @@ export function MaterialRequestsListScreen() {
   const navigate = useNavigate();
   const requestsQuery = useMaterialRequests(projectId);
   const createRequest = useCreateMaterialRequest();
+  const deleteRequest = useDeleteMaterialRequest(projectId);
 
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -70,6 +71,17 @@ export function MaterialRequestsListScreen() {
                     {MATERIAL_STATUS_LABEL[r.status]}
                   </span>
                   <span className="text-sm font-bold text-ink font-mono">{r.quotePrice ? fmtMoney(r.quotePrice) : "—"}</span>
+                  <IconButton
+                    icon={Trash2}
+                    label="حذف الطلب"
+                    tone="critical"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`حذف طلب "${r.itemName}" نهائياً؟ هذا الإجراء لا يمكن التراجع عنه.`)) {
+                        deleteRequest.mutate(r.id);
+                      }
+                    }}
+                  />
                 </div>
               </div>
             </Card>

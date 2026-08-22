@@ -34,6 +34,20 @@ export function useCreateMaterialRequest() {
   });
 }
 
+export function useDeleteMaterialRequest(projectId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (requestId: string) => {
+      const { error } = await supabase.from("material_requests").delete().eq("id", requestId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["material_requests", projectId] });
+    },
+  });
+}
+
 export interface SaveSourcingDetailsInput {
   requestId: string;
   projectId: string;
