@@ -12,7 +12,8 @@ import { useUpdateDepartment } from "@/features/company/api/useUpdateDepartment"
 import { useDeleteDepartment } from "@/features/company/api/useDeleteDepartment";
 import { useCompany } from "@/features/company/useCompany";
 import { DEPARTMENT_TYPE_LABEL } from "@/features/company/departmentTypeLabels";
-import type { Department, DepartmentType, MemberRole } from "@/types/domain";
+import { PRESET_MEMBER_TITLES } from "@/features/company/memberTitles";
+import type { Department, DepartmentMember, DepartmentType, MemberRole } from "@/types/domain";
 
 const ROLE_LABEL: Record<MemberRole, string> = { member: "عضو", head: "رئيس القسم" };
 
@@ -20,6 +21,67 @@ function roleLabel(dept: Department | undefined, role: MemberRole): string {
   if (!dept) return ROLE_LABEL[role];
   if (role === "head") return dept.headLabel || ROLE_LABEL.head;
   return dept.memberLabel || ROLE_LABEL.member;
+}
+
+const CUSTOM_TITLE_VALUE = "__custom__";
+
+/** محرر مسمى وظيفي لعضو واحد: قائمة جاهزة + خيار "مسمى آخر..." يفتح حقل نص حر. */
+function MemberTitleEditor({
+  member,
+  onSave,
+}: {
+  member: DepartmentMember;
+  onSave: (title: string | null) => void;
+}) {
+  const isPreset = member.title === null || PRESET_MEMBER_TITLES.includes(member.title);
+  const [customMode, setCustomMode] = useState(!isPreset);
+  const [customValue, setCustomValue] = useState(isPreset ? "" : member.title ?? "");
+
+  if (customMode) {
+    return (
+      <div className="flex items-center gap-1">
+        <TextInput
+          value={customValue}
+          onChange={(e) => setCustomValue(e.target.value)}
+          onBlur={() => onSave(customValue.trim() || null)}
+          placeholder="اكتب المسمى الوظيفي"
+          className="!w-32 !py-1 !text-xs"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setCustomMode(false);
+            setCustomValue("");
+          }}
+          className="text-[10px] text-ink-soft bg-transparent border-none cursor-pointer underline"
+        >
+          قائمة
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <select
+      value={member.title ?? ""}
+      onChange={(e) => {
+        if (e.target.value === CUSTOM_TITLE_VALUE) {
+          setCustomMode(true);
+          return;
+        }
+        onSave(e.target.value || null);
+      }}
+      className="text-xs px-2 py-1 border border-line rounded-lg bg-white"
+    >
+      <option value="">بدون مسمى محدد</option>
+      {PRESET_MEMBER_TITLES.map((t) => (
+        <option key={t} value={t}>
+          {t}
+        </option>
+      ))}
+      <option value={CUSTOM_TITLE_VALUE}>مسمى آخر...</option>
+    </select>
+  );
 }
 
 function getDescendantIds(departments: Department[], rootId: string): Set<string> {
@@ -301,9 +363,10 @@ export function TeamSection({ companyId }: { companyId: string }) {
                 <div className="flex flex-col gap-1.5">
                   {deptMembers.map((m) =>
                     canManageDept(dept.id) ? (
-                      <div key={m.id} className="flex items-center justify-between gap-2 text-sm">
+                      <div key={m.id} className="flex items-center justify-between gap-2 text-sm flex-wrap">
                         <span className="text-ink truncate">{m.fullName}</span>
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                          <MemberTitleEditor member={m} onSave={(title) => updateMember.mutate({ id: m.id, title })} />
                           <select
                             value={m.role}
                             onChange={(e) => updateMember.mutate({ id: m.id, role: e.target.value as MemberRole })}
@@ -329,7 +392,7 @@ export function TeamSection({ companyId }: { companyId: string }) {
                       <div key={m.id} className="flex items-center justify-between text-sm">
                         <span className="text-ink">{m.fullName}</span>
                         <span className="text-xs text-ink-soft bg-panel border border-line/60 rounded-full px-2 py-0.5">
-                          {roleLabel(dept, m.role)}
+                          {m.title || roleLabel(dept, m.role)}
                         </span>
                       </div>
                     )

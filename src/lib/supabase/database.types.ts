@@ -182,6 +182,7 @@ export interface Database {
           department_id: string;
           user_id: string;
           role: "member" | "head";
+          title: string | null;
           created_at: string;
         };
         Insert: {
@@ -189,6 +190,7 @@ export interface Database {
           department_id: string;
           user_id: string;
           role?: "member" | "head";
+          title?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["department_members"]["Insert"]>;

@@ -78,6 +78,7 @@ export interface DepartmentMember {
   userId: string;
   role: MemberRole;
   fullName: string;
+  title: string | null;
 }
 
 export type ProjectMemberRole = "manager" | "member";

@@ -14,12 +14,18 @@ export function approverTitle(
   const headDept = departments.find(
     (d) => d.type === stageDeptType && members.some((m) => m.userId === userId && m.departmentId === d.id && m.role === "head")
   );
-  if (headDept) return headDept.headLabel || "رئيس القسم";
+  if (headDept) {
+    const headMember = members.find((m) => m.userId === userId && m.departmentId === headDept.id && m.role === "head");
+    return headMember?.title || headDept.headLabel || "رئيس القسم";
+  }
 
   const execDept = departments.find(
     (d) => d.type === "executive" && members.some((m) => m.userId === userId && m.departmentId === d.id)
   );
-  if (execDept) return "الإدارة التنفيذية";
+  if (execDept) {
+    const execMember = members.find((m) => m.userId === userId && m.departmentId === execDept.id);
+    return execMember?.title || "الإدارة التنفيذية";
+  }
 
   return "—";
 }
