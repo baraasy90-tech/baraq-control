@@ -82,6 +82,7 @@ export function TeamSection({ companyId }: { companyId: string }) {
 
   const [newDeptParentId, setNewDeptParentId] = useState("");
   const [confirmDeleteDept, setConfirmDeleteDept] = useState<Department | null>(null);
+  const [deleteDeptError, setDeleteDeptError] = useState("");
   const [draggingDeptId, setDraggingDeptId] = useState<string | null>(null);
   const [dragOverDeptId, setDragOverDeptId] = useState<string | null>(null);
   const [dragOverRoot, setDragOverRoot] = useState(false);
@@ -105,10 +106,12 @@ export function TeamSection({ companyId }: { companyId: string }) {
 
   const handleDeleteDept = async () => {
     if (!confirmDeleteDept) return;
+    setDeleteDeptError("");
     try {
       await deleteDepartment.mutateAsync(confirmDeleteDept.id);
-    } finally {
       setConfirmDeleteDept(null);
+    } catch (err) {
+      setDeleteDeptError(err instanceof Error ? err.message : "تعذّر حذف القسم، حاول مجدداً");
     }
   };
 
@@ -289,7 +292,15 @@ export function TeamSection({ companyId }: { companyId: string }) {
                       {dept.parentDepartmentId && (
                         <IconButton icon={ArrowUp} label="رفع القسم درجة (تنزيله من التبعية الحالية)" onClick={() => raiseDeptLevel(dept)} />
                       )}
-                      <IconButton icon={Trash2} label="حذف القسم" tone="critical" onClick={() => setConfirmDeleteDept(dept)} />
+                      <IconButton
+                        icon={Trash2}
+                        label="حذف القسم"
+                        tone="critical"
+                        onClick={() => {
+                          setDeleteDeptError("");
+                          setConfirmDeleteDept(dept);
+                        }}
+                      />
                     </>
                   )}
                 </div>
@@ -507,6 +518,7 @@ export function TeamSection({ companyId }: { companyId: string }) {
             (حساباتهم تبقى موجودة، ولازم تضيفهم لقسم آخر لاحقاً إذا احتجت)، وأي أقسام فرعية تابعة له ستصبح أقساماً
             رئيسية مستقلة تلقائياً. لن يتأثر أي مشروع.
           </p>
+          <ErrorText>{deleteDeptError}</ErrorText>
           <div className="flex gap-2">
             <SecondaryButton onClick={() => setConfirmDeleteDept(null)} className="flex-1">
               إلغاء
