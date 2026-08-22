@@ -6,6 +6,7 @@ import { useMaterialRequests } from "@/features/procurement/api/useMaterialReque
 import { useCreateMaterialRequest } from "@/features/procurement/api/useSaveMaterialRequest";
 import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
+import { getErrorMessage } from "@/utils/errors";
 import { MATERIAL_STATUS_LABEL, MATERIAL_STATUS_TONE } from "@/features/procurement/statusLabels";
 
 export function MaterialRequestsListScreen() {
@@ -29,7 +30,7 @@ export function MaterialRequestsListScreen() {
       setNewName("");
       navigate(`/projects/${projectId}/materials/${result.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذّر إنشاء الطلب، حاول مجدداً");
+      setError(getErrorMessage(err, "تعذّر إنشاء الطلب، حاول مجدداً"));
     }
   };
 

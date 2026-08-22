@@ -12,6 +12,7 @@ import { useDepartmentMembers } from "@/features/company/api/useDepartmentMember
 import { useProfilesByIds } from "@/features/company/api/useProfilesByIds";
 import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
+import { getErrorMessage } from "@/utils/errors";
 import { MATERIAL_STATUS_LABEL, MATERIAL_STATUS_TONE } from "@/features/procurement/statusLabels";
 
 function numOrNull(v: string): number | null {
@@ -90,7 +91,7 @@ export function MaterialRequestScreen() {
       });
       setEditingPurchase(false);
     } catch (err) {
-      setPurchaseError(err instanceof Error ? err.message : "تعذّر حفظ بيانات عرض السعر، حاول مجدداً");
+      setPurchaseError(getErrorMessage(err, "تعذّر حفظ بيانات عرض السعر، حاول مجدداً"));
     }
   };
 

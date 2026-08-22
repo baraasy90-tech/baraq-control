@@ -15,6 +15,7 @@ import type { Department, DepartmentMember, MaterialRequest } from "@/types/doma
 import type { MiniProfile } from "@/features/company/api/useProfilesByIds";
 import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
+import { getErrorMessage } from "@/utils/errors";
 
 function numOrNull(v: string): number | null {
   const n = Number(v);
@@ -106,7 +107,7 @@ export function SourcingSection({
         neededBy: neededBy || null,
       });
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : "تعذّر حفظ البيانات، حاول مجدداً");
+      setEditError(getErrorMessage(err, "تعذّر حفظ البيانات، حاول مجدداً"));
     }
   };
 
@@ -120,7 +121,7 @@ export function SourcingSection({
       await submitSourcing.mutateAsync({ requestId: request.id, note: submitNote.trim() || null });
       setSubmitNote("");
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "تعذّر إرسال الطلب لقسم المشتريات، حاول مجدداً");
+      setSubmitError(getErrorMessage(err, "تعذّر إرسال الطلب لقسم المشتريات، حاول مجدداً"));
     }
   };
 
@@ -138,7 +139,7 @@ export function SourcingSection({
       setNewOptionPrice("");
       setNewOptionFiles(null);
     } catch (err) {
-      setOptionError(err instanceof Error ? err.message : "تعذّر إضافة العرض، حاول مجدداً");
+      setOptionError(getErrorMessage(err, "تعذّر إضافة العرض، حاول مجدداً"));
     }
   };
 

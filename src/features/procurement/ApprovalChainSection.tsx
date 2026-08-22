@@ -12,6 +12,7 @@ import {
 } from "@/features/procurement/api/useApprovalChainActions";
 import type { MiniProfile } from "@/features/company/api/useProfilesByIds";
 import { fmt } from "@/utils/dates";
+import { getErrorMessage } from "@/utils/errors";
 
 function personName(userId: string | null, profilesById: Map<string, MiniProfile>): string {
   if (!userId) return "—";
@@ -401,7 +402,7 @@ export function ApprovalChainSection({
       await submit.mutateAsync({ requestId, steps, note });
       setShowBuilder(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذّر تقديم سلسلة الاعتماد، حاول مجدداً");
+      setError(getErrorMessage(err, "تعذّر تقديم سلسلة الاعتماد، حاول مجدداً"));
     }
   };
 
