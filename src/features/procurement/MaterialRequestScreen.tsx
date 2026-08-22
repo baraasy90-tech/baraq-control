@@ -89,8 +89,8 @@ export function MaterialRequestScreen() {
         attachmentsNote: attachmentsNote.trim() || null,
       });
       setEditingPurchase(false);
-    } catch {
-      setPurchaseError("تعذّر حفظ بيانات عرض السعر، حاول مجدداً");
+    } catch (err) {
+      setPurchaseError(err instanceof Error ? err.message : "تعذّر حفظ بيانات عرض السعر، حاول مجدداً");
     }
   };
 

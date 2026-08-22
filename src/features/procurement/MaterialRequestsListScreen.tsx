@@ -28,8 +28,8 @@ export function MaterialRequestsListScreen() {
       setCreating(false);
       setNewName("");
       navigate(`/projects/${projectId}/materials/${result.id}`);
-    } catch {
-      setError("تعذّر إنشاء الطلب، حاول مجدداً");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذّر إنشاء الطلب، حاول مجدداً");
     }
   };
 

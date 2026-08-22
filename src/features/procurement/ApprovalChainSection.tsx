@@ -400,8 +400,8 @@ export function ApprovalChainSection({
     try {
       await submit.mutateAsync({ requestId, steps, note });
       setShowBuilder(false);
-    } catch {
-      setError("تعذّر تقديم سلسلة الاعتماد، حاول مجدداً");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذّر تقديم سلسلة الاعتماد، حاول مجدداً");
     }
   };
 

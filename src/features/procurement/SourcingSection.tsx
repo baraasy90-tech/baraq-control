@@ -105,8 +105,8 @@ export function SourcingSection({
         targetUnitPrice: numOrNull(targetUnitPrice),
         neededBy: neededBy || null,
       });
-    } catch {
-      setEditError("تعذّر حفظ البيانات، حاول مجدداً");
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "تعذّر حفظ البيانات، حاول مجدداً");
     }
   };
 
@@ -119,8 +119,8 @@ export function SourcingSection({
     try {
       await submitSourcing.mutateAsync({ requestId: request.id, note: submitNote.trim() || null });
       setSubmitNote("");
-    } catch {
-      setSubmitError("تعذّر إرسال الطلب لقسم المشتريات، حاول مجدداً");
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "تعذّر إرسال الطلب لقسم المشتريات، حاول مجدداً");
     }
   };
 
@@ -137,8 +137,8 @@ export function SourcingSection({
       setNewOptionDesc("");
       setNewOptionPrice("");
       setNewOptionFiles(null);
-    } catch {
-      setOptionError("تعذّر إضافة العرض، حاول مجدداً");
+    } catch (err) {
+      setOptionError(err instanceof Error ? err.message : "تعذّر إضافة العرض، حاول مجدداً");
     }
   };
 
