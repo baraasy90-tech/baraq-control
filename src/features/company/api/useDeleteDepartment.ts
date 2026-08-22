@@ -6,8 +6,11 @@ export function useDeleteDepartment(companyId: string) {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("departments").delete().eq("id", id);
+      const { data, error } = await supabase.from("departments").delete().eq("id", id).select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("لا تملك صلاحية حذف هذا القسم");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["departments", companyId] });

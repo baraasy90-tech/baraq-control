@@ -87,6 +87,7 @@ export function StructureScreen() {
   const [editParentId, setEditParentId] = useState("");
   const [editError, setEditError] = useState("");
   const [confirmDeleteDept, setConfirmDeleteDept] = useState<Department | null>(null);
+  const [deleteError, setDeleteError] = useState("");
 
   const isOwner = company.createdBy === profile.id;
   const isExecutive = members.some(
@@ -172,12 +173,13 @@ export function StructureScreen() {
 
   const handleDeleteDept = async () => {
     if (!confirmDeleteDept) return;
+    setDeleteError("");
     try {
       await deleteDepartment.mutateAsync(confirmDeleteDept.id);
       setConfirmDeleteDept(null);
       setEditingDept(null);
     } catch {
-      setConfirmDeleteDept(null);
+      setDeleteError("تعذّر حذف القسم — يلزم صلاحية مالك الحساب أو الإدارة التنفيذية");
     }
   };
 
@@ -397,7 +399,10 @@ export function StructureScreen() {
               icon={Trash2}
               label="حذف القسم"
               tone="critical"
-              onClick={() => setConfirmDeleteDept(editingDept)}
+              onClick={() => {
+                setDeleteError("");
+                setConfirmDeleteDept(editingDept);
+              }}
             />
           </div>
         </Modal>
@@ -408,6 +413,7 @@ export function StructureScreen() {
           <p className="text-sm text-ink-soft mb-5">
             هل أنت متأكد من حذف قسم "{confirmDeleteDept.name}"؟ سيتم فك ارتباط أي أقسام أو أعضاء تابعين له.
           </p>
+          <ErrorText>{deleteError}</ErrorText>
           <div className="flex gap-2">
             <SecondaryButton onClick={() => setConfirmDeleteDept(null)} className="flex-1">
               إلغاء
