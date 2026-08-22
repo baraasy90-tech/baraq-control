@@ -311,19 +311,84 @@ export interface InternalRequest {
   id: string;
   companyId: string;
   userId: string;
-  departmentId: string | null;
-  targetUserId: string | null;
   type: InternalRequestType | null;
   title: string;
   description: string | null;
   startDate: string | null;
   endDate: string | null;
-  attachmentUrl: string | null;
   status: InternalRequestStatus;
-  reviewedBy: string | null;
-  reviewedAt: string | null;
-  reviewNote: string | null;
   createdAt: string;
+}
+
+export type ApprovalChainType = "linear" | "network";
+export type ApprovalChainStatus = "pending" | "approved" | "rejected";
+export type ApprovalStepStatus = "pending" | "approved" | "rejected" | "skipped";
+
+export interface ApprovalChainStepInput {
+  departmentId: string | null;
+  userId: string | null;
+}
+
+export interface ApprovalChainTemplate {
+  id: string;
+  companyId: string;
+  name: string;
+  chainType: ApprovalChainType;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export interface ApprovalChainTemplateStep {
+  id: string;
+  templateId: string;
+  stepOrder: number;
+  departmentId: string | null;
+  assignedUserId: string | null;
+}
+
+export interface InternalApprovalChain {
+  id: string;
+  internalRequestId: string;
+  chainType: ApprovalChainType;
+  status: ApprovalChainStatus;
+  createdBy: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+  requesterNote: string | null;
+}
+
+export interface InternalApprovalChainStep {
+  id: string;
+  chainId: string;
+  stepOrder: number;
+  departmentId: string | null;
+  assignedUserId: string | null;
+  status: ApprovalStepStatus;
+  routedBy: string | null;
+  routedAt: string | null;
+  actedBy: string | null;
+  actedAt: string | null;
+  note: string | null;
+  insertedBy: string | null;
+  createdAt: string;
+}
+
+export interface InternalRequestAttachment {
+  id: string;
+  requestId: string;
+  fileName: string;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export interface InternalRequestAttachmentRevision {
+  id: string;
+  attachmentId: string;
+  revisionNumber: number;
+  fileUrl: string;
+  uploadedBy: string | null;
+  uploadedAt: string;
+  note: string | null;
 }
 
 export type ContractStatus = "draft" | "pending_pm_approval" | "pending_finance_approval" | "approved" | "rejected";

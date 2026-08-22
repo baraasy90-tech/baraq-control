@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { mapInternalRequest } from "@/features/requests/api/mapInternalRequest";
-import type { InternalRequest, InternalRequestType } from "@/types/domain";
+import type { ApprovalChainStepInput, ApprovalChainType, InternalRequest, InternalRequestType } from "@/types/domain";
 
 /** طلبات المستخدم الحالي فقط (التي أرسلها بنفسه). */
 export function useMyInternalRequests(userId: string | undefined) {
@@ -21,7 +21,7 @@ export function useMyInternalRequests(userId: string | undefined) {
 }
 
 /** كل الطلبات التي يسمح للمستخدم الحالي برؤيتها عبر الشركة — تشمل طلباته الخاصة، بالإضافة
- * لأي طلب موجّه إليه شخصياً أو لقسم يرأسه (تُقرَّر تلقائياً عبر RLS، لا فلترة يدوية هنا). */
+ * لأي طلب فيه خطوة اعتماد موجّهة إليه شخصياً أو لقسم يرأسه (تُقرَّر تلقائياً عبر RLS). */
 export function useCompanyInternalRequests(companyId: string | undefined) {
   return useQuery({
     queryKey: ["company-internal-requests", companyId],
@@ -38,54 +38,38 @@ export function useCompanyInternalRequests(companyId: string | undefined) {
   });
 }
 
+function toStepsJson(steps: ApprovalChainStepInput[]) {
+  return steps.map((s) => ({ department_id: s.departmentId, user_id: s.userId }));
+}
+
 export function useCreateInternalRequest() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: {
-      companyId: string;
-      userId: string;
-      departmentId: string;
-      targetUserId: string | null;
       type: InternalRequestType | null;
       title: string;
       description: string | null;
       startDate: string | null;
       endDate: string | null;
-      attachmentUrl: string | null;
+      chainType: ApprovalChainType;
+      steps: ApprovalChainStepInput[];
+      note: string | null;
+      templateId: string | null;
     }) => {
-      const { error } = await supabase.from("internal_requests").insert({
-        company_id: input.companyId,
-        user_id: input.userId,
-        department_id: input.departmentId,
-        target_user_id: input.targetUserId,
-        type: input.type,
-        title: input.title,
-        description: input.description,
-        start_date: input.startDate,
-        end_date: input.endDate,
-        attachment_url: input.attachmentUrl,
+      const { data, error } = await supabase.rpc("create_internal_request", {
+        p_type: input.type,
+        p_title: input.title,
+        p_description: input.description,
+        p_start_date: input.startDate,
+        p_end_date: input.endDate,
+        p_chain_type: input.chainType,
+        p_steps: input.templateId ? null : toStepsJson(input.steps),
+        p_note: input.note,
+        p_template_id: input.templateId,
       });
       if (error) throw error;
-    },
-    onSuccess: (_data, input) => {
-      queryClient.invalidateQueries({ queryKey: ["my-internal-requests", input.userId] });
-      queryClient.invalidateQueries({ queryKey: ["company-internal-requests", input.companyId] });
-    },
-  });
-}
-
-export function useReviewInternalRequest() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ requestId, approve, note }: { requestId: string; approve: boolean; note: string | null }) => {
-      const { error } = await supabase.rpc("review_internal_request", {
-        p_request_id: requestId,
-        p_approve: approve,
-        p_note: note,
-      });
-      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-internal-requests"] });

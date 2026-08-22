@@ -653,39 +653,163 @@ export interface Database {
           id: string;
           company_id: string;
           user_id: string;
-          department_id: string | null;
-          target_user_id: string | null;
           type: "leave" | "contract_renewal" | "other" | null;
           title: string;
           description: string | null;
           start_date: string | null;
           end_date: string | null;
-          attachment_url: string | null;
           status: "pending" | "approved" | "rejected";
-          reviewed_by: string | null;
-          reviewed_at: string | null;
-          review_note: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           company_id: string;
           user_id: string;
-          department_id?: string | null;
-          target_user_id?: string | null;
           type?: "leave" | "contract_renewal" | "other" | null;
           title: string;
           description?: string | null;
           start_date?: string | null;
           end_date?: string | null;
-          attachment_url?: string | null;
           status?: "pending" | "approved" | "rejected";
-          reviewed_by?: string | null;
-          reviewed_at?: string | null;
-          review_note?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["internal_requests"]["Insert"]>;
+        Relationships: [];
+      };
+      approval_chain_templates: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          chain_type: "linear" | "network";
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          chain_type?: "linear" | "network";
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["approval_chain_templates"]["Insert"]>;
+        Relationships: [];
+      };
+      approval_chain_template_steps: {
+        Row: {
+          id: string;
+          template_id: string;
+          step_order: number;
+          department_id: string | null;
+          assigned_user_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          template_id: string;
+          step_order: number;
+          department_id?: string | null;
+          assigned_user_id?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["approval_chain_template_steps"]["Insert"]>;
+        Relationships: [];
+      };
+      internal_approval_chains: {
+        Row: {
+          id: string;
+          internal_request_id: string;
+          chain_type: "linear" | "network";
+          status: "pending" | "approved" | "rejected";
+          created_by: string | null;
+          created_at: string;
+          decided_at: string | null;
+          requester_note: string | null;
+        };
+        Insert: {
+          id?: string;
+          internal_request_id: string;
+          chain_type?: "linear" | "network";
+          status?: "pending" | "approved" | "rejected";
+          created_by?: string | null;
+          created_at?: string;
+          decided_at?: string | null;
+          requester_note?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["internal_approval_chains"]["Insert"]>;
+        Relationships: [];
+      };
+      internal_approval_chain_steps: {
+        Row: {
+          id: string;
+          chain_id: string;
+          step_order: number;
+          department_id: string | null;
+          assigned_user_id: string | null;
+          status: "pending" | "approved" | "rejected" | "skipped";
+          routed_by: string | null;
+          routed_at: string | null;
+          acted_by: string | null;
+          acted_at: string | null;
+          note: string | null;
+          inserted_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          chain_id: string;
+          step_order: number;
+          department_id?: string | null;
+          assigned_user_id?: string | null;
+          status?: "pending" | "approved" | "rejected" | "skipped";
+          routed_by?: string | null;
+          routed_at?: string | null;
+          acted_by?: string | null;
+          acted_at?: string | null;
+          note?: string | null;
+          inserted_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["internal_approval_chain_steps"]["Insert"]>;
+        Relationships: [];
+      };
+      internal_request_attachments: {
+        Row: {
+          id: string;
+          request_id: string;
+          file_name: string;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          request_id: string;
+          file_name: string;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["internal_request_attachments"]["Insert"]>;
+        Relationships: [];
+      };
+      internal_request_attachment_revisions: {
+        Row: {
+          id: string;
+          attachment_id: string;
+          revision_number: number;
+          file_url: string;
+          uploaded_by: string | null;
+          uploaded_at: string;
+          note: string | null;
+        };
+        Insert: {
+          id?: string;
+          attachment_id: string;
+          revision_number: number;
+          file_url: string;
+          uploaded_by?: string | null;
+          uploaded_at?: string;
+          note?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["internal_request_attachment_revisions"]["Insert"]>;
         Relationships: [];
       };
       contract_extra_works: {
@@ -904,9 +1028,51 @@ export interface Database {
         Args: { p_contract_id: string; p_approve: boolean; p_note: string | null };
         Returns: undefined;
       };
-      review_internal_request: {
-        Args: { p_request_id: string; p_approve: boolean; p_note: string | null };
+      create_approval_chain_template: {
+        Args: { p_name: string; p_chain_type: string; p_steps: Json };
+        Returns: string;
+      };
+      delete_approval_chain_template: {
+        Args: { p_template_id: string };
         Returns: undefined;
+      };
+      create_internal_request: {
+        Args: {
+          p_type: string | null;
+          p_title: string;
+          p_description: string | null;
+          p_start_date: string | null;
+          p_end_date: string | null;
+          p_chain_type: string | null;
+          p_steps: Json | null;
+          p_note: string | null;
+          p_template_id: string | null;
+        };
+        Returns: string;
+      };
+      route_internal_approval_step: {
+        Args: { p_step_id: string; p_user_id: string };
+        Returns: undefined;
+      };
+      insert_internal_approval_step: {
+        Args: { p_step_id: string; p_department_id: string | null; p_user_id: string | null; p_note: string | null };
+        Returns: undefined;
+      };
+      review_internal_approval_step: {
+        Args: { p_step_id: string; p_approve: boolean; p_note: string | null };
+        Returns: undefined;
+      };
+      send_back_internal_approval_step: {
+        Args: { p_step_id: string; p_target_step_id: string; p_note: string | null };
+        Returns: undefined;
+      };
+      add_internal_request_attachment: {
+        Args: { p_request_id: string; p_file_name: string; p_file_url: string };
+        Returns: string;
+      };
+      add_internal_request_attachment_revision: {
+        Args: { p_attachment_id: string; p_file_url: string; p_note: string | null };
+        Returns: string;
       };
       submit_material_sample: {
         Args: { p_request_id: string };
