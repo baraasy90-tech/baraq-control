@@ -8,6 +8,7 @@ export function mapProject(row: ProjectRow): Project {
     id: row.id,
     companyId: row.company_id,
     departmentId: row.department_id,
+    procurementDepartmentId: row.procurement_department_id,
     name: row.name,
     managerName: row.manager_name,
     location: row.location,

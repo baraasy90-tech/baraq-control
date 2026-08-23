@@ -147,6 +147,7 @@ export interface Project {
   id: string;
   companyId: string;
   departmentId: string | null;
+  procurementDepartmentId: string | null;
   name: string;
   managerName: string;
   location: string;

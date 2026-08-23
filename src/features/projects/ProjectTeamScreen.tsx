@@ -1,23 +1,113 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Trash2 } from "lucide-react";
-import { Card, SecondaryButton, PrimaryButton, IconButton, ErrorText } from "@/components/ui";
+import { Card, SecondaryButton, PrimaryButton, IconButton, ErrorText, FieldLabel } from "@/components/ui";
 import { useCompany } from "@/features/company/useCompany";
 import { useCompanyMembers } from "@/features/company/api/useCompanyMembers";
+import { useDepartments } from "@/features/company/api/useDepartments";
+import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
 import { useProjectMembers } from "@/features/projects/api/useProjectMembers";
 import { useAddProjectMember } from "@/features/projects/api/useAddProjectMember";
 import { useRemoveProjectMember } from "@/features/projects/api/useRemoveProjectMember";
+import { useSetProjectDepartments } from "@/features/projects/api/useSetProjectDepartments";
 import type { Project, ProjectMemberRole } from "@/types/domain";
 
 const ROLE_LABEL: Record<ProjectMemberRole, string> = { manager: "مدير المشروع", member: "عضو فريق" };
 
+function ProjectDepartmentsCard({ project, isOrgManager }: { project: Project; isOrgManager: boolean }) {
+  const { company } = useCompany();
+  const departmentsQuery = useDepartments(company.id);
+  const departments = departmentsQuery.data ?? [];
+  const pmDepartments = departments.filter((d) => d.type === "project_management");
+  const procurementDepartments = departments.filter((d) => d.type === "procurement");
+  const setDepartments = useSetProjectDepartments(company.id);
+
+  const [departmentId, setDepartmentId] = useState(project.departmentId ?? "");
+  const [procurementDepartmentId, setProcurementDepartmentId] = useState(project.procurementDepartmentId ?? "");
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  if (!isOrgManager) return null;
+
+  const changed = departmentId !== (project.departmentId ?? "") || procurementDepartmentId !== (project.procurementDepartmentId ?? "");
+
+  const handleSave = async () => {
+    setError("");
+    setSaved(false);
+    try {
+      await setDepartments.mutateAsync({
+        projectId: project.id,
+        departmentId: departmentId || null,
+        procurementDepartmentId: procurementDepartmentId || null,
+      });
+      setSaved(true);
+    } catch {
+      setError("تعذّر الحفظ، حاول مجدداً");
+    }
+  };
+
+  return (
+    <Card className="mb-4">
+      <h2 className="text-sm font-bold text-ink mb-3">الأقسام المسؤولة عن المشروع</h2>
+      <p className="text-xs text-ink-soft mb-3">
+        يحدد هذا أي قسم يستلم طلبات المواد الخاصة بهذا المشروع للاعتماد. رئيس كل قسم يقدر لاحقاً يوجّه الطلب لموظف
+        محدد من فريقه بدل أن يتصرف بنفسه.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        <div>
+          <FieldLabel>قسم إدارة المشروع</FieldLabel>
+          <select
+            value={departmentId}
+            onChange={(e) => setDepartmentId(e.target.value)}
+            className="w-full px-3 py-2.5 border border-line rounded-lg text-sm font-sans bg-white box-border"
+          >
+            <option value="">— لم يُحدَّد —</option>
+            {pmDepartments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <FieldLabel>قسم المشتريات</FieldLabel>
+          <select
+            value={procurementDepartmentId}
+            onChange={(e) => setProcurementDepartmentId(e.target.value)}
+            className="w-full px-3 py-2.5 border border-line rounded-lg text-sm font-sans bg-white box-border"
+          >
+            <option value="">— لم يُحدَّد —</option>
+            {procurementDepartments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <ErrorText>{error}</ErrorText>
+      <PrimaryButton onClick={handleSave} disabled={!changed || setDepartments.isPending} className="w-auto px-4 py-2 text-sm">
+        {setDepartments.isPending ? "جارٍ الحفظ..." : saved && !changed ? "تم الحفظ" : "حفظ"}
+      </PrimaryButton>
+    </Card>
+  );
+}
+
 export function ProjectTeamScreen({ project }: { project: Project }) {
   const navigate = useNavigate();
-  const { company } = useCompany();
+  const { company, profile } = useCompany();
   const membersQuery = useProjectMembers(project.id);
   const companyMembersQuery = useCompanyMembers(company.id);
   const addMember = useAddProjectMember();
   const removeMember = useRemoveProjectMember(project.id);
+
+  const orgDepartmentsQuery = useDepartments(company.id);
+  const orgDepartments = orgDepartmentsQuery.data ?? [];
+  const orgMembersQuery = useDepartmentMembers(orgDepartments.map((d) => d.id));
+  const orgMembers = orgMembersQuery.data ?? [];
+  const isOwner = company.createdBy === profile.id;
+  const isExecutive = orgMembers.some((m) => m.userId === profile.id && orgDepartments.find((d) => d.id === m.departmentId)?.type === "executive");
+  const isOrgManager = isOwner || isExecutive;
 
   const members = membersQuery.data ?? [];
   const memberUserIds = new Set(members.map((m) => m.userId));
@@ -46,6 +136,8 @@ export function ProjectTeamScreen({ project }: { project: Project }) {
         <h1 className="text-lg font-bold text-ink truncate">فريق المشروع — {project.name}</h1>
         <SecondaryButton onClick={() => navigate(`/projects/${project.id}`)}>رجوع</SecondaryButton>
       </div>
+
+      <ProjectDepartmentsCard project={project} isOrgManager={isOrgManager} />
 
       <Card className="mb-4">
         <h2 className="text-sm font-bold text-ink mb-3">الأعضاء الحاليون</h2>

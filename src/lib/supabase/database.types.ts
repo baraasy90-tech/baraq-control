@@ -95,6 +95,7 @@ export interface Database {
           id: string;
           company_id: string;
           department_id: string | null;
+          procurement_department_id: string | null;
           name: string;
           manager_name: string;
           location: string;
@@ -113,6 +114,7 @@ export interface Database {
           id?: string;
           company_id: string;
           department_id?: string | null;
+          procurement_department_id?: string | null;
           name: string;
           manager_name?: string;
           location?: string;
@@ -1226,6 +1228,10 @@ export interface Database {
       regenerate_company_code: {
         Args: { p_company_id: string };
         Returns: { result_company_code: string; result_expires_at: string }[];
+      };
+      set_project_departments: {
+        Args: { p_project_id: string; p_department_id: string | null; p_procurement_department_id: string | null };
+        Returns: undefined;
       };
     };
     Enums: Record<string, never>;
