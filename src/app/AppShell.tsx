@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, Link } from "react-router-dom";
 import {
   LayoutGrid,
   ListChecks,
@@ -13,10 +13,13 @@ import {
   ChevronsLeft,
   PenLine,
   UserRound,
+  ShieldCheck,
 } from "lucide-react";
 import { useCompany } from "@/features/company/useCompany";
 import { QuickSignOutButton } from "@/features/auth/QuickSignOutButton";
 import { MySignatureModal } from "@/features/company/MySignatureModal";
+import { useIsPlatformAdmin } from "@/features/billing/useIsPlatformAdmin";
+import { fmt } from "@/utils/dates";
 import type { Company, Profile } from "@/types/domain";
 
 interface NavItem {
@@ -83,6 +86,52 @@ function SidebarNav({ collapsed, pathname, onNavigate }: { collapsed: boolean; p
   );
 }
 
+function PlatformAdminLink({ collapsed }: { collapsed: boolean }) {
+  const { data: isPlatformAdmin } = useIsPlatformAdmin();
+  if (!isPlatformAdmin) return null;
+
+  return (
+    <Link
+      to="/platform-admin"
+      title={collapsed ? "إدارة المنصة" : undefined}
+      className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold no-underline text-ink-soft hover:bg-bg transition-colors ${
+        collapsed ? "justify-center px-0" : "mx-2"
+      }`}
+    >
+      <ShieldCheck size={18} strokeWidth={2.2} />
+      {!collapsed && <span className="truncate">إدارة المنصة</span>}
+    </Link>
+  );
+}
+
+function TrialBanner({ company, isOwner }: { company: Company; isOwner: boolean }) {
+  if (!isOwner) return null;
+  const daysLeft = Math.ceil((new Date(company.trialEndsAt).getTime() - Date.now()) / 86400000);
+
+  if (company.subscriptionStatus === "trial" && daysLeft <= 5 && daysLeft > 0) {
+    return (
+      <div className="bg-warn/10 border-b border-warn/30 px-4 py-2 text-xs font-semibold text-ink text-center">
+        فترتك التجريبية تنتهي خلال {daysLeft} {daysLeft === 1 ? "يوم" : "أيام"} (بتاريخ {fmt(company.trialEndsAt)}) — تواصل معنا لتفعيل الاشتراك واستمرار الوصول لكل مشاريعك.
+      </div>
+    );
+  }
+  if (company.subscriptionStatus === "trial" && daysLeft <= 0) {
+    return (
+      <div className="bg-critical/10 border-b border-critical/30 px-4 py-2 text-xs font-semibold text-critical text-center">
+        انتهت فترتك التجريبية بتاريخ {fmt(company.trialEndsAt)} — تواصل معنا لتفعيل الاشتراك.
+      </div>
+    );
+  }
+  if (company.subscriptionStatus === "expired" || company.subscriptionStatus === "canceled") {
+    return (
+      <div className="bg-critical/10 border-b border-critical/30 px-4 py-2 text-xs font-semibold text-critical text-center">
+        اشتراكك غير نشط حالياً — تواصل معنا لتفعيله.
+      </div>
+    );
+  }
+  return null;
+}
+
 function SignatureRow({ profile, collapsed, onOpen }: { profile: Profile; collapsed: boolean; onOpen: () => void }) {
   return (
     <button
@@ -114,6 +163,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         <SidebarBrand company={company} collapsed={collapsed} />
         <SidebarNav collapsed={collapsed} pathname={location.pathname} />
+        <PlatformAdminLink collapsed={collapsed} />
         <div className="border-t border-line/60">
           <SignatureRow profile={profile} collapsed={collapsed} onOpen={() => setSignatureOpen(true)} />
           <QuickSignOutButton collapsed={collapsed} />
@@ -141,6 +191,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
             </div>
             <SidebarNav collapsed={false} pathname={location.pathname} onNavigate={() => setMobileOpen(false)} />
+            <PlatformAdminLink collapsed={false} />
             <div className="border-t border-line/60">
               <SignatureRow profile={profile} collapsed={false} onOpen={() => setSignatureOpen(true)} />
               <QuickSignOutButton collapsed={false} />
@@ -169,6 +220,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
+        <TrialBanner company={company} isOwner={profile.id === company.createdBy} />
         <main className="flex-1 min-w-0">{children}</main>
       </div>
 

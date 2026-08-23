@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
+import { getFileUrl } from "@/lib/supabase/storage";
 import type { Database } from "@/lib/supabase/database.types";
 import type { Company, Profile } from "@/types/domain";
 
@@ -12,6 +13,7 @@ export function mapCompany(row: CompanyRow): Company {
     createdBy: row.created_by,
     name: row.name,
     companyCode: row.company_code,
+    companyCodeExpiresAt: row.company_code_expires_at,
     countryCode: row.country_code,
     logoUrl: row.logo_url,
     archiveFolderName: row.archive_folder_name,
@@ -29,6 +31,9 @@ export function mapCompany(row: CompanyRow): Company {
     },
     headerColor: row.header_color,
     vatRate: row.vat_rate,
+    subscriptionStatus: row.subscription_status,
+    trialEndsAt: row.trial_ends_at,
+    subscriptionNote: row.subscription_note,
   };
 }
 
@@ -62,7 +67,7 @@ export function useProfile() {
           id: profileRow.id,
           fullName: profileRow.full_name,
           companyId: profileRow.company_id,
-          signatureUrl: profileRow.signature_url,
+          signatureUrl: await getFileUrl("signatures", profileRow.signature_url),
         },
         company,
       };

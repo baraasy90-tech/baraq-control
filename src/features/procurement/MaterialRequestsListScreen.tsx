@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Package, Plus } from "lucide-react";
-import { Card, SecondaryButton, PrimaryButton, FieldLabel, TextInput, ErrorText, Modal } from "@/components/ui";
+import { Package, Plus, Trash2 } from "lucide-react";
+import { Card, SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText, Modal } from "@/components/ui";
 import { useMaterialRequests } from "@/features/procurement/api/useMaterialRequests";
-import { useCreateMaterialRequest } from "@/features/procurement/api/useSaveMaterialRequest";
+import { useCreateMaterialRequest, useDeleteMaterialRequest } from "@/features/procurement/api/useSaveMaterialRequest";
 import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
+import { getErrorMessage } from "@/utils/errors";
 import { MATERIAL_STATUS_LABEL, MATERIAL_STATUS_TONE } from "@/features/procurement/statusLabels";
 
 export function MaterialRequestsListScreen() {
@@ -13,6 +14,7 @@ export function MaterialRequestsListScreen() {
   const navigate = useNavigate();
   const requestsQuery = useMaterialRequests(projectId);
   const createRequest = useCreateMaterialRequest();
+  const deleteRequest = useDeleteMaterialRequest(projectId);
 
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
@@ -28,8 +30,8 @@ export function MaterialRequestsListScreen() {
       setCreating(false);
       setNewName("");
       navigate(`/projects/${projectId}/materials/${result.id}`);
-    } catch {
-      setError("تعذّر إنشاء الطلب، حاول مجدداً");
+    } catch (err) {
+      setError(getErrorMessage(err, "تعذّر إنشاء الطلب، حاول مجدداً"));
     }
   };
 
@@ -61,18 +63,25 @@ export function MaterialRequestsListScreen() {
                   <Package size={18} className="text-primary shrink-0" />
                   <div className="min-w-0">
                     <div className="text-sm font-bold text-ink truncate">{r.itemName}</div>
-                    <div className="text-xs text-ink-soft">
-                      {r.sampleReceivedAt ? `عينة: ${fmt(r.sampleReceivedAt)}` : "بدون تاريخ استلام عينة"}
-                    </div>
+                    <div className="text-xs text-ink-soft">{fmt(r.createdAt)}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${MATERIAL_STATUS_TONE[r.status]}`}>
                     {MATERIAL_STATUS_LABEL[r.status]}
                   </span>
-                  <span className="text-sm font-bold text-ink font-mono">
-                    {r.quotePrice ? fmtMoney(r.quotePrice) : r.samplePrice ? fmtMoney(r.samplePrice) : "—"}
-                  </span>
+                  <span className="text-sm font-bold text-ink font-mono">{r.quotePrice ? fmtMoney(r.quotePrice) : "—"}</span>
+                  <IconButton
+                    icon={Trash2}
+                    label="حذف الطلب"
+                    tone="critical"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`حذف طلب "${r.itemName}" نهائياً؟ هذا الإجراء لا يمكن التراجع عنه.`)) {
+                        deleteRequest.mutate(r.id);
+                      }
+                    }}
+                  />
                 </div>
               </div>
             </Card>

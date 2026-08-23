@@ -16,6 +16,8 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { useProfile } from "@/features/company/useProfile";
 import { useDepartments } from "@/features/company/api/useDepartments";
 import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
+import { useRegenerateCompanyCode } from "@/features/company/useRegenerateCompanyCode";
+import { fmt } from "@/utils/dates";
 import type { Company, StorageType } from "@/types/domain";
 
 const HEADER_COLOR_PRESETS = ["#171B26", "#E86B2C", "#2E6FE8", "#8A3FE8", "#2E9E52", "#D64545", "#0EA5A5", "#5B6472"];
@@ -89,6 +91,7 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
   const [localPath, setLocalPath] = useState(company.archiveLocalPath ?? "");
   const [print, setPrint] = useState<PrintSettingsValue>(company.print);
   const [headerColor, setHeaderColor] = useState(company.headerColor);
+  const regenerateCode = useRegenerateCompanyCode();
   const [submitError, setSubmitError] = useState("");
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -260,8 +263,8 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
 
           {activeSection === "team" && (
             <>
-              <SectionCard title="رمز انضمام الموظفين" description='شاركه مع أي موظف ليُنشئ حسابه بنفسه ويُضاف مباشرة لشركتك (اختر "إنشاء حساب موظف" بشاشة الدخول).'>
-                <div className="flex items-center gap-2">
+              <SectionCard title="رمز انضمام الموظفين" description='شاركه مع أي موظف ليُنشئ حسابه بنفسه ويُضاف مباشرة لشركتك (اختر "إنشاء حساب موظف" بشاشة الدخول). ينتهي تلقائياً بعد 30 يوماً لأسباب أمنية — جدّده عند الحاجة.'>
+                <div className="flex flex-wrap items-center gap-2 mb-2">
                   <span className="font-mono text-sm font-bold text-ink bg-bg border border-line/60 rounded-lg px-3 py-2 tracking-widest">
                     {company.companyCode}
                   </span>
@@ -272,7 +275,20 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
                   >
                     نسخ
                   </SecondaryButton>
+                  <SecondaryButton
+                    type="button"
+                    onClick={() => regenerateCode.mutate(company.id)}
+                    className="text-xs px-3 py-2"
+                  >
+                    {regenerateCode.isPending ? "جارٍ التجديد..." : "تجديد الرمز"}
+                  </SecondaryButton>
                 </div>
+                <p className="text-xs text-ink-soft">
+                  {company.companyCodeExpiresAt
+                    ? `صالح حتى ${fmt(company.companyCodeExpiresAt)}`
+                    : "لا يوجد تاريخ انتهاء مسجّل — جدّد الرمز الآن"}
+                </p>
+                <ErrorText>{regenerateCode.isError ? "تعذّر تجديد الرمز" : ""}</ErrorText>
               </SectionCard>
               <TeamSection companyId={company.id} />
             </>

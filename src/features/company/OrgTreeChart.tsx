@@ -51,7 +51,7 @@ function DeptCard({
       </div>
       {head ? (
         <div className="text-xs text-ink-soft mt-1 truncate">
-          {roleLabel(dept, "head")}: {head.fullName}
+          {head.title || roleLabel(dept, "head")}: {head.fullName}
         </div>
       ) : (
         <div className="text-xs text-ink-soft/70 mt-1">بدون {roleLabel(dept, "head")}</div>

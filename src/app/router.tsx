@@ -40,6 +40,7 @@ const ProjectMaterialsPage = lazy(() =>
 const ProjectMaterialDetailPage = lazy(() =>
   import("@/app/ProjectMaterialDetailPage").then((m) => ({ default: m.ProjectMaterialDetailPage }))
 );
+const PlatformAdminPage = lazy(() => import("@/app/PlatformAdminPage").then((m) => ({ default: m.PlatformAdminPage })));
 
 export const router = createBrowserRouter([
   { path: "/join/:token", element: <JoinScreen /> },
@@ -56,6 +57,7 @@ export const router = createBrowserRouter([
       { path: "structure", element: <StructurePage /> },
       { path: "departments", element: <Navigate to="/structure" replace /> },
       { path: "control-panel", element: <ControlPanelPage /> },
+      { path: "platform-admin", element: <PlatformAdminPage /> },
       { path: "projects/:id", element: <ProjectPage /> },
       { path: "projects/:id/appearance", element: <ProjectAppearancePage /> },
       { path: "projects/:id/scope", element: <ProjectScopePage /> },

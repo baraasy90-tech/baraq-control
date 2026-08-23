@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
+import { getFileUrls } from "@/lib/supabase/storage";
 import {
   mapInternalRequestAttachment,
   mapInternalRequestAttachmentRevision,
@@ -11,7 +12,9 @@ export interface InternalRequestAttachmentBundle {
   revisions: InternalRequestAttachmentRevision[];
 }
 
-/** كل مرفقات طلب داخلي، كل واحد مع سجل نسخه (revisions) الكامل مرتّباً زمنياً. */
+/** كل مرفقات طلب داخلي، كل واحد مع سجل نسخه (revisions) الكامل مرتّباً زمنياً. fileUrl
+ * المخزَّن بكل نسخة مسار فقط (bucket "documents" قصير الأجل) — يُستبدل هنا برابط موقّت
+ * صالح للعرض الفعلي فقط، بنفس أسلوب useInternalRequests/useMaterialAttachments. */
 export function useRequestAttachments(requestId: string | undefined) {
   return useQuery({
     queryKey: ["internal-request-attachments", requestId],
@@ -33,9 +36,15 @@ export function useRequestAttachments(requestId: string | undefined) {
         .order("revision_number", { ascending: true });
       if (revisionsError) throw revisionsError;
 
+      const urlByStored = await getFileUrls("documents", revisionRows.map((r) => r.file_url));
+      const revisions = revisionRows.map(mapInternalRequestAttachmentRevision).map((revision) => ({
+        ...revision,
+        fileUrl: urlByStored.get(revision.fileUrl) ?? revision.fileUrl,
+      }));
+
       return attachmentRows.map(mapInternalRequestAttachment).map((attachment) => ({
         attachment,
-        revisions: revisionRows.filter((r) => r.attachment_id === attachment.id).map(mapInternalRequestAttachmentRevision),
+        revisions: revisions.filter((r) => r.attachmentId === attachment.id),
       }));
     },
   });

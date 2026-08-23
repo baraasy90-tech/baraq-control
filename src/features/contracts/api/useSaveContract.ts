@@ -53,20 +53,13 @@ export function useSaveContract() {
         retention_release_note: input.retentionReleaseNote,
         vat_inclusive: input.vatInclusive,
         vat_rate: input.vatRate,
-        ...(input.resetToDraft
-          ? {
-              status: "draft" as const,
-              pm_reviewed_by: null,
-              pm_reviewed_at: null,
-              pm_review_note: null,
-              finance_reviewed_by: null,
-              finance_reviewed_at: null,
-              finance_review_note: null,
-            }
-          : {}),
       };
 
       if (input.id) {
+        if (input.resetToDraft) {
+          const { error: resetError } = await supabase.rpc("reset_contract_to_draft", { p_contract_id: input.id });
+          if (resetError) throw resetError;
+        }
         const { error } = await supabase.from("contracts").update(payload).eq("id", input.id);
         if (error) throw error;
         return { id: input.id };

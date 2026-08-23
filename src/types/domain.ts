@@ -18,11 +18,14 @@ export interface PrintSettings {
   marginRight: number;
 }
 
+export type SubscriptionStatus = "trial" | "active" | "expired" | "canceled";
+
 export interface Company {
   id: string;
   createdBy: string;
   name: string;
   companyCode: string;
+  companyCodeExpiresAt: string | null;
   countryCode: string;
   logoUrl: string | null;
   archiveFolderName: string;
@@ -31,6 +34,20 @@ export interface Company {
   print: PrintSettings;
   headerColor: string;
   vatRate: number;
+  subscriptionStatus: SubscriptionStatus;
+  trialEndsAt: string;
+  subscriptionNote: string | null;
+}
+
+export interface CompanyBillingRow {
+  id: string;
+  name: string;
+  subscriptionStatus: SubscriptionStatus;
+  trialEndsAt: string;
+  subscriptionNote: string | null;
+  subscriptionUpdatedAt: string | null;
+  createdAt: string;
+  memberCount: number;
 }
 
 export interface Profile {
@@ -61,6 +78,7 @@ export interface DepartmentMember {
   userId: string;
   role: MemberRole;
   fullName: string;
+  title: string | null;
 }
 
 export type ProjectMemberRole = "manager" | "member";
@@ -321,8 +339,6 @@ export interface InternalRequest {
 }
 
 export type ApprovalChainType = "linear" | "network";
-export type ApprovalChainStatus = "pending" | "approved" | "rejected";
-export type ApprovalStepStatus = "pending" | "approved" | "rejected" | "skipped";
 
 export interface ApprovalChainStepInput {
   departmentId: string | null;
@@ -459,12 +475,10 @@ export interface ContractDeduction {
 
 export type MaterialRequestStatus =
   | "draft"
-  | "sample_pending_pm_approval"
-  | "sample_pending_executive_approval"
+  | "sample_pending"
   | "sample_approved"
   | "sample_rejected"
-  | "purchase_pending_pm_approval"
-  | "purchase_pending_finance_approval"
+  | "purchase_pending"
   | "purchase_approved"
   | "purchase_rejected";
 
@@ -477,28 +491,63 @@ export interface MaterialRequest {
   createdAt: string;
   status: MaterialRequestStatus;
 
-  samplePrice: number | null;
-  sampleReceivedAt: string | null;
-  sampleSubmittedBy: string | null;
-  sampleSubmittedAt: string | null;
-  samplePmReviewedBy: string | null;
-  samplePmReviewedAt: string | null;
-  samplePmReviewNote: string | null;
-  sampleExecutiveReviewedBy: string | null;
-  sampleExecutiveReviewedAt: string | null;
-  sampleExecutiveReviewNote: string | null;
+  quantity: number | null;
+  targetUnitPrice: number | null;
+  neededBy: string | null;
 
   attachmentsNote: string | null;
   quotePrice: number | null;
   quoteReceivedAt: string | null;
-  purchaseSubmittedBy: string | null;
-  purchaseSubmittedAt: string | null;
-  purchasePmReviewedBy: string | null;
-  purchasePmReviewedAt: string | null;
-  purchasePmReviewNote: string | null;
-  purchaseFinanceReviewedBy: string | null;
-  purchaseFinanceReviewedAt: string | null;
-  purchaseFinanceReviewNote: string | null;
+}
+
+export interface MaterialRequestOption {
+  id: string;
+  materialRequestId: string;
+  description: string;
+  price: number | null;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export interface MaterialRequestAttachment {
+  id: string;
+  materialRequestId: string;
+  optionId: string | null;
+  fileUrl: string;
+  fileName: string;
+  uploadedBy: string | null;
+  uploadedAt: string;
+}
+
+export type ApprovalChainPhase = "sample" | "purchase";
+export type ApprovalChainStatus = "pending" | "approved" | "rejected";
+export type ApprovalStepStatus = "pending" | "approved" | "rejected" | "skipped";
+
+export interface ApprovalChain {
+  id: string;
+  materialRequestId: string;
+  phase: ApprovalChainPhase;
+  status: ApprovalChainStatus;
+  createdBy: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+  requesterNote: string | null;
+}
+
+export interface ApprovalChainStep {
+  id: string;
+  chainId: string;
+  stepOrder: number;
+  departmentId: string | null;
+  assignedUserId: string | null;
+  status: ApprovalStepStatus;
+  routedBy: string | null;
+  routedAt: string | null;
+  actedBy: string | null;
+  actedAt: string | null;
+  note: string | null;
+  insertedBy: string | null;
+  createdAt: string;
 }
 
 export type ReconciliationStatus = "pending" | "approved" | "rejected";

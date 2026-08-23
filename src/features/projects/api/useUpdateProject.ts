@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { mapProject } from "@/features/projects/api/mapProject";
+import { getFileUrl } from "@/lib/supabase/storage";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import type { ProjectStatus, ScopeConfig } from "@/types/domain";
 
@@ -44,7 +45,9 @@ export function useUpdateProject() {
 
       const { data, error } = await supabase.from("projects").update(patch).eq("id", input.id).select().single();
       if (error) throw error;
-      return mapProject(data);
+      const project = mapProject(data);
+      project.managerSignatureUrl = await getFileUrl("signatures", data.manager_signature_url);
+      return project;
     },
     onSuccess: (project) => {
       queryClient.invalidateQueries({ queryKey: ["projects", project.companyId] });

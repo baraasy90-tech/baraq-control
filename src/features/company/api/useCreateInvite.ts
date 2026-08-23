@@ -38,18 +38,10 @@ export function useCreateInvite() {
         .single();
       if (error) throw error;
 
-      const joinLink = `${window.location.origin}/join/${data.token}`;
       let emailSent = false;
       try {
         const { data: fnData, error: fnError } = await supabase.functions.invoke("send-invite-email", {
-          body: {
-            to: input.email.trim().toLowerCase(),
-            companyName: input.companyName,
-            departmentName: input.departmentName,
-            inviterName: input.inviterName,
-            role: input.role,
-            joinLink,
-          },
+          body: { token: data.token },
         });
         emailSent = !fnError && !fnData?.error;
       } catch {

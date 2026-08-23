@@ -96,7 +96,7 @@ export function DepartmentActivityView() {
                           <div className="flex items-center justify-between gap-2 mb-2">
                             <span className="text-sm font-semibold text-ink">{m.fullName}</span>
                             <span className="text-xs text-ink-soft bg-panel border border-line/60 rounded-full px-2 py-0.5">
-                              {roleLabel(dept, m.role)}
+                              {m.title || roleLabel(dept, m.role)}
                             </span>
                           </div>
 

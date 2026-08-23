@@ -11,7 +11,7 @@ export function useDepartmentMembers(departmentIds: string[]) {
     queryFn: async (): Promise<DepartmentMember[]> => {
       const { data: members, error } = await supabase
         .from("department_members")
-        .select("id, department_id, user_id, role")
+        .select("id, department_id, user_id, role, title")
         .in("department_id", departmentIds);
       if (error) throw error;
       if (members.length === 0) return [];
@@ -30,6 +30,7 @@ export function useDepartmentMembers(departmentIds: string[]) {
         userId: m.user_id,
         role: m.role,
         fullName: nameById.get(m.user_id) || "بدون اسم",
+        title: m.title,
       }));
     },
   });

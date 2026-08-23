@@ -194,7 +194,7 @@ export function StructureScreen() {
     typeColor: branchColorMap.get(dept.id) ?? "#5B6472",
     members: members
       .filter((m) => m.departmentId === dept.id)
-      .map((m) => ({ fullName: m.fullName, roleLabel: roleLabel(dept, m.role), isHead: m.role === "head" })),
+      .map((m) => ({ fullName: m.fullName, roleLabel: m.title || roleLabel(dept, m.role), isHead: m.role === "head" })),
     children: departments.filter((d) => d.parentDepartmentId === dept.id).map(buildOrgNode),
   });
 

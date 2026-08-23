@@ -12,6 +12,7 @@ export interface Database {
           created_by: string;
           name: string;
           company_code: string;
+          company_code_expires_at: string | null;
           country_code: string;
           logo_url: string | null;
           archive_folder_name: string;
@@ -28,12 +29,18 @@ export interface Database {
           print_margin_right: number;
           header_color: string;
           vat_rate: number;
+          subscription_status: "trial" | "active" | "expired" | "canceled";
+          trial_ends_at: string;
+          subscription_note: string | null;
+          subscription_updated_by: string | null;
+          subscription_updated_at: string | null;
         };
         Insert: {
           id?: string;
           created_by?: string;
           name: string;
           company_code?: string;
+          company_code_expires_at?: string | null;
           country_code?: string;
           logo_url?: string | null;
           archive_folder_name?: string;
@@ -50,8 +57,19 @@ export interface Database {
           print_margin_right?: number;
           header_color?: string;
           vat_rate?: number;
+          subscription_status?: "trial" | "active" | "expired" | "canceled";
+          trial_ends_at?: string;
+          subscription_note?: string | null;
+          subscription_updated_by?: string | null;
+          subscription_updated_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["companies"]["Insert"]>;
+        Relationships: [];
+      };
+      platform_admins: {
+        Row: { user_id: string; created_at: string };
+        Insert: { user_id: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["platform_admins"]["Insert"]>;
         Relationships: [];
       };
       profiles: {
@@ -164,6 +182,7 @@ export interface Database {
           department_id: string;
           user_id: string;
           role: "member" | "head";
+          title: string | null;
           created_at: string;
         };
         Insert: {
@@ -171,6 +190,7 @@ export interface Database {
           department_id: string;
           user_id: string;
           role?: "member" | "head";
+          title?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["department_members"]["Insert"]>;
@@ -886,35 +906,18 @@ export interface Database {
           created_at: string;
           status:
             | "draft"
-            | "sample_pending_pm_approval"
-            | "sample_pending_executive_approval"
+            | "sample_pending"
             | "sample_approved"
             | "sample_rejected"
-            | "purchase_pending_pm_approval"
-            | "purchase_pending_finance_approval"
+            | "purchase_pending"
             | "purchase_approved"
             | "purchase_rejected";
-          sample_price: number | null;
-          sample_received_at: string | null;
-          sample_submitted_by: string | null;
-          sample_submitted_at: string | null;
-          sample_pm_reviewed_by: string | null;
-          sample_pm_reviewed_at: string | null;
-          sample_pm_review_note: string | null;
-          sample_executive_reviewed_by: string | null;
-          sample_executive_reviewed_at: string | null;
-          sample_executive_review_note: string | null;
+          quantity: number | null;
+          target_unit_price: number | null;
+          needed_by: string | null;
           attachments_note: string | null;
           quote_price: number | null;
           quote_received_at: string | null;
-          purchase_submitted_by: string | null;
-          purchase_submitted_at: string | null;
-          purchase_pm_reviewed_by: string | null;
-          purchase_pm_reviewed_at: string | null;
-          purchase_pm_review_note: string | null;
-          purchase_finance_reviewed_by: string | null;
-          purchase_finance_reviewed_at: string | null;
-          purchase_finance_review_note: string | null;
         };
         Insert: {
           id?: string;
@@ -925,37 +928,120 @@ export interface Database {
           created_at?: string;
           status?:
             | "draft"
-            | "sample_pending_pm_approval"
-            | "sample_pending_executive_approval"
+            | "sample_pending"
             | "sample_approved"
             | "sample_rejected"
-            | "purchase_pending_pm_approval"
-            | "purchase_pending_finance_approval"
+            | "purchase_pending"
             | "purchase_approved"
             | "purchase_rejected";
-          sample_price?: number | null;
-          sample_received_at?: string | null;
-          sample_submitted_by?: string | null;
-          sample_submitted_at?: string | null;
-          sample_pm_reviewed_by?: string | null;
-          sample_pm_reviewed_at?: string | null;
-          sample_pm_review_note?: string | null;
-          sample_executive_reviewed_by?: string | null;
-          sample_executive_reviewed_at?: string | null;
-          sample_executive_review_note?: string | null;
+          quantity?: number | null;
+          target_unit_price?: number | null;
+          needed_by?: string | null;
           attachments_note?: string | null;
           quote_price?: number | null;
           quote_received_at?: string | null;
-          purchase_submitted_by?: string | null;
-          purchase_submitted_at?: string | null;
-          purchase_pm_reviewed_by?: string | null;
-          purchase_pm_reviewed_at?: string | null;
-          purchase_pm_review_note?: string | null;
-          purchase_finance_reviewed_by?: string | null;
-          purchase_finance_reviewed_at?: string | null;
-          purchase_finance_review_note?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["material_requests"]["Insert"]>;
+        Relationships: [];
+      };
+      material_request_options: {
+        Row: {
+          id: string;
+          material_request_id: string;
+          description: string;
+          price: number | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          material_request_id: string;
+          description: string;
+          price?: number | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["material_request_options"]["Insert"]>;
+        Relationships: [];
+      };
+      material_request_attachments: {
+        Row: {
+          id: string;
+          material_request_id: string;
+          option_id: string | null;
+          file_url: string;
+          file_name: string;
+          uploaded_by: string | null;
+          uploaded_at: string;
+        };
+        Insert: {
+          id?: string;
+          material_request_id: string;
+          option_id?: string | null;
+          file_url: string;
+          file_name: string;
+          uploaded_by?: string | null;
+          uploaded_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["material_request_attachments"]["Insert"]>;
+        Relationships: [];
+      };
+      approval_chains: {
+        Row: {
+          id: string;
+          material_request_id: string;
+          phase: "sample" | "purchase";
+          status: "pending" | "approved" | "rejected";
+          created_by: string | null;
+          created_at: string;
+          decided_at: string | null;
+          requester_note: string | null;
+        };
+        Insert: {
+          id?: string;
+          material_request_id: string;
+          phase: "sample" | "purchase";
+          status?: "pending" | "approved" | "rejected";
+          created_by?: string | null;
+          created_at?: string;
+          decided_at?: string | null;
+          requester_note?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["approval_chains"]["Insert"]>;
+        Relationships: [];
+      };
+      approval_chain_steps: {
+        Row: {
+          id: string;
+          chain_id: string;
+          step_order: number;
+          department_id: string | null;
+          assigned_user_id: string | null;
+          status: "pending" | "approved" | "rejected" | "skipped";
+          routed_by: string | null;
+          routed_at: string | null;
+          acted_by: string | null;
+          acted_at: string | null;
+          note: string | null;
+          inserted_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          chain_id: string;
+          step_order: number;
+          department_id?: string | null;
+          assigned_user_id?: string | null;
+          status?: "pending" | "approved" | "rejected" | "skipped";
+          routed_by?: string | null;
+          routed_at?: string | null;
+          acted_by?: string | null;
+          acted_at?: string | null;
+          note?: string | null;
+          inserted_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["approval_chain_steps"]["Insert"]>;
         Relationships: [];
       };
       budget_reconciliation_notes: {
@@ -1074,21 +1160,72 @@ export interface Database {
         Args: { p_attachment_id: string; p_file_url: string; p_note: string | null };
         Returns: string;
       };
-      submit_material_sample: {
-        Args: { p_request_id: string };
+      submit_material_sourcing: {
+        Args: { p_request_id: string; p_note: string | null };
+        Returns: string;
+      };
+      submit_material_purchase_chain: {
+        Args: { p_request_id: string; p_steps: Json; p_note: string | null };
+        Returns: string;
+      };
+      route_approval_step: {
+        Args: { p_step_id: string; p_user_id: string };
         Returns: undefined;
       };
-      review_material_sample: {
-        Args: { p_request_id: string; p_approve: boolean; p_note: string | null };
+      insert_approval_step: {
+        Args: { p_step_id: string; p_department_id: string | null; p_user_id: string | null; p_note: string | null };
         Returns: undefined;
       };
-      submit_material_purchase: {
-        Args: { p_request_id: string };
+      review_approval_step: {
+        Args: { p_step_id: string; p_approve: boolean; p_note: string | null };
         Returns: undefined;
       };
-      review_material_purchase: {
-        Args: { p_request_id: string; p_approve: boolean; p_note: string | null };
+      submit_contract: {
+        Args: { p_contract_id: string };
         Returns: undefined;
+      };
+      submit_contract_payment: {
+        Args: { p_payment_id: string };
+        Returns: undefined;
+      };
+      reset_contract_to_draft: {
+        Args: { p_contract_id: string };
+        Returns: undefined;
+      };
+      is_platform_admin: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      set_company_subscription: {
+        Args: { p_company_id: string; p_status: string; p_trial_ends_at: string | null; p_note: string | null };
+        Returns: undefined;
+      };
+      list_all_companies_billing: {
+        Args: Record<string, never>;
+        Returns: {
+          id: string;
+          name: string;
+          subscription_status: "trial" | "active" | "expired" | "canceled";
+          trial_ends_at: string;
+          subscription_note: string | null;
+          subscription_updated_at: string | null;
+          created_at: string;
+          member_count: number;
+        }[];
+      };
+      create_company: {
+        Args: {
+          p_name: string;
+          p_logo_url: string | null;
+          p_archive_folder_name: string;
+          p_archive_storage_type: string;
+          p_archive_local_path: string | null;
+        };
+        Returns: Database["public"]["Tables"]["companies"]["Row"];
+      };
+      regenerate_company_code: {
+        Args: { p_company_id: string };
+        Returns: { result_company_code: string; result_expires_at: string }[];
       };
     };
     Enums: Record<string, never>;
