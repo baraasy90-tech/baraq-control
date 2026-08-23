@@ -83,7 +83,7 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
   const [activeSection, setActiveSection] = useState<SectionKey>("appearance");
   const [name, setName] = useState(company.name);
   const [countryCode, setCountryCode] = useState(company.countryCode);
-  const [vatRate, setVatRate] = useState(company.vatRate.toString());
+  const [vatRate, setVatRate] = useState((company.vatRate ?? 15).toString());
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoError, setLogoError] = useState("");
   const [folderName, setFolderName] = useState(company.archiveFolderName);
