@@ -28,6 +28,7 @@ export function mapApprovalChain(row: ApprovalChainRow): ApprovalChain {
     id: row.id,
     materialRequestId: row.material_request_id,
     phase: row.phase,
+    chainType: row.chain_type,
     status: row.status,
     createdBy: row.created_by,
     createdAt: row.created_at,

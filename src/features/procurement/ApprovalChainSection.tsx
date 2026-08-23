@@ -9,6 +9,7 @@ import {
   useRouteApprovalStep,
   useInsertApprovalStep,
   useReviewApprovalStep,
+  useSendApprovalStepBack,
 } from "@/features/procurement/api/useApprovalChainActions";
 import type { MiniProfile } from "@/features/company/api/useProfilesByIds";
 import type { CompanyMember } from "@/features/company/api/useCompanyMembers";
@@ -182,6 +183,8 @@ function StepRow({
   canAct,
   requestId,
   projectId,
+  previousStep,
+  canSendBack,
 }: {
   step: ApprovalChainStep;
   active: boolean;
@@ -195,10 +198,13 @@ function StepRow({
   projectId: string;
   membersOfDept: DepartmentMember[];
   companyMembers: CompanyMember[];
+  previousStep: ApprovalChainStep | null;
+  canSendBack: boolean;
 }) {
   const routeStep = useRouteApprovalStep(requestId, projectId);
   const reviewStep = useReviewApprovalStep(requestId, projectId);
   const insertStep = useInsertApprovalStep(requestId, projectId);
+  const sendBackStep = useSendApprovalStepBack(requestId, projectId);
 
   const routeCandidates =
     membersOfDept.length > 0 ? membersOfDept.map((m) => ({ id: m.userId, fullName: m.fullName })) : companyMembers;
@@ -289,6 +295,22 @@ function StepRow({
             <SecondaryButton onClick={() => setAddingExtra((v) => !v)} className="text-xs px-3 py-1.5">
               إضافة معتمد إضافي قبلي
             </SecondaryButton>
+            {canSendBack && previousStep && (
+              <SecondaryButton
+                onClick={() => {
+                  if (!reviewNote.trim()) {
+                    setError("لازم توضيح سبب الإرجاع بخانة الملاحظة");
+                    return;
+                  }
+                  setError("");
+                  sendBackStep.mutate({ stepId: step.id, targetStepId: previousStep.id, note: reviewNote.trim() });
+                }}
+                disabled={sendBackStep.isPending}
+                className="text-xs px-3 py-1.5"
+              >
+                إرجاع للمرحلة السابقة للتعديل
+              </SecondaryButton>
+            )}
           </div>
           <ErrorText>{error}</ErrorText>
 
@@ -332,6 +354,7 @@ function StepRow({
 
 export function ApprovalStepsList({
   steps,
+  chainType,
   requestId,
   projectId,
   currentUserId,
@@ -342,6 +365,7 @@ export function ApprovalStepsList({
   isOrgManager,
 }: {
   steps: ApprovalChainStep[];
+  chainType: "linear" | "network";
   requestId: string;
   projectId: string;
   currentUserId: string;
@@ -360,6 +384,7 @@ export function ApprovalStepsList({
           (isOrgManager || members.some((m) => m.userId === currentUserId && m.departmentId === step.departmentId && m.role === "head"));
         const canRoute = active && !step.assignedUserId && isHeadOfDept;
         const canAct = active && !!step.assignedUserId && (step.assignedUserId === currentUserId || isOrgManager);
+        const previousStep = steps.find((s) => s.stepOrder === step.stepOrder - 1) ?? null;
         return (
           <StepRow
             key={step.id}
@@ -375,6 +400,8 @@ export function ApprovalStepsList({
             canAct={canAct}
             requestId={requestId}
             projectId={projectId}
+            previousStep={previousStep}
+            canSendBack={chainType === "network" && step.stepOrder > 1}
           />
         );
       })}
@@ -440,6 +467,7 @@ export function ApprovalChainSection({
         <div className="mb-3">
           <ApprovalStepsList
             steps={latest.steps}
+            chainType={latest.chain.chainType}
             requestId={requestId}
             projectId={projectId}
             currentUserId={currentUserId}

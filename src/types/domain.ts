@@ -528,6 +528,7 @@ export interface ApprovalChain {
   id: string;
   materialRequestId: string;
   phase: ApprovalChainPhase;
+  chainType: ApprovalChainType;
   status: ApprovalChainStatus;
   createdBy: string | null;
   createdAt: string;

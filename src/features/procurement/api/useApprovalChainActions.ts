@@ -102,3 +102,21 @@ export function useReviewApprovalStep(requestId: string | undefined, projectId: 
     },
   });
 }
+
+export function useSendApprovalStepBack(requestId: string | undefined, projectId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ stepId, targetStepId, note }: { stepId: string; targetStepId: string; note: string }) => {
+      const { error } = await supabase.rpc("send_back_approval_step", {
+        p_step_id: stepId,
+        p_target_step_id: targetStepId,
+        p_note: note,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      if (requestId) invalidateRequest(queryClient, requestId, projectId);
+    },
+  });
+}

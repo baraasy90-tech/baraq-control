@@ -993,6 +993,7 @@ export interface Database {
           id: string;
           material_request_id: string;
           phase: "sample" | "purchase";
+          chain_type: "linear" | "network";
           status: "pending" | "approved" | "rejected";
           created_by: string | null;
           created_at: string;
@@ -1003,6 +1004,7 @@ export interface Database {
           id?: string;
           material_request_id: string;
           phase: "sample" | "purchase";
+          chain_type?: "linear" | "network";
           status?: "pending" | "approved" | "rejected";
           created_by?: string | null;
           created_at?: string;
@@ -1180,6 +1182,10 @@ export interface Database {
       };
       review_approval_step: {
         Args: { p_step_id: string; p_approve: boolean; p_note: string | null };
+        Returns: undefined;
+      };
+      send_back_approval_step: {
+        Args: { p_step_id: string; p_target_step_id: string; p_note: string };
         Returns: undefined;
       };
       submit_contract: {

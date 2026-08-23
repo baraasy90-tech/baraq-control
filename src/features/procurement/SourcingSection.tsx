@@ -236,6 +236,7 @@ export function SourcingSection({
           <h3 className="text-xs font-bold text-ink-soft mb-2">مسار الاعتماد</h3>
           <ApprovalStepsList
             steps={chainBundle.steps}
+            chainType={chainBundle.chain.chainType}
             requestId={request.id}
             projectId={request.projectId}
             currentUserId={currentUserId}
