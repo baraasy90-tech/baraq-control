@@ -231,13 +231,15 @@ export function TeamSection({ companyId }: { companyId: string }) {
     navigator.clipboard.writeText(link).catch(() => {});
   };
 
+  const effectiveNewDeptName = newDeptType === "custom" ? newDeptName.trim() : DEPARTMENT_TYPE_LABEL[newDeptType];
+
   const handleCreateDepartment = async () => {
-    if (!newDeptName.trim()) return;
+    if (!effectiveNewDeptName) return;
     setDeptError("");
     try {
       await createDepartment.mutateAsync({
         companyId,
-        name: newDeptName.trim(),
+        name: effectiveNewDeptName,
         type: newDeptType,
         parentDepartmentId: newDeptParentId || null,
       });
@@ -448,26 +450,32 @@ export function TeamSection({ companyId }: { companyId: string }) {
       <div className="border-t border-line/60 pt-4 mb-6">
         <h3 className="text-xs font-bold text-ink-soft mb-3">إنشاء قسم جديد</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-          <div className="sm:col-span-2">
-            <FieldLabel>اسم القسم</FieldLabel>
-            <TextInput
-              value={newDeptName}
-              onChange={(e) => setNewDeptName(e.target.value)}
-              placeholder="مثال: المشتريات، التشغيل والصيانة"
-            />
-          </div>
-          <div>
-            <FieldLabel>النوع</FieldLabel>
+          <div className={newDeptType === "custom" ? "sm:col-span-1" : "sm:col-span-3"}>
+            <FieldLabel>القسم</FieldLabel>
             <select
               value={newDeptType}
               onChange={(e) => setNewDeptType(e.target.value as DepartmentType)}
               className="w-full px-3 py-2.5 border border-line rounded-lg text-sm font-sans bg-white box-border"
             >
-              <option value="custom">مخصص</option>
-              <option value="finance">مالي</option>
-              <option value="hr">موارد بشرية</option>
+              <option value="project_management">{DEPARTMENT_TYPE_LABEL.project_management}</option>
+              <option value="finance">{DEPARTMENT_TYPE_LABEL.finance}</option>
+              <option value="hr">{DEPARTMENT_TYPE_LABEL.hr}</option>
+              <option value="procurement">{DEPARTMENT_TYPE_LABEL.procurement}</option>
+              <option value="executive">{DEPARTMENT_TYPE_LABEL.executive}</option>
+              <option value="custom">آخر...</option>
             </select>
           </div>
+          {newDeptType === "custom" && (
+            <div className="sm:col-span-2">
+              <FieldLabel>مسمى القسم</FieldLabel>
+              <TextInput
+                value={newDeptName}
+                onChange={(e) => setNewDeptName(e.target.value)}
+                placeholder="مثال: التشغيل والصيانة"
+                autoFocus
+              />
+            </div>
+          )}
           <div className="sm:col-span-3">
             <FieldLabel>القسم الأعلى (اختياري — لجعله قسماً فرعياً)</FieldLabel>
             <select
@@ -487,7 +495,7 @@ export function TeamSection({ companyId }: { companyId: string }) {
         <ErrorText>{deptError}</ErrorText>
         <PrimaryButton
           onClick={handleCreateDepartment}
-          disabled={!newDeptName.trim() || createDepartment.isPending}
+          disabled={!effectiveNewDeptName || createDepartment.isPending}
           className="w-auto px-4 py-2 text-sm inline-flex items-center gap-1.5"
         >
           <Plus size={15} strokeWidth={2.5} /> {createDepartment.isPending ? "جارٍ الإنشاء..." : "إنشاء القسم"}
