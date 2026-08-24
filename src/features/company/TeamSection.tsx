@@ -13,6 +13,7 @@ import { useDeleteDepartment } from "@/features/company/api/useDeleteDepartment"
 import { useCompany } from "@/features/company/useCompany";
 import { DEPARTMENT_TYPE_LABEL } from "@/features/company/departmentTypeLabels";
 import { PRESET_MEMBER_TITLES } from "@/features/company/memberTitles";
+import { manageableDepartmentIdsFor } from "@/features/company/lib/effectiveHead";
 import type { Department, DepartmentMember, DepartmentType, MemberRole } from "@/types/domain";
 
 const ROLE_LABEL: Record<MemberRole, string> = { member: "عضو", head: "رئيس القسم" };
@@ -119,10 +120,8 @@ export function TeamSection({ companyId }: { companyId: string }) {
     (m) => m.userId === profile.id && departments.find((d) => d.id === m.departmentId)?.type === "executive"
   );
   const canManage = isOwner || isExecutive;
-  const headDepartmentIds = new Set(
-    members.filter((m) => m.userId === profile.id && m.role === "head").map((m) => m.departmentId)
-  );
-  const canManageDept = (departmentId: string) => canManage || headDepartmentIds.has(departmentId);
+  const inheritedManageableIds = manageableDepartmentIdsFor(profile.id, departments, members);
+  const canManageDept = (departmentId: string) => canManage || inheritedManageableIds.has(departmentId);
   const manageableDepartments = departments.filter((d) => canManageDept(d.id));
 
   const [email, setEmail] = useState("");

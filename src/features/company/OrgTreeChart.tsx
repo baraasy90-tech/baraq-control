@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 import { computeBranchColors } from "@/features/company/lib/branchColors";
+import { findEffectiveHead } from "@/features/company/lib/effectiveHead";
 import type { Department, DepartmentMember, MemberRole } from "@/types/domain";
 
 const ROLE_LABEL: Record<string, string> = { member: "عضو", head: "رئيس القسم" };
@@ -13,19 +14,22 @@ function roleLabel(dept: { headLabel: string | null; memberLabel: string | null 
 
 function DeptCard({
   dept,
+  departments,
   members,
   canEdit,
   onEdit,
   color,
 }: {
   dept: Department;
+  departments: Department[];
   members: DepartmentMember[];
   canEdit: boolean;
   onEdit: (dept: Department) => void;
   color: string;
 }) {
   const deptMembers = members.filter((m) => m.departmentId === dept.id);
-  const head = deptMembers.find((m) => m.role === "head");
+  const effectiveHead = findEffectiveHead(dept, departments, members);
+  const head = effectiveHead?.member ?? null;
   const rest = deptMembers.filter((m) => m.role !== "head");
 
   return (
@@ -52,6 +56,7 @@ function DeptCard({
       {head ? (
         <div className="text-xs text-ink-soft mt-1 truncate">
           {head.title || roleLabel(dept, "head")}: {head.fullName}
+          {effectiveHead?.inherited && <span className="text-ink-soft/60"> (بالنيابة)</span>}
         </div>
       ) : (
         <div className="text-xs text-ink-soft/70 mt-1">بدون {roleLabel(dept, "head")}</div>
@@ -79,7 +84,14 @@ function OrgTreeNode({
   const children = departments.filter((d) => d.parentDepartmentId === dept.id);
   return (
     <li>
-      <DeptCard dept={dept} members={members} canEdit={canEdit} onEdit={onEdit} color={colorMap.get(dept.id) ?? "#5B6472"} />
+      <DeptCard
+        dept={dept}
+        departments={departments}
+        members={members}
+        canEdit={canEdit}
+        onEdit={onEdit}
+        color={colorMap.get(dept.id) ?? "#5B6472"}
+      />
       {children.length > 0 && (
         <ul>
           {children.map((c) => (
