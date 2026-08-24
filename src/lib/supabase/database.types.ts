@@ -34,6 +34,7 @@ export interface Database {
           subscription_note: string | null;
           subscription_updated_by: string | null;
           subscription_updated_at: string | null;
+          is_individual: boolean;
         };
         Insert: {
           id?: string;
@@ -62,6 +63,7 @@ export interface Database {
           subscription_note?: string | null;
           subscription_updated_by?: string | null;
           subscription_updated_at?: string | null;
+          is_individual?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["companies"]["Insert"]>;
         Relationships: [];
@@ -1255,6 +1257,10 @@ export interface Database {
           p_archive_storage_type: string;
           p_archive_local_path: string | null;
         };
+        Returns: Database["public"]["Tables"]["companies"]["Row"];
+      };
+      create_individual_account: {
+        Args: { p_full_name: string };
         Returns: Database["public"]["Tables"]["companies"]["Row"];
       };
       regenerate_company_code: {

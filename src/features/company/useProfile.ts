@@ -34,6 +34,7 @@ export function mapCompany(row: CompanyRow): Company {
     subscriptionStatus: row.subscription_status,
     trialEndsAt: row.trial_ends_at,
     subscriptionNote: row.subscription_note,
+    isIndividual: row.is_individual,
   };
 }
 

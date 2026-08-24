@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { UserPlus, LogIn, Briefcase } from "lucide-react";
+import { UserPlus, LogIn, Briefcase, User } from "lucide-react";
 import { AuthCard, FieldLabel, TextInput, PrimaryButton, SecondaryButton, ErrorText } from "@/components/ui";
 import { supabase } from "@/lib/supabase/client";
 import { setPendingJoinCode } from "@/features/auth/pendingJoin";
+import { setPendingIndividual } from "@/features/auth/pendingIndividual";
 import { getErrorMessage } from "@/utils/errors";
 
-type Screen = "choice" | "login" | "signup" | "employeeSignup";
+type Screen = "choice" | "login" | "signup" | "employeeSignup" | "individualSignup";
 
 function isAlreadyRegisteredError(message: string): boolean {
   const lower = message.toLowerCase();
@@ -29,7 +30,7 @@ export function LoginScreen() {
   const [pendingConfirmation, setPendingConfirmation] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const isSignup = screen === "signup" || screen === "employeeSignup";
+  const isSignup = screen === "signup" || screen === "employeeSignup" || screen === "individualSignup";
   const canSubmit =
     email.trim().length > 3 &&
     password.length >= 6 &&
@@ -47,6 +48,7 @@ export function LoginScreen() {
         if (signInError) throw signInError;
       } else {
         if (screen === "employeeSignup") setPendingJoinCode(companyCode);
+        if (screen === "individualSignup") setPendingIndividual();
         const { data, error: signUpError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
@@ -121,6 +123,17 @@ export function LoginScreen() {
               انضم لشركة موجودة بالفعل باستخدام رمز الشركة الذي يزوّدك به مدير الحساب
             </p>
           </div>
+          <div>
+            <SecondaryButton
+              onClick={() => setScreen("individualSignup")}
+              className="w-full inline-flex items-center justify-center gap-2"
+            >
+              <User size={16} strokeWidth={2.5} /> حساب فردي
+            </SecondaryButton>
+            <p className="text-xs text-ink-soft mt-1.5 text-center">
+              استخدم المنصة لمشاريعك الخاصة بلا شركة — بنفس كل الإمكانيات
+            </p>
+          </div>
         </div>
       </AuthCard>
     );
@@ -128,8 +141,24 @@ export function LoginScreen() {
 
   return (
     <AuthCard
-      eyebrow={screen === "login" ? "تسجيل الدخول" : screen === "employeeSignup" ? "حساب موظف" : "حساب مدير"}
-      title={screen === "login" ? "تسجيل الدخول" : screen === "employeeSignup" ? "إنشاء حساب موظف" : "إنشاء حساب مدير"}
+      eyebrow={
+        screen === "login"
+          ? "تسجيل الدخول"
+          : screen === "employeeSignup"
+            ? "حساب موظف"
+            : screen === "individualSignup"
+              ? "حساب فردي"
+              : "حساب مدير"
+      }
+      title={
+        screen === "login"
+          ? "تسجيل الدخول"
+          : screen === "employeeSignup"
+            ? "إنشاء حساب موظف"
+            : screen === "individualSignup"
+              ? "إنشاء حساب فردي"
+              : "إنشاء حساب مدير"
+      }
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {isSignup && (

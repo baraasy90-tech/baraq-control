@@ -37,6 +37,7 @@ export interface Company {
   subscriptionStatus: SubscriptionStatus;
   trialEndsAt: string;
   subscriptionNote: string | null;
+  isIndividual: boolean;
 }
 
 export interface CompanyBillingRow {

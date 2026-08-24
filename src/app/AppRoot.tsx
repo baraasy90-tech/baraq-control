@@ -7,8 +7,10 @@ import { SecureAccountScreen } from "@/features/auth/SecureAccountScreen";
 import { NameEntryScreen } from "@/features/auth/NameEntryScreen";
 import { useIdleLogout } from "@/features/auth/useIdleLogout";
 import { getPendingJoinCode, clearPendingJoinCode } from "@/features/auth/pendingJoin";
+import { getPendingIndividual, clearPendingIndividual } from "@/features/auth/pendingIndividual";
 import { getErrorMessage } from "@/utils/errors";
 import { useJoinCompanyByCode } from "@/features/auth/useJoinCompanyByCode";
+import { useCreateIndividualAccount } from "@/features/company/useCreateIndividualAccount";
 import { CompanyOnboardingWizard } from "@/features/company/CompanyOnboardingWizard";
 import { SupportChatWidget } from "@/features/support/SupportChatWidget";
 import { AppShell } from "@/app/AppShell";
@@ -17,10 +19,13 @@ function CenteredMessage({ children }: { children: React.ReactNode }) {
   return <div className="min-h-screen flex items-center justify-center p-5 text-sm text-ink-soft">{children}</div>;
 }
 
-function PendingJoinOrOnboarding() {
+function PendingJoinOrOnboarding({ fullName }: { fullName: string }) {
   const [code] = useState(() => getPendingJoinCode());
+  const [isIndividual] = useState(() => getPendingIndividual());
   const [joinError, setJoinError] = useState<string | null>(null);
+  const [individualError, setIndividualError] = useState<string | null>(null);
   const joinCompany = useJoinCompanyByCode();
+  const createIndividualAccount = useCreateIndividualAccount();
 
   useEffect(() => {
     if (!code) return;
@@ -41,6 +46,18 @@ function PendingJoinOrOnboarding() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
 
+  useEffect(() => {
+    if (!isIndividual || code) return;
+    createIndividualAccount.mutate(fullName, {
+      onSuccess: () => clearPendingIndividual(),
+      onError: (err) => {
+        setIndividualError(getErrorMessage(err, "تعذّر إعداد مساحتك الشخصية"));
+        clearPendingIndividual();
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isIndividual, code]);
+
   if (code && joinCompany.isPending) {
     return <CenteredMessage>جارٍ الانضمام للشركة...</CenteredMessage>;
   }
@@ -54,6 +71,20 @@ function PendingJoinOrOnboarding() {
         </div>
       </CenteredMessage>
     );
+  }
+
+  if (isIndividual && !code) {
+    if (individualError) {
+      return (
+        <CenteredMessage>
+          <div className="text-center">
+            <p className="text-critical mb-2">{individualError}</p>
+            <p className="text-xs">حدّث الصفحة وحاول مجدداً.</p>
+          </div>
+        </CenteredMessage>
+      );
+    }
+    return <CenteredMessage>جارٍ إعداد مساحتك الشخصية...</CenteredMessage>;
   }
 
   return <CompanyOnboardingWizard />;
@@ -82,7 +113,7 @@ function AppRootContent() {
   const { profile, company } = profileQuery.data;
 
   if (!profile.fullName) return <NameEntryScreen />;
-  if (!company) return <PendingJoinOrOnboarding />;
+  if (!company) return <PendingJoinOrOnboarding fullName={profile.fullName} />;
 
   return (
     <>
