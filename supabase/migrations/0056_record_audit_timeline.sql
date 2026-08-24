@@ -30,10 +30,21 @@ begin
   if p_project_id is not null and public.can_access_project(p_project_id) then
     return true;
   end if;
-  if p_table_name = 'internal_requests' then
+  if p_table_name in ('internal_requests', 'internal_approval_chains', 'internal_approval_chain_steps', 'internal_request_attachments', 'internal_request_attachment_revisions') then
     return exists (
       select 1 from public.internal_requests ir
-      where ir.id = p_record_id and (ir.user_id = auth.uid() or public.can_review_request(ir.id))
+      where (
+        (p_table_name = 'internal_requests' and ir.id = p_record_id)
+        or (p_table_name = 'internal_approval_chains' and ir.id = (select internal_request_id from public.internal_approval_chains where id = p_record_id))
+        or (p_table_name = 'internal_approval_chain_steps' and ir.id = (
+              select ac.internal_request_id from public.internal_approval_chain_steps s
+              join public.internal_approval_chains ac on ac.id = s.chain_id where s.id = p_record_id))
+        or (p_table_name = 'internal_request_attachments' and ir.id = (select request_id from public.internal_request_attachments where id = p_record_id))
+        or (p_table_name = 'internal_request_attachment_revisions' and ir.id = (
+              select a.request_id from public.internal_request_attachment_revisions rev
+              join public.internal_request_attachments a on a.id = rev.attachment_id where rev.id = p_record_id))
+      )
+      and public.can_view_internal_request(ir.id)
     );
   end if;
   return false;
