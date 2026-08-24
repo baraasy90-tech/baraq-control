@@ -17,6 +17,26 @@ function roleLabel(dept: { headLabel: string | null; memberLabel: string | null 
   return dept.memberLabel || ROLE_LABEL.member;
 }
 
+/** يستبعد أي قسم من القائمة إن كان أحد أسلافه موجوداً بنفس القائمة أيضاً — لأن بطاقة
+ * القسم الأب تعرض أصلاً كل منسوبي أبنائه مجمّعين (subtree)، فعرض القسم الفرعي كبطاقة
+ * منفصلة بجانبه يكرّر نفس الأشخاص ويوهم بأنها كيانات منفصلة بلا علاقة، بينما هي فعلياً
+ * جزء من نفس القسم الرئيسي. تبقى الأقسام الفرعية بطاقات مستقلة فقط لمن لا يملك صلاحية
+ * رؤية القسم الأب أصلاً (رئيس قسم فرعي مباشرة دون أن يكون رئيساً لما فوقه).
+ */
+function topmostDepartments(visible: Department[], allDepartments: Department[]): Department[] {
+  const visibleIds = new Set(visible.map((d) => d.id));
+  return visible.filter((dept) => {
+    let current = dept;
+    while (current.parentDepartmentId) {
+      if (visibleIds.has(current.parentDepartmentId)) return false;
+      const parent = allDepartments.find((d) => d.id === current.parentDepartmentId);
+      if (!parent) break;
+      current = parent;
+    }
+    return true;
+  });
+}
+
 /** القسم نفسه + كل الأقسام الفرعية المتفرّعة منه مهما كان عمقها — لعرض كل منسوبي
  * القسم فعلياً (من رئيسه حتى أصغر موظف بأي قسم فرعي تابع)، وليس الأعضاء المباشرين فقط. */
 function getSubtreeDepartmentIds(departments: Department[], rootId: string): Set<string> {
@@ -53,9 +73,11 @@ export function DepartmentActivityView() {
   const manageableIds = manageableDepartmentIdsFor(profile.id, allDepartments, members);
 
   const canSeeAll = isOwner || isExecutive;
-  const departments = canSeeAll ? allDepartments : allDepartments.filter((d) => manageableIds.has(d.id));
+  const visibleDepartments = canSeeAll ? allDepartments : allDepartments.filter((d) => manageableIds.has(d.id));
+  const departments = topmostDepartments(visibleDepartments, allDepartments);
 
-  const memberUserIds = [...new Set(members.filter((m) => departments.some((d) => d.id === m.departmentId)).map((m) => m.userId))];
+  const visibleSubtreeIds = new Set(departments.flatMap((d) => [...getSubtreeDepartmentIds(allDepartments, d.id)]));
+  const memberUserIds = [...new Set(members.filter((m) => visibleSubtreeIds.has(m.departmentId)).map((m) => m.userId))];
   const workQuery = useMemberWorkSummaries(memberUserIds);
   const workByUser = workQuery.data;
 
