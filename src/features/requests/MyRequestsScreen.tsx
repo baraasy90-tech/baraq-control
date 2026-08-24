@@ -94,8 +94,9 @@ export function MyRequestsScreen() {
 
   const handleCreate = async () => {
     if (!title.trim()) return;
-    if (!templateId && steps.some((s) => !s.departmentId && !s.userId)) {
-      setError("لازم تحديد قسم أو شخص لكل خطوة اعتماد");
+    const incompleteIndex = templateId ? -1 : steps.findIndex((s) => !s.departmentId && !s.userId);
+    if (incompleteIndex !== -1) {
+      setError(`لازم تحديد قسم أو شخص لخطوة الاعتماد رقم ${incompleteIndex + 1} — أو احذفها إن لم تكن مطلوبة`);
       return;
     }
     if (saveAsTemplate && !templateId && !templateName.trim()) {

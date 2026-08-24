@@ -92,7 +92,12 @@ export function ChainBuilder({
       <p className="text-xs text-ink-soft mb-2">كل خطوة تنتظر اعتماد اللي قبلها.</p>
       <div className="flex flex-col gap-2 mb-3">
         {steps.map((step, i) => (
-          <div key={i} className="flex items-center gap-2">
+          <div
+            key={i}
+            className={`flex items-center gap-2 rounded-lg ${
+              !step.departmentId && !step.userId ? "ring-1 ring-critical/50 p-1.5 -m-1.5" : ""
+            }`}
+          >
             <span className="text-xs font-bold text-ink-soft w-5 shrink-0">{i + 1}</span>
             <StepTargetPicker
               departmentId={step.departmentId}
