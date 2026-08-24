@@ -20,35 +20,42 @@ export function StepTargetPicker({
   const deptMembers = departmentId ? members.filter((m) => m.departmentId === departmentId) : [];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1">
-      <select
-        value={departmentId ?? ""}
-        onChange={(e) => {
-          onChangeDepartment(e.target.value || null);
-          onChangeUser(null);
-        }}
-        className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink"
-      >
-        <option value="">اختر القسم...</option>
-        {departments.map((d) => (
-          <option key={d.id} value={d.id}>
-            {d.name}
-          </option>
-        ))}
-      </select>
-      <select
-        value={userId ?? ""}
-        onChange={(e) => onChangeUser(e.target.value || null)}
-        disabled={!departmentId}
-        className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink disabled:opacity-50"
-      >
-        <option value="">أي مسؤول بالقسم (بدون تحديد)</option>
-        {deptMembers.map((m) => (
-          <option key={m.userId} value={m.userId}>
-            {m.fullName}
-          </option>
-        ))}
-      </select>
+    <div className="flex-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <select
+          value={departmentId ?? ""}
+          onChange={(e) => {
+            onChangeDepartment(e.target.value || null);
+            onChangeUser(null);
+          }}
+          className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink"
+        >
+          <option value="">اختر القسم...</option>
+          {departments.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={userId ?? ""}
+          onChange={(e) => onChangeUser(e.target.value || null)}
+          disabled={!departmentId}
+          className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink disabled:opacity-50"
+        >
+          <option value="">أي مسؤول بالقسم (بدون تحديد)</option>
+          {deptMembers.map((m) => (
+            <option key={m.userId} value={m.userId}>
+              {m.fullName}
+            </option>
+          ))}
+        </select>
+      </div>
+      {departmentId && !userId && (
+        <p className="text-[11px] text-ink-soft mt-1">
+          عند عدم تأكدك من الشخص المسؤول، قم بتوجيه الطلب لمدير القسم وهو يحوله للموظف المسؤول.
+        </p>
+      )}
     </div>
   );
 }
@@ -82,9 +89,7 @@ export function ChainBuilder({
   return (
     <div>
       <FieldLabel>خطوات الاعتماد (بالترتيب)</FieldLabel>
-      <p className="text-xs text-ink-soft mb-2">
-        كل خطوة تنتظر اعتماد اللي قبلها. لو ما تعرف الشخص بالضبط اختر القسم فقط وسيقوم رئيسه بتوجيه الطلب للمسؤول.
-      </p>
+      <p className="text-xs text-ink-soft mb-2">كل خطوة تنتظر اعتماد اللي قبلها.</p>
       <div className="flex flex-col gap-2 mb-3">
         {steps.map((step, i) => (
           <div key={i} className="flex items-center gap-2">
