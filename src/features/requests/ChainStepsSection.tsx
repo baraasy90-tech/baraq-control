@@ -6,6 +6,7 @@ import { StepTargetPicker } from "@/features/requests/ChainBuilder";
 import { useInternalApprovalChain } from "@/features/requests/api/useApprovalChains";
 import {
   useInsertInternalApprovalStep,
+  useRerouteInternalApprovalStep,
   useReviewInternalApprovalStep,
   useRouteInternalApprovalStep,
   useSendBackInternalApprovalStep,
@@ -83,15 +84,19 @@ function StepRow({
     !!step.departmentId && (isOrgManager || members.some((m) => m.userId === currentUserId && m.departmentId === step.departmentId && m.role === "head"));
   const canRoute = active && !step.assignedUserId && isHeadOfDept;
   const canAct = active && !!step.assignedUserId && (step.assignedUserId === currentUserId || isOrgManager);
+  const canReroute = active && !!step.assignedUserId && isHeadOfDept;
   const membersOfDept = step.departmentId ? members.filter((m) => m.departmentId === step.departmentId) : [];
   const priorApprovedSteps = allSteps.filter((s) => s.stepOrder < step.stepOrder && s.status === "approved");
 
   const routeStep = useRouteInternalApprovalStep(requestId);
+  const rerouteStep = useRerouteInternalApprovalStep(requestId);
   const reviewStep = useReviewInternalApprovalStep(requestId);
   const insertStep = useInsertInternalApprovalStep(requestId);
   const sendBackStep = useSendBackInternalApprovalStep(requestId);
 
   const [routeUserId, setRouteUserId] = useState("");
+  const [reroutingOpen, setReroutingOpen] = useState(false);
+  const [rerouteUserId, setRerouteUserId] = useState("");
   const [reviewNote, setReviewNote] = useState("");
   const [addingExtra, setAddingExtra] = useState(false);
   const [extraDept, setExtraDept] = useState<string | null>(null);
@@ -156,6 +161,45 @@ function StepRow({
           >
             توجيه
           </SecondaryButton>
+        </div>
+      )}
+
+      {active && canReroute && (
+        <div className="mt-2 mr-6">
+          {!reroutingOpen ? (
+            <SecondaryButton onClick={() => setReroutingOpen(true)} className="text-xs px-3 py-1.5">
+              إعادة التوجيه لشخص آخر
+            </SecondaryButton>
+          ) : (
+            <div className="flex items-center gap-2 flex-wrap">
+              <select
+                value={rerouteUserId}
+                onChange={(e) => setRerouteUserId(e.target.value)}
+                className="bg-panel border border-line/60 rounded-lg px-2 py-1.5 text-xs text-ink"
+              >
+                <option value="">وجّه إلى...</option>
+                {membersOfDept.map((m) => (
+                  <option key={m.userId} value={m.userId}>
+                    {m.fullName}
+                  </option>
+                ))}
+              </select>
+              <PrimaryButton
+                disabled={!rerouteUserId || rerouteStep.isPending}
+                onClick={() => {
+                  rerouteStep.mutate({ stepId: step.id, userId: rerouteUserId });
+                  setReroutingOpen(false);
+                  setRerouteUserId("");
+                }}
+                className="w-auto text-xs px-3 py-1.5"
+              >
+                إرسال
+              </PrimaryButton>
+              <SecondaryButton onClick={() => setReroutingOpen(false)} className="text-xs px-3 py-1.5">
+                إلغاء
+              </SecondaryButton>
+            </div>
+          )}
         </div>
       )}
 

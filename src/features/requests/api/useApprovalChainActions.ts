@@ -21,6 +21,20 @@ export function useRouteInternalApprovalStep(requestId: string | undefined) {
   });
 }
 
+export function useRerouteInternalApprovalStep(requestId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ stepId, userId }: { stepId: string; userId: string }) => {
+      const { error } = await supabase.rpc("reroute_internal_approval_step", { p_step_id: stepId, p_user_id: userId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      if (requestId) invalidateRequest(queryClient, requestId);
+    },
+  });
+}
+
 export function useInsertInternalApprovalStep(requestId: string | undefined) {
   const queryClient = useQueryClient();
 
