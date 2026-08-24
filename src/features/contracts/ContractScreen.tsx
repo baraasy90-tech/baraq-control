@@ -29,6 +29,7 @@ import { approverTitle } from "@/features/company/lib/approverTitle";
 import { ApproverBadge } from "@/features/contracts/ApproverBadge";
 import { SettlementSection } from "@/features/contracts/SettlementSection";
 import { computeVat } from "@/features/contracts/lib/vat";
+import { RecordAuditTimeline } from "@/features/company/RecordAuditTimeline";
 
 function numOrNull(v: string): number | null {
   const n = Number(v);
@@ -876,6 +877,8 @@ export function ContractScreen() {
               إضافة خصم
             </SecondaryButton>
           </Card>
+
+          <RecordAuditTimeline tableName="contracts" recordId={contract.id} />
         </>
       )}
     </div>

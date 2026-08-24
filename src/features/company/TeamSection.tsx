@@ -14,6 +14,7 @@ import { useCompany } from "@/features/company/useCompany";
 import { DEPARTMENT_TYPE_LABEL } from "@/features/company/departmentTypeLabels";
 import { PRESET_MEMBER_TITLES } from "@/features/company/memberTitles";
 import { manageableDepartmentIdsFor } from "@/features/company/lib/effectiveHead";
+import { computeBranchColors } from "@/features/company/lib/branchColors";
 import type { Department, DepartmentMember, DepartmentType, MemberRole } from "@/types/domain";
 
 const ROLE_LABEL: Record<MemberRole, string> = { member: "عضو", head: "رئيس القسم" };
@@ -121,6 +122,10 @@ export function TeamSection({ companyId }: { companyId: string }) {
   );
   const canManage = isOwner || isExecutive;
   const inheritedManageableIds = manageableDepartmentIdsFor(profile.id, departments, members);
+  const branchColorMap = computeBranchColors(
+    departments.filter((d) => !d.parentDepartmentId),
+    departments
+  );
   const canManageDept = (departmentId: string) => canManage || inheritedManageableIds.has(departmentId);
   const manageableDepartments = departments.filter((d) => canManageDept(d.id));
 
@@ -371,10 +376,14 @@ export function TeamSection({ companyId }: { companyId: string }) {
                 <p className="text-xs text-ink-soft">لا يوجد أعضاء بعد</p>
               ) : (
                 <div className="flex flex-col gap-1.5">
-                  {deptMembers.map((m) =>
-                    canManageDept(dept.id) ? (
+                  {deptMembers.map((m) => {
+                    const memberColor = branchColorMap.get(dept.id);
+                    const nameStyle = memberColor ? { color: memberColor } : undefined;
+                    return canManageDept(dept.id) ? (
                       <div key={m.id} className="flex items-center justify-between gap-2 text-sm flex-wrap">
-                        <span className="text-ink truncate">{m.fullName}</span>
+                        <span className={`truncate ${m.role === "head" ? "font-bold" : "font-normal"}`} style={nameStyle}>
+                          {m.fullName}
+                        </span>
                         <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                           <MemberTitleEditor member={m} onSave={(title) => updateMember.mutate({ id: m.id, title })} />
                           <select
@@ -400,13 +409,15 @@ export function TeamSection({ companyId }: { companyId: string }) {
                       </div>
                     ) : (
                       <div key={m.id} className="flex items-center justify-between text-sm">
-                        <span className="text-ink">{m.fullName}</span>
+                        <span className={m.role === "head" ? "font-bold" : "font-normal"} style={nameStyle}>
+                          {m.fullName}
+                        </span>
                         <span className="text-xs text-ink-soft bg-panel border border-line/60 rounded-full px-2 py-0.5">
                           {m.title || roleLabel(dept, m.role)}
                         </span>
                       </div>
-                    )
-                  )}
+                    );
+                  })}
                 </div>
               )}
             </div>

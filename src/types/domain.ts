@@ -317,6 +317,7 @@ export type AuditAction = "insert" | "update" | "delete";
 export interface AuditLogEntry {
   id: string;
   companyId: string;
+  projectId: string | null;
   tableName: string;
   recordId: string;
   action: AuditAction;

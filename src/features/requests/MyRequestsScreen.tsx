@@ -11,6 +11,7 @@ import { useApprovalChainTemplates, useCreateApprovalChainTemplate } from "@/fea
 import { ChainBuilder } from "@/features/requests/ChainBuilder";
 import { ChainStepsSection } from "@/features/requests/ChainStepsSection";
 import { RequestAttachmentsSection } from "@/features/requests/RequestAttachmentsSection";
+import { RecordAuditTimeline } from "@/features/company/RecordAuditTimeline";
 import { fmt } from "@/utils/dates";
 import type { ApprovalChainStepInput, ApprovalChainType, InternalRequestType } from "@/types/domain";
 
@@ -169,6 +170,7 @@ export function MyRequestsScreen() {
                       isOrgManager={isOrgManager}
                     />
                     <RequestAttachmentsSection requestId={r.id} canEdit={r.userId === profile.id || isOrgManager} />
+                    <RecordAuditTimeline tableName="internal_requests" recordId={r.id} />
                   </div>
                 )}
               </Card>
@@ -221,6 +223,7 @@ export function MyRequestsScreen() {
                       isOrgManager={isOrgManager}
                     />
                     <RequestAttachmentsSection requestId={r.id} canEdit={isOrgManager} />
+                    <RecordAuditTimeline tableName="internal_requests" recordId={r.id} />
                   </div>
                 )}
               </Card>

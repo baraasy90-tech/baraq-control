@@ -648,6 +648,7 @@ export interface Database {
         Row: {
           id: string;
           company_id: string;
+          project_id: string | null;
           table_name: string;
           record_id: string;
           action: "insert" | "update" | "delete";
@@ -659,6 +660,7 @@ export interface Database {
         Insert: {
           id?: string;
           company_id: string;
+          project_id?: string | null;
           table_name: string;
           record_id: string;
           action: "insert" | "update" | "delete";

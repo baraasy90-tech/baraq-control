@@ -6,6 +6,7 @@ import { useDepartmentMembers } from "@/features/company/api/useDepartmentMember
 import { useMemberWorkSummaries } from "@/features/company/api/useMemberWork";
 import { DEPARTMENT_TYPE_LABEL } from "@/features/company/departmentTypeLabels";
 import { manageableDepartmentIdsFor } from "@/features/company/lib/effectiveHead";
+import { computeBranchColors } from "@/features/company/lib/branchColors";
 import type { Department } from "@/types/domain";
 
 const ROLE_LABEL: Record<string, string> = { member: "عضو", head: "رئيس القسم" };
@@ -40,6 +41,10 @@ export function DepartmentActivityView() {
   const allDepartments = departmentsQuery.data ?? [];
   const membersQuery = useDepartmentMembers(allDepartments.map((d) => d.id));
   const members = membersQuery.data ?? [];
+  const branchColorMap = computeBranchColors(
+    allDepartments.filter((d) => !d.parentDepartmentId),
+    allDepartments
+  );
 
   const isOwner = company.createdBy === profile.id;
   const isExecutive = members.some(
@@ -110,11 +115,17 @@ export function DepartmentActivityView() {
                     deptMembers.map((m) => {
                       const work = workByUser?.get(m.userId);
                       const memberDept = allDepartments.find((d) => d.id === m.departmentId);
+                      const memberColor = memberDept ? branchColorMap.get(memberDept.id) : undefined;
                       return (
                         <div key={m.id} className="bg-bg rounded-lg p-3">
                           <div className="flex items-center justify-between gap-2 mb-2">
                             <div className="min-w-0">
-                              <span className="text-sm font-semibold text-ink">{m.fullName}</span>
+                              <span
+                                className={`text-sm ${m.role === "head" ? "font-bold" : "font-normal"}`}
+                                style={memberColor ? { color: memberColor } : undefined}
+                              >
+                                {m.fullName}
+                              </span>
                               {memberDept && memberDept.id !== dept.id && (
                                 <span className="text-[10px] text-ink-soft block">{memberDept.name}</span>
                               )}

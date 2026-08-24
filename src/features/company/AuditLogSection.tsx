@@ -10,7 +10,7 @@ import {
 } from "@/features/company/lib/auditLabels";
 import type { AuditLogEntry } from "@/types/domain";
 
-function AuditRow({ entry, actorName }: { entry: AuditLogEntry; actorName: string }) {
+export function AuditRow({ entry, actorName }: { entry: AuditLogEntry; actorName: string }) {
   const diff = entry.action === "update" ? diffAuditRecord(entry.oldData, entry.newData) : [];
   const summarySource = entry.action === "delete" ? entry.oldData : entry.newData;
 
