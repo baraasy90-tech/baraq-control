@@ -23,7 +23,7 @@ function numOrNull(v: string): number | null {
   return v.trim() === "" || Number.isNaN(n) ? null : n;
 }
 
-function AttachmentsList({
+export function AttachmentsList({
   attachments,
   canDelete,
   onDelete,
@@ -79,7 +79,7 @@ export function SourcingSection({
 
   const options = optionsQuery.data ?? [];
   const attachments = attachmentsQuery.data ?? [];
-  const requestAttachments = attachments.filter((a) => a.optionId === null);
+  const requestAttachments = attachments.filter((a) => a.optionId === null && a.phase === "sample");
 
   const [itemName, setItemName] = useState(request.itemName);
   const [description, setDescription] = useState(request.description ?? "");

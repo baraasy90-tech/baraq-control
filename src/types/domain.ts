@@ -524,17 +524,18 @@ export interface MaterialRequestOption {
   createdAt: string;
 }
 
+export type ApprovalChainPhase = "sample" | "purchase";
+
 export interface MaterialRequestAttachment {
   id: string;
   materialRequestId: string;
   optionId: string | null;
+  phase: ApprovalChainPhase;
   fileUrl: string;
   fileName: string;
   uploadedBy: string | null;
   uploadedAt: string;
 }
-
-export type ApprovalChainPhase = "sample" | "purchase";
 export type ApprovalChainStatus = "pending" | "approved" | "rejected";
 export type ApprovalStepStatus = "pending" | "approved" | "rejected" | "skipped";
 

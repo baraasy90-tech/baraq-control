@@ -8,6 +8,7 @@ function mapAttachment(row: {
   id: string;
   material_request_id: string;
   option_id: string | null;
+  phase: "sample" | "purchase";
   file_url: string;
   file_name: string;
   uploaded_by: string | null;
@@ -17,6 +18,7 @@ function mapAttachment(row: {
     id: row.id,
     materialRequestId: row.material_request_id,
     optionId: row.option_id,
+    phase: row.phase,
     fileUrl: row.file_url,
     fileName: row.file_name,
     uploadedBy: row.uploaded_by,
@@ -53,12 +55,21 @@ export function useUploadMaterialAttachment(requestId: string | undefined) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ file, optionId }: { file: File; optionId: string | null }) => {
+    mutationFn: async ({
+      file,
+      optionId,
+      phase = "sample",
+    }: {
+      file: File;
+      optionId: string | null;
+      phase?: "sample" | "purchase";
+    }) => {
       if (!user || !requestId) throw new Error("not authenticated");
       const fileUrl = await uploadFile("documents", `${user.id}/${uniqueFileName(file.name)}`, file);
       const { error } = await supabase.from("material_request_attachments").insert({
         material_request_id: requestId,
         option_id: optionId,
+        phase,
         file_url: fileUrl,
         file_name: file.name,
         uploaded_by: user.id,

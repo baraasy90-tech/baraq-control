@@ -1,11 +1,17 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { Upload } from "lucide-react";
 import { Card, StatCard, SecondaryButton, PrimaryButton, FieldLabel, TextInput, ErrorText } from "@/components/ui";
 import { useMaterialRequest } from "@/features/procurement/api/useMaterialRequests";
 import { useSavePurchaseDetails } from "@/features/procurement/api/useSaveMaterialRequest";
 import { useApprovalChains } from "@/features/procurement/api/useApprovalChains";
 import { ApprovalChainSection } from "@/features/procurement/ApprovalChainSection";
-import { SourcingSection } from "@/features/procurement/SourcingSection";
+import { SourcingSection, AttachmentsList } from "@/features/procurement/SourcingSection";
+import {
+  useMaterialAttachments,
+  useUploadMaterialAttachment,
+  useDeleteMaterialAttachment,
+} from "@/features/procurement/api/useMaterialAttachments";
 import { useCompany } from "@/features/company/useCompany";
 import { useDepartments } from "@/features/company/api/useDepartments";
 import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
@@ -47,6 +53,10 @@ export function MaterialRequestScreen() {
   const profilesById = profilesQuery.data ?? new Map();
 
   const savePurchaseDetails = useSavePurchaseDetails();
+  const attachmentsQuery = useMaterialAttachments(requestId);
+  const uploadAttachment = useUploadMaterialAttachment(requestId);
+  const deleteAttachment = useDeleteMaterialAttachment(requestId);
+  const purchaseAttachments = (attachmentsQuery.data ?? []).filter((a) => a.phase === "purchase");
 
   const [editingPurchase, setEditingPurchase] = useState(false);
   const [quotePrice, setQuotePrice] = useState("");
@@ -154,21 +164,6 @@ export function MaterialRequestScreen() {
                   <p className="text-sm text-ink whitespace-pre-wrap bg-bg rounded-lg p-3">{request.attachmentsNote}</p>
                 </div>
               )}
-
-              <ApprovalChainSection
-                title="سلسلة اعتماد قيمة الشراء"
-                requestId={request.id}
-                projectId={request.projectId}
-                canEdit={canEditPurchaseFields}
-                priceEntered={request.quotePrice != null}
-                bundles={purchaseBundles}
-                currentUserId={profile.id}
-                departments={rootDepartments}
-                members={members}
-                companyMembers={companyMembers}
-                profilesById={profilesById}
-                isOrgManager={isOrgManager}
-              />
             </>
           ) : (
             <div>
@@ -202,6 +197,42 @@ export function MaterialRequestScreen() {
                 </SecondaryButton>
               </div>
             </div>
+          )}
+
+          <div className="mb-4">
+            <FieldLabel>مرفقات الشراء (عرض السعر، شهادة المطابقة...)</FieldLabel>
+            <AttachmentsList attachments={purchaseAttachments} canDelete={canEditPurchaseFields} onDelete={(id) => deleteAttachment.mutate(id)} />
+            {canEditPurchaseFields && (
+              <label className="mt-2 flex items-center gap-2 border border-dashed border-line rounded-lg px-3 py-2 cursor-pointer text-xs text-ink-soft hover:bg-bg w-fit">
+                <Upload size={13} /> إرفاق ملف
+                <input
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) uploadAttachment.mutate({ file, optionId: null, phase: "purchase" });
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            )}
+          </div>
+
+          {!editingPurchase && (
+            <ApprovalChainSection
+              title="سلسلة اعتماد قيمة الشراء"
+              requestId={request.id}
+              projectId={request.projectId}
+              canEdit={canEditPurchaseFields}
+              priceEntered={request.quotePrice != null}
+              bundles={purchaseBundles}
+              currentUserId={profile.id}
+              departments={rootDepartments}
+              members={members}
+              companyMembers={companyMembers}
+              profilesById={profilesById}
+              isOrgManager={isOrgManager}
+            />
           )}
         </Card>
       )}

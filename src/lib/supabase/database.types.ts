@@ -999,6 +999,7 @@ export interface Database {
           id: string;
           material_request_id: string;
           option_id: string | null;
+          phase: "sample" | "purchase";
           file_url: string;
           file_name: string;
           uploaded_by: string | null;
@@ -1008,6 +1009,7 @@ export interface Database {
           id?: string;
           material_request_id: string;
           option_id?: string | null;
+          phase?: "sample" | "purchase";
           file_url: string;
           file_name: string;
           uploaded_by?: string | null;
