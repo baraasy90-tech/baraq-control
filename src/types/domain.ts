@@ -309,7 +309,18 @@ export interface Contract {
 
 export type SettlementStatus = "open" | "pending_pm_approval" | "pending_finance_approval" | "settled" | "rejected";
 
-export type InternalRequestType = "leave" | "contract_renewal" | "other";
+export type InternalRequestType = "leave" | "contract_renewal" | "other" | "inquiry" | "objection" | "complaint" | "approval";
+
+export interface AppNotification {
+  id: string;
+  companyId: string;
+  userId: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
 export type InternalRequestStatus = "pending" | "approved" | "rejected";
 
 export type AuditAction = "insert" | "update" | "delete";

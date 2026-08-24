@@ -15,7 +15,15 @@ import { RecordAuditTimeline } from "@/features/company/RecordAuditTimeline";
 import { fmt } from "@/utils/dates";
 import type { ApprovalChainStepInput, ApprovalChainType, InternalRequestType } from "@/types/domain";
 
-const TYPE_LABEL: Record<InternalRequestType, string> = { leave: "إجازة", contract_renewal: "تجديد عقد", other: "أمر آخر" };
+const TYPE_LABEL: Record<InternalRequestType, string> = {
+  inquiry: "استفسار",
+  objection: "اعتراض",
+  complaint: "شكوى",
+  approval: "اعتماد",
+  other: "عام",
+  leave: "إجازة",
+  contract_renewal: "تجديد عقد",
+};
 const STATUS_LABEL: Record<string, string> = { pending: "قيد الاعتماد", approved: "معتمد", rejected: "مرفوض" };
 const STATUS_TONE: Record<string, string> = {
   pending: "text-warn bg-warn-bg",

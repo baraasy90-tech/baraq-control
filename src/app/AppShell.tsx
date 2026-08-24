@@ -18,6 +18,7 @@ import {
 import { useCompany } from "@/features/company/useCompany";
 import { QuickSignOutButton } from "@/features/auth/QuickSignOutButton";
 import { MySignatureModal } from "@/features/company/MySignatureModal";
+import { NotificationBell } from "@/features/company/NotificationBell";
 import { useIsPlatformAdmin } from "@/features/billing/useIsPlatformAdmin";
 import { fmt } from "@/utils/dates";
 import type { Company, Profile } from "@/types/domain";
@@ -165,6 +166,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <SidebarNav collapsed={collapsed} pathname={location.pathname} />
         <PlatformAdminLink collapsed={collapsed} />
         <div className="border-t border-line/60">
+          <NotificationBell userId={profile.id} collapsed={collapsed} />
           <SignatureRow profile={profile} collapsed={collapsed} onOpen={() => setSignatureOpen(true)} />
           <QuickSignOutButton collapsed={collapsed} />
         </div>
@@ -193,6 +195,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <SidebarNav collapsed={false} pathname={location.pathname} onNavigate={() => setMobileOpen(false)} />
             <PlatformAdminLink collapsed={false} />
             <div className="border-t border-line/60">
+              <NotificationBell userId={profile.id} collapsed={false} />
               <SignatureRow profile={profile} collapsed={false} onOpen={() => setSignatureOpen(true)} />
               <QuickSignOutButton collapsed={false} />
             </div>

@@ -17,12 +17,14 @@ function DeptCard({
   canEdit,
   onEdit,
   color,
+  isRoot,
 }: {
   dept: Department;
   members: DepartmentMember[];
   canEdit: boolean;
   onEdit: (dept: Department) => void;
   color: string;
+  isRoot: boolean;
 }) {
   const deptMembers = members.filter((m) => m.departmentId === dept.id);
   const head = deptMembers.find((m) => m.role === "head");
@@ -47,7 +49,12 @@ function DeptCard({
       )}
       <div className="flex items-center justify-center gap-1.5">
         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
-        <span className="text-sm font-bold text-ink truncate">{dept.name}</span>
+        <span
+          className={`text-sm truncate ${isRoot ? "font-bold" : "font-normal"}`}
+          style={{ color }}
+        >
+          {dept.name}
+        </span>
       </div>
       {head ? (
         <div className="text-xs text-ink-soft mt-1 truncate">
@@ -68,6 +75,7 @@ function OrgTreeNode({
   canEdit,
   onEdit,
   colorMap,
+  depth,
 }: {
   dept: Department;
   departments: Department[];
@@ -75,11 +83,19 @@ function OrgTreeNode({
   canEdit: boolean;
   onEdit: (dept: Department) => void;
   colorMap: Map<string, string>;
+  depth: number;
 }) {
   const children = departments.filter((d) => d.parentDepartmentId === dept.id);
   return (
     <li>
-      <DeptCard dept={dept} members={members} canEdit={canEdit} onEdit={onEdit} color={colorMap.get(dept.id) ?? "#5B6472"} />
+      <DeptCard
+        dept={dept}
+        members={members}
+        canEdit={canEdit}
+        onEdit={onEdit}
+        color={colorMap.get(dept.id) ?? "#5B6472"}
+        isRoot={depth === 0}
+      />
       {children.length > 0 && (
         <ul>
           {children.map((c) => (
@@ -91,6 +107,7 @@ function OrgTreeNode({
               canEdit={canEdit}
               onEdit={onEdit}
               colorMap={colorMap}
+              depth={depth + 1}
             />
           ))}
         </ul>
@@ -173,6 +190,7 @@ export function OrgTreeChart({
                     canEdit={canEdit}
                     onEdit={onEdit}
                     colorMap={colorMap}
+                    depth={0}
                   />
                 ))}
               </ul>

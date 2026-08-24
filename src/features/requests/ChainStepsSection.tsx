@@ -28,6 +28,26 @@ function isStepActive(step: InternalApprovalChainStep, allSteps: InternalApprova
   return !allSteps.some((s) => s.stepOrder < step.stepOrder && s.status !== "approved");
 }
 
+function formatDuration(ms: number): string {
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return `${mins} د`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} س`;
+  const days = Math.round(hours / 24);
+  return `${days} يوم`;
+}
+
+/** المدة التي استغرقتها هذه المرحلة عند الشخص المعني: من لحظة توجيهها له فعلياً
+ * (أو اعتماد المرحلة السابقة، أو إنشاء الطلب لو كانت أول مرحلة) حتى لحظة تصرّفه بها. */
+function stepDuration(step: InternalApprovalChainStep, allSteps: InternalApprovalChainStep[], chainCreatedAt: string): string | null {
+  if (!step.actedAt) return null;
+  const prevApproved = allSteps.filter((s) => s.stepOrder < step.stepOrder && s.status === "approved").sort((a, b) => b.stepOrder - a.stepOrder)[0];
+  const start = step.routedAt ?? prevApproved?.actedAt ?? chainCreatedAt;
+  const ms = new Date(step.actedAt).getTime() - new Date(start).getTime();
+  if (ms < 0) return null;
+  return formatDuration(ms);
+}
+
 function StepStatusIcon({ status }: { status: InternalApprovalChainStep["status"] }) {
   if (status === "approved") return <CircleCheck size={16} className="text-accent shrink-0" />;
   if (status === "rejected") return <CircleX size={16} className="text-critical shrink-0" />;
@@ -40,6 +60,7 @@ function StepRow({
   allSteps,
   requestId,
   chainType,
+  chainCreatedAt,
   departments,
   members,
   profilesById,
@@ -50,6 +71,7 @@ function StepRow({
   allSteps: InternalApprovalChainStep[];
   requestId: string;
   chainType: "linear" | "network";
+  chainCreatedAt: string;
   departments: Department[];
   members: DepartmentMember[];
   profilesById: Map<string, MiniProfile>;
@@ -106,6 +128,9 @@ function StepRow({
             at={step.actedAt}
             note={step.note}
           />
+          {stepDuration(step, allSteps, chainCreatedAt) && (
+            <div className="text-[10px] text-ink-soft mt-1">استغرقت {stepDuration(step, allSteps, chainCreatedAt)}</div>
+          )}
         </div>
       )}
       {step.status === "rejected" && <div className="text-xs text-critical mt-1 mr-6">سبب الرفض: {step.note}</div>}
@@ -285,6 +310,7 @@ export function ChainStepsSection({
             allSteps={bundle.steps}
             requestId={requestId}
             chainType={bundle.chain.chainType}
+            chainCreatedAt={bundle.chain.createdAt}
             departments={departments}
             members={members}
             profilesById={profilesById}
