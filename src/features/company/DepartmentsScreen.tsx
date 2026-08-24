@@ -5,6 +5,8 @@ import { useDepartments } from "@/features/company/api/useDepartments";
 import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
 import { useMemberWorkSummaries } from "@/features/company/api/useMemberWork";
 import { DEPARTMENT_TYPE_LABEL } from "@/features/company/departmentTypeLabels";
+import { manageableDepartmentIdsFor } from "@/features/company/lib/effectiveHead";
+import type { Department } from "@/types/domain";
 
 const ROLE_LABEL: Record<string, string> = { member: "عضو", head: "رئيس القسم" };
 
@@ -12,6 +14,23 @@ function roleLabel(dept: { headLabel: string | null; memberLabel: string | null 
   if (!dept) return ROLE_LABEL[role] ?? role;
   if (role === "head") return dept.headLabel || ROLE_LABEL.head;
   return dept.memberLabel || ROLE_LABEL.member;
+}
+
+/** القسم نفسه + كل الأقسام الفرعية المتفرّعة منه مهما كان عمقها — لعرض كل منسوبي
+ * القسم فعلياً (من رئيسه حتى أصغر موظف بأي قسم فرعي تابع)، وليس الأعضاء المباشرين فقط. */
+function getSubtreeDepartmentIds(departments: Department[], rootId: string): Set<string> {
+  const result = new Set<string>([rootId]);
+  const queue = [rootId];
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    for (const d of departments) {
+      if (d.parentDepartmentId === id && !result.has(d.id)) {
+        result.add(d.id);
+        queue.push(d.id);
+      }
+    }
+  }
+  return result;
 }
 
 /** محتوى تبويب "نشاط الأعضاء" — يُعرض داخل شاشة الأقسام والهيكلة الموحّدة. */
@@ -26,12 +45,10 @@ export function DepartmentActivityView() {
   const isExecutive = members.some(
     (m) => m.userId === profile.id && allDepartments.find((d) => d.id === m.departmentId)?.type === "executive"
   );
-  const headDepartmentIds = new Set(
-    members.filter((m) => m.userId === profile.id && m.role === "head").map((m) => m.departmentId)
-  );
+  const manageableIds = manageableDepartmentIdsFor(profile.id, allDepartments, members);
 
   const canSeeAll = isOwner || isExecutive;
-  const departments = canSeeAll ? allDepartments : allDepartments.filter((d) => headDepartmentIds.has(d.id));
+  const departments = canSeeAll ? allDepartments : allDepartments.filter((d) => manageableIds.has(d.id));
 
   const memberUserIds = [...new Set(members.filter((m) => departments.some((d) => d.id === m.departmentId)).map((m) => m.userId))];
   const workQuery = useMemberWorkSummaries(memberUserIds);
@@ -63,7 +80,8 @@ export function DepartmentActivityView() {
 
       <div className="flex flex-col gap-3">
         {departments.map((dept) => {
-          const deptMembers = members.filter((m) => m.departmentId === dept.id);
+          const subtreeIds = getSubtreeDepartmentIds(allDepartments, dept.id);
+          const deptMembers = members.filter((m) => subtreeIds.has(m.departmentId));
           const isOpen = expandedId === dept.id;
 
           return (
@@ -91,12 +109,18 @@ export function DepartmentActivityView() {
                   ) : (
                     deptMembers.map((m) => {
                       const work = workByUser?.get(m.userId);
+                      const memberDept = allDepartments.find((d) => d.id === m.departmentId);
                       return (
                         <div key={m.id} className="bg-bg rounded-lg p-3">
                           <div className="flex items-center justify-between gap-2 mb-2">
-                            <span className="text-sm font-semibold text-ink">{m.fullName}</span>
-                            <span className="text-xs text-ink-soft bg-panel border border-line/60 rounded-full px-2 py-0.5">
-                              {m.title || roleLabel(dept, m.role)}
+                            <div className="min-w-0">
+                              <span className="text-sm font-semibold text-ink">{m.fullName}</span>
+                              {memberDept && memberDept.id !== dept.id && (
+                                <span className="text-[10px] text-ink-soft block">{memberDept.name}</span>
+                              )}
+                            </div>
+                            <span className="text-xs text-ink-soft bg-panel border border-line/60 rounded-full px-2 py-0.5 shrink-0">
+                              {m.title || roleLabel(memberDept, m.role)}
                             </span>
                           </div>
 
