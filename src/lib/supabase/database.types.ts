@@ -1247,6 +1247,7 @@ export interface Database {
           subscription_updated_at: string | null;
           created_at: string;
           member_count: number;
+          is_individual: boolean;
         }[];
       };
       create_company: {

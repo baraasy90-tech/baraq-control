@@ -17,6 +17,7 @@ export function useCompaniesBilling() {
         subscriptionUpdatedAt: row.subscription_updated_at,
         createdAt: row.created_at,
         memberCount: row.member_count,
+        isIndividual: row.is_individual,
       }));
     },
   });

@@ -89,12 +89,39 @@ function EditSubscriptionModal({ row, onClose }: { row: CompanyBillingRow; onClo
   );
 }
 
+function CompanyRow({ row, onEdit }: { row: CompanyBillingRow; onEdit: () => void }) {
+  return (
+    <Card className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="min-w-0">
+        <div className="text-sm font-bold text-ink truncate">{row.name}</div>
+        <div className="text-xs text-ink-soft mt-0.5">
+          {row.memberCount} {row.isIndividual ? "مستخدم" : "حساب فرعي"} · أُنشئت {fmt(row.createdAt)}
+        </div>
+        {row.subscriptionNote && <div className="text-xs text-ink-soft mt-0.5">{row.subscriptionNote}</div>}
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="text-left">
+          <div className={`text-xs font-bold ${STATUS_TONE[row.subscriptionStatus]}`}>{STATUS_LABEL[row.subscriptionStatus]}</div>
+          <div className={`text-xs mt-0.5 ${isTrialEndingSoon(row) ? "text-warn font-semibold" : "text-ink-soft"}`}>
+            حتى {fmt(row.trialEndsAt)}
+          </div>
+        </div>
+        <SecondaryButton onClick={onEdit} className="text-xs px-3 py-2">
+          تعديل
+        </SecondaryButton>
+      </div>
+    </Card>
+  );
+}
+
 export function PlatformAdminScreen() {
   const navigate = useNavigate();
   const companiesQuery = useCompaniesBilling();
   const [editing, setEditing] = useState<CompanyBillingRow | null>(null);
 
-  const companies = companiesQuery.data ?? [];
+  const allRows = companiesQuery.data ?? [];
+  const companies = allRows.filter((c) => !c.isIndividual);
+  const individuals = allRows.filter((c) => c.isIndividual);
   const trialCount = companies.filter((c) => c.subscriptionStatus === "trial").length;
   const endingSoonCount = companies.filter(isTrialEndingSoon).length;
 
@@ -123,30 +150,26 @@ export function PlatformAdminScreen() {
       {companiesQuery.isLoading && <p className="text-sm text-ink-soft">جارٍ التحميل...</p>}
       {companiesQuery.isError && <p className="text-sm text-critical">تعذّر تحميل قائمة الشركات (تأكد أن حسابك مفعّل كمدير منصة)</p>}
 
-      <div className="flex flex-col gap-2">
+      <h2 className="text-sm font-bold text-ink-soft mb-2">الشركات</h2>
+      <div className="flex flex-col gap-2 mb-8">
+        {!companiesQuery.isLoading && companies.length === 0 && (
+          <p className="text-sm text-ink-soft">لا توجد شركات بعد</p>
+        )}
         {companies.map((row) => (
-          <Card key={row.id} className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="min-w-0">
-              <div className="text-sm font-bold text-ink truncate">{row.name}</div>
-              <div className="text-xs text-ink-soft mt-0.5">
-                {row.memberCount} عضو · أُنشئت {fmt(row.createdAt)}
-              </div>
-              {row.subscriptionNote && <div className="text-xs text-ink-soft mt-0.5">{row.subscriptionNote}</div>}
-            </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="text-left">
-                <div className={`text-xs font-bold ${STATUS_TONE[row.subscriptionStatus]}`}>
-                  {STATUS_LABEL[row.subscriptionStatus]}
-                </div>
-                <div className={`text-xs mt-0.5 ${isTrialEndingSoon(row) ? "text-warn font-semibold" : "text-ink-soft"}`}>
-                  حتى {fmt(row.trialEndsAt)}
-                </div>
-              </div>
-              <SecondaryButton onClick={() => setEditing(row)} className="text-xs px-3 py-2">
-                تعديل
-              </SecondaryButton>
-            </div>
-          </Card>
+          <CompanyRow key={row.id} row={row} onEdit={() => setEditing(row)} />
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 mb-2">
+        <h2 className="text-sm font-bold text-ink-soft">الحسابات الفردية</h2>
+        <span className="text-xs text-ink-soft bg-panel border border-line/60 rounded-full px-2 py-0.5">{individuals.length}</span>
+      </div>
+      <div className="flex flex-col gap-2">
+        {!companiesQuery.isLoading && individuals.length === 0 && (
+          <p className="text-sm text-ink-soft">لا توجد حسابات فردية بعد</p>
+        )}
+        {individuals.map((row) => (
+          <CompanyRow key={row.id} row={row} onEdit={() => setEditing(row)} />
         ))}
       </div>
 

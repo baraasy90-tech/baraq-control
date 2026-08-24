@@ -49,6 +49,7 @@ export interface CompanyBillingRow {
   subscriptionUpdatedAt: string | null;
   createdAt: string;
   memberCount: number;
+  isIndividual: boolean;
 }
 
 export interface Profile {
