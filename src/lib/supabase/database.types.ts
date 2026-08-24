@@ -1260,6 +1260,14 @@ export interface Database {
         };
         Returns: Database["public"]["Tables"]["companies"]["Row"];
       };
+      reroute_approval_step: {
+        Args: { p_step_id: string; p_user_id: string };
+        Returns: undefined;
+      };
+      reroute_internal_approval_step: {
+        Args: { p_step_id: string; p_user_id: string };
+        Returns: undefined;
+      };
       delete_internal_request: {
         Args: { p_request_id: string };
         Returns: undefined;

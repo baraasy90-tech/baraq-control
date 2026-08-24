@@ -7,6 +7,7 @@ import type { ChainStepInput } from "@/features/procurement/api/useApprovalChain
 import {
   useSubmitPurchaseChain,
   useRouteApprovalStep,
+  useRerouteApprovalStep,
   useInsertApprovalStep,
   useReviewApprovalStep,
   useSendApprovalStepBack,
@@ -181,6 +182,7 @@ function StepRow({
   profilesById,
   canRoute,
   canAct,
+  canReroute,
   requestId,
   projectId,
   previousStep,
@@ -194,6 +196,7 @@ function StepRow({
   currentUserId: string;
   canRoute: boolean;
   canAct: boolean;
+  canReroute: boolean;
   requestId: string;
   projectId: string;
   membersOfDept: DepartmentMember[];
@@ -202,6 +205,7 @@ function StepRow({
   canSendBack: boolean;
 }) {
   const routeStep = useRouteApprovalStep(requestId, projectId);
+  const rerouteStep = useRerouteApprovalStep(requestId, projectId);
   const reviewStep = useReviewApprovalStep(requestId, projectId);
   const insertStep = useInsertApprovalStep(requestId, projectId);
   const sendBackStep = useSendApprovalStepBack(requestId, projectId);
@@ -211,6 +215,8 @@ function StepRow({
   const routeFallbackToCompany = membersOfDept.length === 0;
 
   const [routeUserId, setRouteUserId] = useState("");
+  const [reroutingOpen, setReroutingOpen] = useState(false);
+  const [rerouteUserId, setRerouteUserId] = useState("");
   const [reviewNote, setReviewNote] = useState("");
   const [addingExtra, setAddingExtra] = useState(false);
   const [extraDept, setExtraDept] = useState<string | null>(null);
@@ -264,6 +270,44 @@ function StepRow({
             <p className="text-[11px] text-warn mt-1">
               لا يوجد أعضاء مسجّلين بهذا القسم بعد — القائمة تعرض كل أعضاء الشركة مؤقتاً.
             </p>
+          )}
+        </div>
+      )}
+      {active && canReroute && (
+        <div className="mt-2 mr-6">
+          {!reroutingOpen ? (
+            <SecondaryButton onClick={() => setReroutingOpen(true)} className="text-xs px-3 py-1.5">
+              إعادة التوجيه لشخص آخر
+            </SecondaryButton>
+          ) : (
+            <div className="flex items-center gap-2 flex-wrap">
+              <select
+                value={rerouteUserId}
+                onChange={(e) => setRerouteUserId(e.target.value)}
+                className="bg-panel border border-line/60 rounded-lg px-2 py-1.5 text-xs text-ink"
+              >
+                <option value="">وجّه إلى...</option>
+                {routeCandidates.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.fullName}
+                  </option>
+                ))}
+              </select>
+              <PrimaryButton
+                disabled={!rerouteUserId || rerouteStep.isPending}
+                onClick={() => {
+                  rerouteStep.mutate({ stepId: step.id, userId: rerouteUserId });
+                  setReroutingOpen(false);
+                  setRerouteUserId("");
+                }}
+                className="w-auto text-xs px-3 py-1.5"
+              >
+                إرسال
+              </PrimaryButton>
+              <SecondaryButton onClick={() => setReroutingOpen(false)} className="text-xs px-3 py-1.5">
+                إلغاء
+              </SecondaryButton>
+            </div>
           )}
         </div>
       )}
@@ -384,6 +428,7 @@ export function ApprovalStepsList({
           (isOrgManager || members.some((m) => m.userId === currentUserId && m.departmentId === step.departmentId && m.role === "head"));
         const canRoute = active && !step.assignedUserId && isHeadOfDept;
         const canAct = active && !!step.assignedUserId && (step.assignedUserId === currentUserId || isOrgManager);
+        const canReroute = active && !!step.assignedUserId && isHeadOfDept;
         const previousStep = steps.find((s) => s.stepOrder === step.stepOrder - 1) ?? null;
         return (
           <StepRow
@@ -398,6 +443,7 @@ export function ApprovalStepsList({
             currentUserId={currentUserId}
             canRoute={canRoute}
             canAct={canAct}
+            canReroute={canReroute}
             requestId={requestId}
             projectId={projectId}
             previousStep={previousStep}

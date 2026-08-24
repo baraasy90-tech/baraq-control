@@ -60,6 +60,20 @@ export function useRouteApprovalStep(requestId: string | undefined, projectId: s
   });
 }
 
+export function useRerouteApprovalStep(requestId: string | undefined, projectId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ stepId, userId }: { stepId: string; userId: string }) => {
+      const { error } = await supabase.rpc("reroute_approval_step", { p_step_id: stepId, p_user_id: userId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      if (requestId) invalidateRequest(queryClient, requestId, projectId);
+    },
+  });
+}
+
 export function useInsertApprovalStep(requestId: string | undefined, projectId: string | undefined) {
   const queryClient = useQueryClient();
 
