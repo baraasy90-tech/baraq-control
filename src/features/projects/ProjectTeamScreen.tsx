@@ -10,6 +10,7 @@ import { useProjectMembers } from "@/features/projects/api/useProjectMembers";
 import { useAddProjectMember } from "@/features/projects/api/useAddProjectMember";
 import { useRemoveProjectMember } from "@/features/projects/api/useRemoveProjectMember";
 import { useSetProjectDepartments } from "@/features/projects/api/useSetProjectDepartments";
+import { getSubtreeDepartmentIds } from "@/features/company/lib/departmentTree";
 import type { Project, ProjectMemberRole } from "@/types/domain";
 
 const ROLE_LABEL: Record<ProjectMemberRole, string> = { manager: "مدير المشروع", member: "عضو فريق" };
@@ -130,6 +131,38 @@ export function ProjectTeamScreen({ project }: { project: Project }) {
     }
   };
 
+  const [bulkDepartmentId, setBulkDepartmentId] = useState("");
+  const [bulkError, setBulkError] = useState("");
+  const [bulkAdding, setBulkAdding] = useState(false);
+
+  const bulkCandidates = bulkDepartmentId
+    ? (() => {
+        const subtreeIds = getSubtreeDepartmentIds(orgDepartments, bulkDepartmentId);
+        const seen = new Set<string>();
+        return orgMembers.filter((m) => {
+          if (!subtreeIds.has(m.departmentId) || memberUserIds.has(m.userId) || seen.has(m.userId)) return false;
+          seen.add(m.userId);
+          return true;
+        });
+      })()
+    : [];
+
+  const handleBulkAdd = async () => {
+    if (bulkCandidates.length === 0) return;
+    setBulkError("");
+    setBulkAdding(true);
+    try {
+      for (const m of bulkCandidates) {
+        await addMember.mutateAsync({ projectId: project.id, userId: m.userId, role: "member" });
+      }
+      setBulkDepartmentId("");
+    } catch {
+      setBulkError("تعذّرت إضافة بعض أعضاء القسم، حاول مجدداً");
+    } finally {
+      setBulkAdding(false);
+    }
+  };
+
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-6 gap-2">
@@ -195,6 +228,47 @@ export function ProjectTeamScreen({ project }: { project: Project }) {
         >
           {addMember.isPending ? "جارٍ الإضافة..." : "إضافة للمشروع"}
         </PrimaryButton>
+      </Card>
+
+      <Card className="mt-4">
+        <h2 className="text-sm font-bold text-ink mb-1">إضافة قسم كامل</h2>
+        <p className="text-xs text-ink-soft mb-3">
+          يضيف كل منسوبي القسم المختار (وأقسامه الفرعية) دفعة واحدة كأعضاء فريق — مفيد للتأكد من صحة ربط الهيكلة
+          بالمشروع دون الحاجة لإضافة كل شخص يدوياً.
+        </p>
+        {orgDepartments.length === 0 ? (
+          <p className="text-sm text-ink-soft">لا توجد أقسام بعد بالهيكلة</p>
+        ) : (
+          <>
+            <select
+              value={bulkDepartmentId}
+              onChange={(e) => setBulkDepartmentId(e.target.value)}
+              className="w-full px-3 py-2.5 border border-line rounded-lg text-sm font-sans bg-white box-border mb-3"
+            >
+              <option value="">اختر القسم...</option>
+              {orgDepartments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+            {bulkDepartmentId && (
+              <p className="text-xs text-ink-soft mb-3">
+                {bulkCandidates.length > 0
+                  ? `سيُضاف ${bulkCandidates.length} عضو جديد لفريق المشروع (بدور "عضو فريق")`
+                  : "كل منسوبي هذا القسم مُضافون بالفعل لفريق المشروع"}
+              </p>
+            )}
+            <ErrorText>{bulkError}</ErrorText>
+            <SecondaryButton
+              onClick={handleBulkAdd}
+              disabled={bulkCandidates.length === 0 || bulkAdding}
+              className="w-auto px-4 py-2 text-sm"
+            >
+              {bulkAdding ? "جارٍ الإضافة..." : "إضافة كل أعضاء القسم"}
+            </SecondaryButton>
+          </>
+        )}
       </Card>
     </div>
   );

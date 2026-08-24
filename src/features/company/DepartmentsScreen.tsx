@@ -7,6 +7,7 @@ import { useMemberWorkSummaries } from "@/features/company/api/useMemberWork";
 import { DEPARTMENT_TYPE_LABEL } from "@/features/company/departmentTypeLabels";
 import { manageableDepartmentIdsFor } from "@/features/company/lib/effectiveHead";
 import { computeBranchColors } from "@/features/company/lib/branchColors";
+import { getSubtreeDepartmentIds } from "@/features/company/lib/departmentTree";
 import type { Department } from "@/types/domain";
 
 const ROLE_LABEL: Record<string, string> = { member: "عضو", head: "رئيس القسم" };
@@ -35,23 +36,6 @@ function topmostDepartments(visible: Department[], allDepartments: Department[])
     }
     return true;
   });
-}
-
-/** القسم نفسه + كل الأقسام الفرعية المتفرّعة منه مهما كان عمقها — لعرض كل منسوبي
- * القسم فعلياً (من رئيسه حتى أصغر موظف بأي قسم فرعي تابع)، وليس الأعضاء المباشرين فقط. */
-function getSubtreeDepartmentIds(departments: Department[], rootId: string): Set<string> {
-  const result = new Set<string>([rootId]);
-  const queue = [rootId];
-  while (queue.length > 0) {
-    const id = queue.shift()!;
-    for (const d of departments) {
-      if (d.parentDepartmentId === id && !result.has(d.id)) {
-        result.add(d.id);
-        queue.push(d.id);
-      }
-    }
-  }
-  return result;
 }
 
 /** محتوى تبويب "نشاط الأعضاء" — يُعرض داخل شاشة الأقسام والهيكلة الموحّدة. */
