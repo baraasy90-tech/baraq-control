@@ -14,12 +14,14 @@ import {
   PenLine,
   UserRound,
   ShieldCheck,
+  WifiOff,
 } from "lucide-react";
 import { useCompany } from "@/features/company/useCompany";
 import { QuickSignOutButton } from "@/features/auth/QuickSignOutButton";
 import { MySignatureModal } from "@/features/company/MySignatureModal";
 import { NotificationBell } from "@/features/company/NotificationBell";
 import { useIsPlatformAdmin } from "@/features/billing/useIsPlatformAdmin";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { fmt } from "@/utils/dates";
 import type { Company, Profile } from "@/types/domain";
 
@@ -133,6 +135,16 @@ function TrialBanner({ company, isOwner }: { company: Company; isOwner: boolean 
   return null;
 }
 
+function OfflineBanner() {
+  const online = useOnlineStatus();
+  if (online) return null;
+  return (
+    <div className="bg-ink text-white px-4 py-2 text-xs font-semibold text-center flex items-center justify-center gap-2">
+      <WifiOff size={14} /> لا يوجد اتصال بالإنترنت — سيتم استئناف أي إجراء تلقائياً بمجرد عودة الاتصال
+    </div>
+  );
+}
+
 function SignatureRow({ profile, collapsed, onOpen }: { profile: Profile; collapsed: boolean; onOpen: () => void }) {
   return (
     <button
@@ -223,6 +235,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
+        <OfflineBanner />
         <TrialBanner company={company} isOwner={profile.id === company.createdBy} />
         <main className="flex-1 min-w-0">{children}</main>
       </div>
