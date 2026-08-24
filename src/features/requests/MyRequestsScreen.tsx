@@ -14,6 +14,7 @@ import { ChainStepsSection } from "@/features/requests/ChainStepsSection";
 import { RequestAttachmentsSection } from "@/features/requests/RequestAttachmentsSection";
 import { RecordAuditTimeline } from "@/features/company/RecordAuditTimeline";
 import { fmt } from "@/utils/dates";
+import { getErrorMessage } from "@/utils/errors";
 import type { ApprovalChainStepInput, ApprovalChainType, InternalRequestType } from "@/types/domain";
 
 const TYPE_LABEL: Record<InternalRequestType, string> = {
@@ -77,14 +78,17 @@ export function MyRequestsScreen() {
   const [error, setError] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState("");
   const deleteRequest = useDeleteInternalRequest();
 
   const handleConfirmDelete = async () => {
     if (!confirmDeleteId) return;
+    setDeleteError("");
     try {
       await deleteRequest.mutateAsync(confirmDeleteId);
-    } finally {
       setConfirmDeleteId(null);
+    } catch (err) {
+      setDeleteError(getErrorMessage(err, "تعذّر حذف الطلب، حاول مجدداً"));
     }
   };
 
@@ -274,12 +278,25 @@ export function MyRequestsScreen() {
       )}
 
       {confirmDeleteId && (
-        <Modal title="تأكيد حذف الطلب" onClose={() => setConfirmDeleteId(null)}>
+        <Modal
+          title="تأكيد حذف الطلب"
+          onClose={() => {
+            setConfirmDeleteId(null);
+            setDeleteError("");
+          }}
+        >
           <p className="text-sm text-ink-soft mb-5">
             هل أنت متأكد من حذف هذا الطلب نهائياً؟ سيُحذف معه سلسلة اعتماده وكل مرفقاته ونسخها بشكل لا رجعة فيه.
           </p>
+          <ErrorText>{deleteError}</ErrorText>
           <div className="flex gap-2">
-            <SecondaryButton onClick={() => setConfirmDeleteId(null)} className="flex-1">
+            <SecondaryButton
+              onClick={() => {
+                setConfirmDeleteId(null);
+                setDeleteError("");
+              }}
+              className="flex-1"
+            >
               إلغاء
             </SecondaryButton>
             <button
