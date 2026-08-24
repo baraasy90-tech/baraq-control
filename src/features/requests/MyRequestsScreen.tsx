@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { Card, StatCard, SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText, Modal } from "@/components/ui";
 import { useCompany } from "@/features/company/useCompany";
 import { useDepartments } from "@/features/company/api/useDepartments";
 import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
 import { useProfilesByIds } from "@/features/company/api/useProfilesByIds";
 import { useMyInternalRequests, useCompanyInternalRequests, useCreateInternalRequest } from "@/features/requests/api/useInternalRequests";
+import { useDeleteInternalRequest } from "@/features/requests/api/useDeleteInternalRequest";
 import { useApprovalChainTemplates, useCreateApprovalChainTemplate } from "@/features/requests/api/useApprovalChainTemplates";
 import { ChainBuilder } from "@/features/requests/ChainBuilder";
 import { ChainStepsSection } from "@/features/requests/ChainStepsSection";
@@ -75,6 +76,17 @@ export function MyRequestsScreen() {
   const [templateName, setTemplateName] = useState("");
   const [error, setError] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const deleteRequest = useDeleteInternalRequest();
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDeleteId) return;
+    try {
+      await deleteRequest.mutateAsync(confirmDeleteId);
+    } finally {
+      setConfirmDeleteId(null);
+    }
+  };
 
   const openCreate = () => {
     setTemplateId("");
@@ -165,7 +177,16 @@ export function MyRequestsScreen() {
                     )}
                     {r.description && <div className="text-xs text-ink-soft mt-1">{r.description}</div>}
                   </div>
-                  {expanded ? <ChevronUp size={16} className="text-ink-soft shrink-0" /> : <ChevronDown size={16} className="text-ink-soft shrink-0" />}
+                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <IconButton icon={Trash2} label="حذف الطلب" tone="critical" onClick={() => setConfirmDeleteId(r.id)} />
+                    <button
+                      type="button"
+                      onClick={() => setExpandedId(expanded ? null : r.id)}
+                      className="bg-transparent border-none cursor-pointer p-1 text-ink-soft"
+                    >
+                      {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </button>
+                  </div>
                 </div>
 
                 {expanded && (
@@ -218,7 +239,18 @@ export function MyRequestsScreen() {
                     )}
                     {r.description && <div className="text-xs text-ink-soft">{r.description}</div>}
                   </div>
-                  {expanded ? <ChevronUp size={16} className="text-ink-soft shrink-0" /> : <ChevronDown size={16} className="text-ink-soft shrink-0" />}
+                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {isOrgManager && (
+                      <IconButton icon={Trash2} label="حذف الطلب" tone="critical" onClick={() => setConfirmDeleteId(r.id)} />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setExpandedId(expanded ? null : r.id)}
+                      className="bg-transparent border-none cursor-pointer p-1 text-ink-soft"
+                    >
+                      {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </button>
+                  </div>
                 </div>
 
                 {expanded && (
@@ -239,6 +271,26 @@ export function MyRequestsScreen() {
             );
           })}
         </div>
+      )}
+
+      {confirmDeleteId && (
+        <Modal title="تأكيد حذف الطلب" onClose={() => setConfirmDeleteId(null)}>
+          <p className="text-sm text-ink-soft mb-5">
+            هل أنت متأكد من حذف هذا الطلب نهائياً؟ سيُحذف معه سلسلة اعتماده وكل مرفقاته ونسخها بشكل لا رجعة فيه.
+          </p>
+          <div className="flex gap-2">
+            <SecondaryButton onClick={() => setConfirmDeleteId(null)} className="flex-1">
+              إلغاء
+            </SecondaryButton>
+            <button
+              onClick={handleConfirmDelete}
+              disabled={deleteRequest.isPending}
+              className="flex-1 py-2.5 rounded-lg bg-critical text-white border-none font-bold text-sm cursor-pointer disabled:opacity-50"
+            >
+              {deleteRequest.isPending ? "جارٍ الحذف..." : "حذف نهائياً"}
+            </button>
+          </div>
+        </Modal>
       )}
 
       {creating && (

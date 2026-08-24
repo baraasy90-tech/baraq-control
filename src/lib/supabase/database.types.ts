@@ -1260,6 +1260,10 @@ export interface Database {
         };
         Returns: Database["public"]["Tables"]["companies"]["Row"];
       };
+      delete_internal_request: {
+        Args: { p_request_id: string };
+        Returns: undefined;
+      };
       create_individual_account: {
         Args: { p_full_name: string };
         Returns: Database["public"]["Tables"]["companies"]["Row"];
