@@ -15,6 +15,7 @@ import { DEPARTMENT_TYPE_LABEL } from "@/features/company/departmentTypeLabels";
 import { PRESET_MEMBER_TITLES } from "@/features/company/memberTitles";
 import { manageableDepartmentIdsFor } from "@/features/company/lib/effectiveHead";
 import { computeBranchColors } from "@/features/company/lib/branchColors";
+import { getSubtreeDepartmentIds } from "@/features/company/lib/departmentTree";
 import type { Department, DepartmentMember, DepartmentType, MemberRole } from "@/types/domain";
 
 const ROLE_LABEL: Record<MemberRole, string> = { member: "عضو", head: "رئيس القسم" };
@@ -86,21 +87,6 @@ function MemberTitleEditor({
   );
 }
 
-function getDescendantIds(departments: Department[], rootId: string): Set<string> {
-  const result = new Set<string>();
-  const queue = [rootId];
-  while (queue.length > 0) {
-    const id = queue.shift()!;
-    for (const d of departments) {
-      if (d.parentDepartmentId === id && !result.has(d.id)) {
-        result.add(d.id);
-        queue.push(d.id);
-      }
-    }
-  }
-  return result;
-}
-
 export function TeamSection({ companyId }: { companyId: string }) {
   const { company, profile } = useCompany();
   const departmentsQuery = useDepartments(companyId);
@@ -155,7 +141,7 @@ export function TeamSection({ companyId }: { companyId: string }) {
 
   const dropOnDept = (targetDept: Department) => {
     if (!draggingDeptId || draggingDeptId === targetDept.id) return;
-    if (getDescendantIds(departments, draggingDeptId).has(targetDept.id)) return;
+    if (getSubtreeDepartmentIds(departments, draggingDeptId).has(targetDept.id)) return;
     updateDepartment.mutate({ id: draggingDeptId, companyId, parentDepartmentId: targetDept.id });
   };
 
@@ -324,7 +310,7 @@ export function TeamSection({ companyId }: { companyId: string }) {
                     >
                       <option value="">بلا — قسم رئيسي</option>
                       {departments
-                        .filter((d) => d.id !== dept.id && !getDescendantIds(departments, dept.id).has(d.id))
+                        .filter((d) => d.id !== dept.id && !getSubtreeDepartmentIds(departments, dept.id).has(d.id))
                         .map((d) => (
                           <option key={d.id} value={d.id}>
                             {d.name}

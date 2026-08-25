@@ -12,24 +12,10 @@ import { useDeleteDepartment } from "@/features/company/api/useDeleteDepartment"
 import { useCompanyProjectAccess, type ProjectAccess } from "@/features/company/api/useCompanyProjectAccess";
 import { DEPARTMENT_TYPE_LABEL } from "@/features/company/departmentTypeLabels";
 import { computeBranchColors, branchLegend } from "@/features/company/lib/branchColors";
+import { getSubtreeDepartmentIds } from "@/features/company/lib/departmentTree";
 import { DepartmentActivityView } from "@/features/company/DepartmentsScreen";
 import { OrgTreeChart } from "@/features/company/OrgTreeChart";
 import type { Department, DepartmentType, MemberRole } from "@/types/domain";
-
-function getDescendantIds(departments: Department[], rootId: string): Set<string> {
-  const result = new Set<string>();
-  const queue = [rootId];
-  while (queue.length > 0) {
-    const id = queue.shift()!;
-    for (const d of departments) {
-      if (d.parentDepartmentId === id && !result.has(d.id)) {
-        result.add(d.id);
-        queue.push(d.id);
-      }
-    }
-  }
-  return result;
-}
 
 const PROJECT_COLOR_PALETTE = [
   "#2E6FE8",
@@ -380,7 +366,7 @@ export function StructureScreen() {
           >
             <option value="">بدون — قسم رئيسي تابع للشركة مباشرة</option>
             {allDepartments
-              .filter((d) => d.id !== editingDept.id && !getDescendantIds(allDepartments, editingDept.id).has(d.id))
+              .filter((d) => d.id !== editingDept.id && !getSubtreeDepartmentIds(allDepartments, editingDept.id).has(d.id))
               .map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}
