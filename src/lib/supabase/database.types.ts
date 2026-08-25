@@ -245,6 +245,9 @@ export interface Database {
           user_id: string;
           role: "member" | "head";
           title: string | null;
+          organizational_level_id: string | null;
+          organizational_classification_id: string | null;
+          job_title_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -253,6 +256,9 @@ export interface Database {
           user_id: string;
           role?: "member" | "head";
           title?: string | null;
+          organizational_level_id?: string | null;
+          organizational_classification_id?: string | null;
+          job_title_id?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["department_members"]["Insert"]>;

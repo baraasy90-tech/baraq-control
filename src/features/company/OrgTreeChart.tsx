@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 import { computeBranchColors } from "@/features/company/lib/branchColors";
-import type { Department, DepartmentMember, MemberRole } from "@/types/domain";
+import type { Department, DepartmentMember, MemberRole, OrganizationalLevel, OrganizationalClassification } from "@/types/domain";
 
 const ROLE_LABEL: Record<string, string> = { member: "عضو", head: "رئيس القسم" };
 
@@ -18,6 +18,8 @@ function DeptCard({
   onEdit,
   color,
   isRoot,
+  levelById,
+  classificationById,
 }: {
   dept: Department;
   members: DepartmentMember[];
@@ -25,10 +27,16 @@ function DeptCard({
   onEdit: (dept: Department) => void;
   color: string;
   isRoot: boolean;
+  levelById: Map<string, OrganizationalLevel>;
+  classificationById: Map<string, OrganizationalClassification>;
 }) {
   const deptMembers = members.filter((m) => m.departmentId === dept.id);
   const head = deptMembers.find((m) => m.role === "head");
   const rest = deptMembers.filter((m) => m.role !== "head");
+  const headLevel = head?.organizationalLevelId ? levelById.get(head.organizationalLevelId) : undefined;
+  const headClassification = head?.organizationalClassificationId
+    ? classificationById.get(head.organizationalClassificationId)
+    : undefined;
 
   return (
     <div
@@ -63,6 +71,16 @@ function DeptCard({
       ) : (
         <div className="text-xs text-ink-soft/70 mt-1">بدون {roleLabel(dept, "head")}</div>
       )}
+      {(headLevel || headClassification) && (
+        <div className="flex items-center justify-center gap-1 mt-1 flex-wrap">
+          {headLevel && (
+            <span className="text-[10px] text-accent bg-accent-bg rounded-full px-1.5 py-0.5">{headLevel.name}</span>
+          )}
+          {headClassification && (
+            <span className="text-[10px] text-warn bg-warn-bg rounded-full px-1.5 py-0.5">{headClassification.name}</span>
+          )}
+        </div>
+      )}
       {rest.length > 0 && <div className="text-[11px] text-ink-soft/80 mt-0.5">+{rest.length} أعضاء آخرين</div>}
     </div>
   );
@@ -76,6 +94,8 @@ function OrgTreeNode({
   onEdit,
   colorMap,
   depth,
+  levelById,
+  classificationById,
 }: {
   dept: Department;
   departments: Department[];
@@ -84,6 +104,8 @@ function OrgTreeNode({
   onEdit: (dept: Department) => void;
   colorMap: Map<string, string>;
   depth: number;
+  levelById: Map<string, OrganizationalLevel>;
+  classificationById: Map<string, OrganizationalClassification>;
 }) {
   const children = departments.filter((d) => d.parentDepartmentId === dept.id);
   return (
@@ -95,6 +117,8 @@ function OrgTreeNode({
         onEdit={onEdit}
         color={colorMap.get(dept.id) ?? "#5B6472"}
         isRoot={depth === 0}
+        levelById={levelById}
+        classificationById={classificationById}
       />
       {children.length > 0 && (
         <ul>
@@ -108,6 +132,8 @@ function OrgTreeNode({
               onEdit={onEdit}
               colorMap={colorMap}
               depth={depth + 1}
+              levelById={levelById}
+              classificationById={classificationById}
             />
           ))}
         </ul>
@@ -123,6 +149,8 @@ export function OrgTreeChart({
   members,
   canEdit,
   onEdit,
+  levels = [],
+  classifications = [],
 }: {
   companyName: string;
   roots: Department[];
@@ -130,11 +158,15 @@ export function OrgTreeChart({
   members: DepartmentMember[];
   canEdit: boolean;
   onEdit: (dept: Department) => void;
+  levels?: OrganizationalLevel[];
+  classifications?: OrganizationalClassification[];
 }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const treeRef = useRef<HTMLUListElement>(null);
   const [fit, setFit] = useState({ scale: 1, naturalWidth: 0, naturalHeight: 0 });
   const colorMap = computeBranchColors(roots, departments);
+  const levelById = new Map(levels.map((l) => [l.id, l]));
+  const classificationById = new Map(classifications.map((c) => [c.id, c]));
 
   useLayoutEffect(() => {
     const wrapper = wrapperRef.current;
@@ -191,6 +223,8 @@ export function OrgTreeChart({
                     onEdit={onEdit}
                     colorMap={colorMap}
                     depth={0}
+                    levelById={levelById}
+                    classificationById={classificationById}
                   />
                 ))}
               </ul>

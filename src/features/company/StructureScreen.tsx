@@ -16,6 +16,8 @@ import { getSubtreeDepartmentIds } from "@/features/company/lib/departmentTree";
 import { DepartmentActivityView } from "@/features/company/DepartmentsScreen";
 import { OrgTreeChart } from "@/features/company/OrgTreeChart";
 import { OrgTaxonomyScreen } from "@/features/company/OrgTaxonomyScreen";
+import { useOrganizationalLevels } from "@/features/company/api/useOrganizationalLevels";
+import { useOrganizationalClassifications } from "@/features/company/api/useOrganizationalClassifications";
 import type { Department, DepartmentType, MemberRole } from "@/types/domain";
 
 const PROJECT_COLOR_PALETTE = [
@@ -59,6 +61,10 @@ export function StructureScreen() {
   const members = membersQuery.data ?? [];
   const accessQuery = useCompanyProjectAccess(company.id);
   const projectAccess = accessQuery.data ?? [];
+  const levelsQuery = useOrganizationalLevels(company.id);
+  const levels = levelsQuery.data ?? [];
+  const classificationsQuery = useOrganizationalClassifications(company.id);
+  const classifications = classificationsQuery.data ?? [];
   const updateDepartment = useUpdateDepartment();
   const createDepartment = useCreateDepartment();
   const deleteDepartment = useDeleteDepartment(company.id);
@@ -258,6 +264,8 @@ export function StructureScreen() {
                   members={members}
                   canEdit={canEdit}
                   onEdit={openEdit}
+                  levels={levels}
+                  classifications={classifications}
                 />
               </div>
 

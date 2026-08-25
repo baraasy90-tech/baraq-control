@@ -16,6 +16,8 @@ import { PRESET_MEMBER_TITLES } from "@/features/company/memberTitles";
 import { manageableDepartmentIdsFor } from "@/features/company/lib/effectiveHead";
 import { computeBranchColors } from "@/features/company/lib/branchColors";
 import { getSubtreeDepartmentIds } from "@/features/company/lib/departmentTree";
+import { useOrganizationalLevels } from "@/features/company/api/useOrganizationalLevels";
+import { useOrganizationalClassifications } from "@/features/company/api/useOrganizationalClassifications";
 import type { Department, DepartmentMember, DepartmentType, MemberRole } from "@/types/domain";
 
 const ROLE_LABEL: Record<MemberRole, string> = { member: "عضو", head: "رئيس القسم" };
@@ -101,6 +103,10 @@ export function TeamSection({ companyId }: { companyId: string }) {
   const updateMember = useUpdateDepartmentMember();
   const updateDepartment = useUpdateDepartment();
   const deleteDepartment = useDeleteDepartment(companyId);
+  const levelsQuery = useOrganizationalLevels(companyId);
+  const levels = levelsQuery.data ?? [];
+  const classificationsQuery = useOrganizationalClassifications(companyId);
+  const classifications = classificationsQuery.data ?? [];
 
   const isOwner = company.createdBy === profile.id;
   const isExecutive = members.some(
@@ -393,6 +399,38 @@ export function TeamSection({ companyId }: { companyId: string }) {
                               </option>
                             ))}
                           </select>
+                          {levels.length > 0 && (
+                            <select
+                              value={m.organizationalLevelId ?? ""}
+                              onChange={(e) =>
+                                updateMember.mutate({ id: m.id, organizationalLevelId: e.target.value || null })
+                              }
+                              className="text-xs px-2 py-1 border border-line rounded-lg bg-white"
+                            >
+                              <option value="">— بلا مستوى —</option>
+                              {levels.map((l) => (
+                                <option key={l.id} value={l.id}>
+                                  {l.name}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          {classifications.length > 0 && (
+                            <select
+                              value={m.organizationalClassificationId ?? ""}
+                              onChange={(e) =>
+                                updateMember.mutate({ id: m.id, organizationalClassificationId: e.target.value || null })
+                              }
+                              className="text-xs px-2 py-1 border border-line rounded-lg bg-white"
+                            >
+                              <option value="">— بلا تصنيف —</option>
+                              {classifications.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.name}
+                                </option>
+                              ))}
+                            </select>
+                          )}
                         </div>
                       </div>
                     ) : (
