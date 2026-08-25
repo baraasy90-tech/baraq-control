@@ -181,9 +181,11 @@ order by d.company_id, dm.user_id, (dm.role = 'head') desc, dm.created_at asc;
 
 update public.department_members dm
 set employee_id = e.id
-from public.employees e
-join public.departments d on d.id = dm.department_id
-where e.user_id = dm.user_id and e.company_id = d.company_id and dm.employee_id is null;
+from public.employees e, public.departments d
+where d.id = dm.department_id
+  and e.user_id = dm.user_id
+  and e.company_id = d.company_id
+  and dm.employee_id is null;
 
 -- ===== من الآن فصاعداً: أي عضوية قسم جديدة تُنشئ (أو تربط) سجل employees تلقائياً —
 -- تعمل مع أي مسار إنشاء (accept_invite، join_company_by_code، أو أي إدراج مباشر آخر)
