@@ -83,6 +83,29 @@ export interface DepartmentMember {
   title: string | null;
 }
 
+export interface OrganizationalLevel {
+  id: string;
+  companyId: string;
+  name: string;
+  orderIndex: number;
+  isManagementLevel: boolean;
+  isEmployeeLevel: boolean;
+  isWorkerLevel: boolean;
+}
+
+export interface OrganizationalClassification {
+  id: string;
+  companyId: string;
+  name: string;
+  description: string | null;
+}
+
+export interface JobTitle {
+  id: string;
+  companyId: string;
+  name: string;
+}
+
 export type ProjectMemberRole = "manager" | "member";
 
 export interface ProjectMember {

@@ -180,6 +180,64 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["departments"]["Insert"]>;
         Relationships: [];
       };
+      organizational_levels: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          order_index: number;
+          is_management_level: boolean;
+          is_employee_level: boolean;
+          is_worker_level: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          order_index?: number;
+          is_management_level?: boolean;
+          is_employee_level?: boolean;
+          is_worker_level?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["organizational_levels"]["Insert"]>;
+        Relationships: [];
+      };
+      organizational_classifications: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          description: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          description?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["organizational_classifications"]["Insert"]>;
+        Relationships: [];
+      };
+      job_titles: {
+        Row: {
+          id: string;
+          company_id: string;
+          name: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          name: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["job_titles"]["Insert"]>;
+        Relationships: [];
+      };
       department_members: {
         Row: {
           id: string;

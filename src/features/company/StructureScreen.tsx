@@ -15,6 +15,7 @@ import { computeBranchColors, branchLegend } from "@/features/company/lib/branch
 import { getSubtreeDepartmentIds } from "@/features/company/lib/departmentTree";
 import { DepartmentActivityView } from "@/features/company/DepartmentsScreen";
 import { OrgTreeChart } from "@/features/company/OrgTreeChart";
+import { OrgTaxonomyScreen } from "@/features/company/OrgTaxonomyScreen";
 import type { Department, DepartmentType, MemberRole } from "@/types/domain";
 
 const PROJECT_COLOR_PALETTE = [
@@ -45,7 +46,7 @@ function roleLabel(dept: { headLabel: string | null; memberLabel: string | null 
   return dept.memberLabel || ROLE_LABEL.member;
 }
 
-type Tab = "chart" | "activity";
+type Tab = "chart" | "activity" | "taxonomy";
 
 export function StructureScreen() {
   const navigate = useNavigate();
@@ -212,6 +213,7 @@ export function StructureScreen() {
           [
             { key: "chart", label: "الهيكلة" },
             { key: "activity", label: "نشاط الأعضاء" },
+            ...(canSeeAll ? [{ key: "taxonomy", label: "المستويات والتصنيفات" }] : []),
           ] as { key: Tab; label: string }[]
         ).map((t) => (
           <button
@@ -228,6 +230,8 @@ export function StructureScreen() {
 
       {tab === "activity" ? (
         <DepartmentActivityView />
+      ) : tab === "taxonomy" ? (
+        <OrgTaxonomyScreen companyId={company.id} canEdit={canSeeAll} />
       ) : (
         <>
           <p className="text-xs text-ink-soft mb-6">
