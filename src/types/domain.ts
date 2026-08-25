@@ -109,6 +109,23 @@ export interface JobTitle {
   name: string;
 }
 
+export type EmployeeStatus = "active" | "invited" | "pending" | "inactive";
+
+export interface Employee {
+  id: string;
+  companyId: string;
+  departmentId: string | null;
+  fullName: string;
+  email: string | null;
+  phone: string | null;
+  userId: string | null;
+  organizationalLevelId: string | null;
+  organizationalClassificationId: string | null;
+  jobTitleId: string | null;
+  directManagerEmployeeId: string | null;
+  status: EmployeeStatus;
+}
+
 export type ProjectMemberRole = "manager" | "member";
 
 export interface ProjectMember {

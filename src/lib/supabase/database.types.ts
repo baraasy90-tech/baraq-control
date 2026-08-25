@@ -248,6 +248,7 @@ export interface Database {
           organizational_level_id: string | null;
           organizational_classification_id: string | null;
           job_title_id: string | null;
+          employee_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -259,9 +260,46 @@ export interface Database {
           organizational_level_id?: string | null;
           organizational_classification_id?: string | null;
           job_title_id?: string | null;
+          employee_id?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["department_members"]["Insert"]>;
+        Relationships: [];
+      };
+      employees: {
+        Row: {
+          id: string;
+          company_id: string;
+          department_id: string | null;
+          full_name: string;
+          email: string | null;
+          phone: string | null;
+          user_id: string | null;
+          organizational_level_id: string | null;
+          organizational_classification_id: string | null;
+          job_title_id: string | null;
+          direct_manager_employee_id: string | null;
+          status: "active" | "invited" | "pending" | "inactive";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          company_id: string;
+          department_id?: string | null;
+          full_name: string;
+          email?: string | null;
+          phone?: string | null;
+          user_id?: string | null;
+          organizational_level_id?: string | null;
+          organizational_classification_id?: string | null;
+          job_title_id?: string | null;
+          direct_manager_employee_id?: string | null;
+          status?: "active" | "invited" | "pending" | "inactive";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["employees"]["Insert"]>;
         Relationships: [];
       };
       invites: {
