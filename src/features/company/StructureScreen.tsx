@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Trash2, FileText, FileSpreadsheet } from "lucide-react";
 import { SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText, Modal, ExportMenu } from "@/components/ui";
-import { printOrgChart, type OrgChartNode, type OrgChartMember } from "@/features/company/lib/printOrgChart";
 import { exportToExcel } from "@/utils/exportExcel";
 import { useCompany } from "@/features/company/useCompany";
 import { useDepartments } from "@/features/company/api/useDepartments";
@@ -12,10 +11,10 @@ import { useCreateDepartment } from "@/features/company/api/useCreateDepartment"
 import { useDeleteDepartment } from "@/features/company/api/useDeleteDepartment";
 import { useCompanyProjectAccess, type ProjectAccess } from "@/features/company/api/useCompanyProjectAccess";
 import { DEPARTMENT_TYPE_LABEL } from "@/features/company/departmentTypeLabels";
-import { computeBranchColors, branchLegend } from "@/features/company/lib/branchColors";
+import { branchLegend } from "@/features/company/lib/branchColors";
 import { getSubtreeDepartmentIds } from "@/features/company/lib/departmentTree";
 import { DepartmentActivityView } from "@/features/company/DepartmentsScreen";
-import { OrgTreeChart, buildMemberTree, type ChartMember } from "@/features/company/OrgTreeChart";
+import { OrgTreeChart, type ChartMember } from "@/features/company/OrgTreeChart";
 import { OrgTaxonomyScreen } from "@/features/company/OrgTaxonomyScreen";
 import { EmployeesScreen } from "@/features/company/EmployeesScreen";
 import { EmployeeFormModal } from "@/features/company/EmployeeFormModal";
@@ -217,44 +216,11 @@ export function StructureScreen() {
 
   const isLoading = departmentsQuery.isLoading || membersQuery.isLoading || accessQuery.isLoading;
 
-  const branchColorMap = computeBranchColors(roots, departments);
-
-  const exportLevelById = new Map(levels.map((l) => [l.id, l]));
-  const exportClassificationById = new Map(classifications.map((c) => [c.id, c]));
-
-  const toOrgChartMember = (m: ChartMember, dept: Department, childrenOf: Map<string, ChartMember[]>): OrgChartMember => ({
-    fullName: m.fullName,
-    roleLabel: m.title || roleLabel(dept, m.role),
-    isHead: m.role === "head",
-    levelName: m.organizationalLevelId ? exportLevelById.get(m.organizationalLevelId)?.name ?? null : null,
-    classificationName: m.organizationalClassificationId
-      ? exportClassificationById.get(m.organizationalClassificationId)?.name ?? null
-      : null,
-    children: (childrenOf.get(m.id) ?? []).map((c) => toOrgChartMember(c, dept, childrenOf)),
-  });
-
-  const buildOrgNode = (dept: Department): OrgChartNode => {
-    const deptMembers = chartMembers.filter((m) => m.departmentId === dept.id);
-    const head = deptMembers.find((m) => m.role === "head");
-    const { roots: memberRoots, childrenOf } = buildMemberTree(
-      deptMembers.filter((m) => m.role !== "head"),
-      exportLevelById
-    );
-    return {
-      id: dept.id,
-      name: dept.name,
-      typeLabel: DEPARTMENT_TYPE_LABEL[dept.type],
-      typeColor: branchColorMap.get(dept.id) ?? "#5B6472",
-      members: [
-        ...(head ? [toOrgChartMember(head, dept, new Map())] : []),
-        ...memberRoots.map((m) => toOrgChartMember(m, dept, childrenOf)),
-      ],
-      children: departments.filter((d) => d.parentDepartmentId === dept.id).map(buildOrgNode),
-    };
-  };
-
+  /** بدل توليد مستند PDF منفصل مُصمَّم بشكل مختلف عمّا يظهر فعلياً على الشاشة، نطبع
+   * المحتوى المعروض حالياً كما هو (أي تبويب مفتوح: الهيكلة، نشاط الأعضاء، المستويات
+   * والتصنيفات، أو الموظفون) عبر .print-area في index.css. */
   const handleExportOrgChart = () => {
-    printOrgChart({ companyName: company.name, roots: roots.map(buildOrgNode) });
+    window.print();
   };
 
   const handleExportExcel = async () => {
@@ -326,6 +292,7 @@ export function StructureScreen() {
         ))}
       </div>
 
+      <div className="print-area">
       {tab === "activity" ? (
         <DepartmentActivityView />
       ) : tab === "taxonomy" ? (
@@ -415,6 +382,7 @@ export function StructureScreen() {
           )}
         </>
       )}
+      </div>
 
       {creating && (
         <Modal title="قسم جديد" onClose={() => setCreating(false)}>

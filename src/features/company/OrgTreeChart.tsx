@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Pencil, ChevronDown, ChevronUp, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import { computeBranchColors } from "@/features/company/lib/branchColors";
 import type { Department, DepartmentMember, MemberRole, OrganizationalLevel, OrganizationalClassification } from "@/types/domain";
@@ -464,7 +464,37 @@ export function OrgTreeChart({
   const levelById = new Map(levels.map((l) => [l.id, l]));
   const classificationById = new Map(classifications.map((c) => [c.id, c]));
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
-  const [zoom, setZoom] = useState(1);
+  /** null = وضع "احتواء تلقائي" (الافتراضي) — رقم = تكبير/تصغير حدَّده المستخدم يدوياً
+   * ويبقى ثابتاً حتى يعيد الضبط، بغض النظر عن حجم الشجرة الطبيعي. */
+  const [manualZoom, setManualZoom] = useState<number | null>(null);
+  const [autoFitZoom, setAutoFitZoom] = useState(1);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const treeRef = useRef<HTMLDivElement>(null);
+
+  const zoom = manualZoom ?? autoFitZoom;
+
+  useLayoutEffect(() => {
+    const wrapper = wrapperRef.current;
+    const tree = treeRef.current;
+    if (!wrapper || !tree) return;
+
+    const update = () => {
+      // scrollWidth/scrollHeight يعكسان الحجم الطبيعي دائماً بغض النظر عن transform
+      // المطبَّق على نفس العنصر (لا يؤثر التحجيم البصري على قياس الصندوق نفسه).
+      const naturalWidth = tree.scrollWidth;
+      const naturalHeight = tree.scrollHeight;
+      if (naturalWidth === 0 || naturalHeight === 0) return;
+      const availableWidth = wrapper.clientWidth - 32;
+      const availableHeight = wrapper.clientHeight - 32;
+      const fit = Math.min(1, availableWidth / naturalWidth, availableHeight / naturalHeight);
+      setAutoFitZoom(Math.max(0.15, fit));
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(wrapper);
+    return () => ro.disconnect();
+  }, [roots, departments, members, collapsedIds]);
 
   const toggleCollapse = (id: string) => {
     setCollapsedIds((prev) => {
@@ -496,10 +526,10 @@ export function OrgTreeChart({
 
       {/* عرض الشاشات الأوسع — شجرة بطاقات أفقية مع تكبير/تصغير وطي */}
       <div className="hidden sm:block">
-        <div className="flex items-center justify-end gap-1.5 mb-2">
+        <div className="flex items-center justify-end gap-1.5 mb-2 print:hidden">
           <button
             type="button"
-            onClick={() => setZoom((z) => Math.max(ZOOM_MIN, +(z - ZOOM_STEP).toFixed(2)))}
+            onClick={() => setManualZoom(Math.max(ZOOM_MIN, +(zoom - ZOOM_STEP).toFixed(2)))}
             title="تصغير"
             className="w-7 h-7 rounded-lg bg-panel border border-line/70 text-ink-soft flex items-center justify-center cursor-pointer hover:text-ink"
           >
@@ -508,7 +538,7 @@ export function OrgTreeChart({
           <span className="text-xs text-ink-soft w-10 text-center font-mono">{Math.round(zoom * 100)}%</span>
           <button
             type="button"
-            onClick={() => setZoom((z) => Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(2)))}
+            onClick={() => setManualZoom(Math.min(ZOOM_MAX, +(zoom + ZOOM_STEP).toFixed(2)))}
             title="تكبير"
             className="w-7 h-7 rounded-lg bg-panel border border-line/70 text-ink-soft flex items-center justify-center cursor-pointer hover:text-ink"
           >
@@ -516,42 +546,49 @@ export function OrgTreeChart({
           </button>
           <button
             type="button"
-            onClick={() => setZoom(1)}
-            title="إعادة الضبط"
+            onClick={() => setManualZoom(null)}
+            title="احتواء تلقائي"
             className="w-7 h-7 rounded-lg bg-panel border border-line/70 text-ink-soft flex items-center justify-center cursor-pointer hover:text-ink"
           >
             <Maximize2 size={13} />
           </button>
         </div>
-        <div className="w-full h-[80vh] overflow-auto border border-line/60 rounded-xl bg-bg">
-          <div dir="ltr" style={{ transform: `scale(${zoom})`, transformOrigin: "top left", padding: 16 }}>
-            <ul className="org-tree">
-              <li>
-                <div className="bg-navy rounded-xl px-5 py-3 text-white text-sm font-bold shadow-sm w-[190px] text-center">
-                  <span dir="rtl">{companyName}</span>
-                </div>
-                {roots.length > 0 && (
-                  <ul>
-                    {roots.map((r) => (
-                      <OrgTreeNode
-                        key={r.id}
-                        dept={r}
-                        departments={departments}
-                        members={members}
-                        canEdit={canEdit}
-                        onEdit={onEdit}
-                        colorMap={colorMap}
-                        depth={0}
-                        levelById={levelById}
-                        classificationById={classificationById}
-                        collapsedIds={collapsedIds}
-                        onToggleCollapse={toggleCollapse}
-                      />
-                    ))}
-                  </ul>
-                )}
-              </li>
-            </ul>
+        <div ref={wrapperRef} className="w-full h-[80vh] overflow-auto border border-line/60 rounded-xl bg-bg print-reset-bounds">
+          <div className="flex justify-center">
+            <div
+              ref={treeRef}
+              dir="ltr"
+              className="print-reset-transform"
+              style={{ transform: `scale(${zoom})`, transformOrigin: "top center", padding: 16 }}
+            >
+              <ul className="org-tree">
+                <li>
+                  <div className="bg-navy rounded-xl px-5 py-3 text-white text-sm font-bold shadow-sm w-[190px] text-center">
+                    <span dir="rtl">{companyName}</span>
+                  </div>
+                  {roots.length > 0 && (
+                    <ul>
+                      {roots.map((r) => (
+                        <OrgTreeNode
+                          key={r.id}
+                          dept={r}
+                          departments={departments}
+                          members={members}
+                          canEdit={canEdit}
+                          onEdit={onEdit}
+                          colorMap={colorMap}
+                          depth={0}
+                          levelById={levelById}
+                          classificationById={classificationById}
+                          collapsedIds={collapsedIds}
+                          onToggleCollapse={toggleCollapse}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
