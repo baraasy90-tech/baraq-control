@@ -8,6 +8,9 @@ export interface OrgChartMember {
   fullName: string;
   roleLabel: string;
   isHead: boolean;
+  levelName: string | null;
+  classificationName: string | null;
+  children: OrgChartMember[];
 }
 
 export interface OrgChartNode {
@@ -19,18 +22,24 @@ export interface OrgChartNode {
   children: OrgChartNode[];
 }
 
+function renderMember(m: OrgChartMember): string {
+  const childrenHtml =
+    m.children.length > 0 ? `<div class="member-children">${m.children.map(renderMember).join("")}</div>` : "";
+  return `
+    <div class="member-node">
+      <div class="member ${m.isHead ? "member-head" : ""}">
+        <span class="member-name">${escapeHtml(m.fullName)}</span>
+        <span class="member-role">${escapeHtml(m.roleLabel)}</span>
+        ${m.levelName ? `<span class="badge badge-level">${escapeHtml(m.levelName)}</span>` : ""}
+        ${m.classificationName ? `<span class="badge badge-classification">${escapeHtml(m.classificationName)}</span>` : ""}
+      </div>
+      ${childrenHtml}
+    </div>`;
+}
+
 function renderNode(node: OrgChartNode, depth: number): string {
-  const membersHtml = node.members
-    .slice()
-    .sort((a, b) => Number(b.isHead) - Number(a.isHead))
-    .map(
-      (m) => `
-        <div class="member ${m.isHead ? "member-head" : ""}">
-          <span class="member-name">${escapeHtml(m.fullName)}</span>
-          <span class="member-role">${escapeHtml(m.roleLabel)}</span>
-        </div>`
-    )
-    .join("");
+  const head = node.members.find((m) => m.isHead);
+  const rest = node.members.filter((m) => !m.isHead);
 
   const childrenHtml = node.children.map((c) => renderNode(c, depth + 1)).join("");
 
@@ -45,7 +54,7 @@ function renderNode(node: OrgChartNode, depth: number): string {
         ${
           node.members.length === 0
             ? `<p class="empty">لا يوجد أعضاء بعد</p>`
-            : `<div class="members">${membersHtml}</div>`
+            : `${head ? renderMember(head) : ""}${rest.length > 0 ? `<div class="members">${rest.map(renderMember).join("")}</div>` : ""}`
         }
       </div>
       ${childrenHtml}
@@ -80,11 +89,16 @@ export function printOrgChart({ companyName, roots }: { companyName: string; roo
   .node-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .node-name { font-weight: 700; font-size: 13px; }
   .node-type { font-size: 10px; color: #5B6472; background: #F1EFEA; border-radius: 999px; padding: 1px 8px; margin-right: auto; }
-  .members { display: flex; flex-wrap: wrap; gap: 4px 14px; }
-  .member { display: flex; align-items: baseline; gap: 6px; font-size: 12px; }
+  .members { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: flex-start; }
+  .member-node { page-break-inside: avoid; }
+  .member { display: flex; align-items: baseline; gap: 6px; font-size: 12px; flex-wrap: wrap; }
   .member-name { font-weight: 600; }
   .member-head .member-name::before { content: "★ "; color: #E86B2C; }
   .member-role { font-size: 10px; color: #5B6472; }
+  .member-children { margin-right: 16px; margin-top: 4px; padding-right: 8px; border-right: 1px dashed #DCD8CF; display: flex; flex-direction: column; gap: 4px; }
+  .badge { font-size: 9px; border-radius: 999px; padding: 1px 7px; }
+  .badge-level { color: #1F6F5C; background: #E3F0EA; }
+  .badge-classification { color: #A9700F; background: #F6ECD7; }
   .empty { font-size: 11px; color: #5B6472; margin: 2px 0 0; }
   @media print { .no-print { display: none; } }
 </style>

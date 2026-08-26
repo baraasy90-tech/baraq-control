@@ -28,7 +28,7 @@ function levelOrder(m: ChartMember, levelById: Map<string, OrganizationalLevel>)
  *    الذين لا مدير محدَّد لهم هم أيضاً — هذا يحقق طلب "الشخص بمستوى مدير قسم يظهر أعلى
  *    من البقية" دون الحاجة لتحديد يدوي في كل حالة.
  * 3) الباقي (بلا مدير محدَّد ولا مدير افتراضي متاح) يبقى بمستوى الجذر. */
-function buildMemberTree(
+export function buildMemberTree(
   branchMembers: ChartMember[],
   levelById: Map<string, OrganizationalLevel>
 ): { roots: ChartMember[]; childrenOf: Map<string, ChartMember[]> } {
