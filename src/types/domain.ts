@@ -84,6 +84,7 @@ export interface DepartmentMember {
   organizationalLevelId: string | null;
   organizationalClassificationId: string | null;
   jobTitleId: string | null;
+  employeeId: string | null;
 }
 
 export interface OrganizationalLevel {

@@ -15,7 +15,7 @@ import { DEPARTMENT_TYPE_LABEL } from "@/features/company/departmentTypeLabels";
 import { computeBranchColors, branchLegend } from "@/features/company/lib/branchColors";
 import { getSubtreeDepartmentIds } from "@/features/company/lib/departmentTree";
 import { DepartmentActivityView } from "@/features/company/DepartmentsScreen";
-import { OrgTreeChart } from "@/features/company/OrgTreeChart";
+import { OrgTreeChart, type ChartMember } from "@/features/company/OrgTreeChart";
 import { OrgTaxonomyScreen } from "@/features/company/OrgTaxonomyScreen";
 import { EmployeesScreen } from "@/features/company/EmployeesScreen";
 import { EmployeeFormModal } from "@/features/company/EmployeeFormModal";
@@ -76,11 +76,18 @@ export function StructureScreen() {
   const employeesList = employeesQuery.data ?? [];
   const [addingEmployee, setAddingEmployee] = useState(false);
 
+  const employeeById = new Map(employeesList.map((e) => [e.id, e]));
+
   /** موظفون قبل الدعوة (بلا حساب مستخدم فعلي) لا يملكون صف department_members حتى
    * الآن — نضيفهم كعناصر صورية لعرضهم على الشجرة ضمن قسمهم مباشرة، بدل أن يبقوا غير
-   * ظاهرين إلا بتبويب "الموظفون" المنفصل. */
-  const chartMembers = [
-    ...members,
+   * ظاهرين إلا بتبويب "الموظفون" المنفصل. كما نُرفق directManagerEmployeeId لكل عضو
+   * (حقيقي أو صوري) عبر جدول employees، لتبني الشجرة تفرّعاً حقيقياً حسب "المدير
+   * المباشر" بدل عرض الجميع بمستوى واحد مسطّح. */
+  const chartMembers: ChartMember[] = [
+    ...members.map((m) => ({
+      ...m,
+      directManagerEmployeeId: m.employeeId ? employeeById.get(m.employeeId)?.directManagerEmployeeId ?? null : null,
+    })),
     ...employeesList
       .filter((e) => !e.userId && e.departmentId)
       .map((e) => ({
@@ -93,6 +100,8 @@ export function StructureScreen() {
         organizationalLevelId: e.organizationalLevelId,
         organizationalClassificationId: e.organizationalClassificationId,
         jobTitleId: e.jobTitleId,
+        employeeId: e.id,
+        directManagerEmployeeId: e.directManagerEmployeeId,
       })),
   ];
   const updateDepartment = useUpdateDepartment();

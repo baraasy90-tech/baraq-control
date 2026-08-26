@@ -11,7 +11,9 @@ export function useDepartmentMembers(departmentIds: string[]) {
     queryFn: async (): Promise<DepartmentMember[]> => {
       const { data: members, error } = await supabase
         .from("department_members")
-        .select("id, department_id, user_id, role, title, organizational_level_id, organizational_classification_id, job_title_id")
+        .select(
+          "id, department_id, user_id, role, title, organizational_level_id, organizational_classification_id, job_title_id, employee_id"
+        )
         .in("department_id", departmentIds);
       if (error) throw error;
       if (members.length === 0) return [];
@@ -34,6 +36,7 @@ export function useDepartmentMembers(departmentIds: string[]) {
         organizationalLevelId: m.organizational_level_id,
         organizationalClassificationId: m.organizational_classification_id,
         jobTitleId: m.job_title_id,
+        employeeId: m.employee_id,
       }));
     },
   });

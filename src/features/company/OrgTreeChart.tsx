@@ -3,6 +3,8 @@ import { Pencil, ChevronDown, ChevronUp, ZoomIn, ZoomOut, Maximize2 } from "luci
 import { computeBranchColors } from "@/features/company/lib/branchColors";
 import type { Department, DepartmentMember, MemberRole, OrganizationalLevel, OrganizationalClassification } from "@/types/domain";
 
+export type ChartMember = DepartmentMember & { directManagerEmployeeId: string | null };
+
 const ROLE_LABEL: Record<string, string> = { member: "عضو", head: "رئيس القسم" };
 const ZOOM_MIN = 0.4;
 const ZOOM_MAX = 1.5;
@@ -14,15 +16,60 @@ function roleLabel(dept: { headLabel: string | null; memberLabel: string | null 
   return dept.memberLabel || ROLE_LABEL.member;
 }
 
-function sortByLevel(items: DepartmentMember[], levelById: Map<string, OrganizationalLevel>): DepartmentMember[] {
-  return [...items].sort((a, b) => {
-    const aOrder = a.organizationalLevelId ? levelById.get(a.organizationalLevelId)?.orderIndex : undefined;
-    const bOrder = b.organizationalLevelId ? levelById.get(b.organizationalLevelId)?.orderIndex : undefined;
-    if (aOrder == null && bOrder == null) return 0;
-    if (aOrder == null) return 1;
-    if (bOrder == null) return -1;
-    return aOrder - bOrder;
-  });
+function levelOrder(m: ChartMember, levelById: Map<string, OrganizationalLevel>): number {
+  const order = m.organizationalLevelId ? levelById.get(m.organizationalLevelId)?.orderIndex : undefined;
+  return order ?? Number.MAX_SAFE_INTEGER;
+}
+
+/** يبني تفرّعاً حقيقياً بين أعضاء نفس القسم بدل عرضهم جميعاً بمستوى واحد مسطّح:
+ * 1) إن كان لعضو "مدير مباشر" محدَّد صراحة وهو ضمن نفس مجموعة الأعضاء، يتفرّع منه.
+ * 2) وإلا، إن وُجد عضو بمستوى إداري (is_management_level) بلا مدير مباشر محدَّد ضمن
+ *    المجموعة، يُعتبر المدير الافتراضي الذي يتفرّع منه بقية الأعضاء غير الإداريين
+ *    الذين لا مدير محدَّد لهم هم أيضاً — هذا يحقق طلب "الشخص بمستوى مدير قسم يظهر أعلى
+ *    من البقية" دون الحاجة لتحديد يدوي في كل حالة.
+ * 3) الباقي (بلا مدير محدَّد ولا مدير افتراضي متاح) يبقى بمستوى الجذر. */
+function buildMemberTree(
+  branchMembers: ChartMember[],
+  levelById: Map<string, OrganizationalLevel>
+): { roots: ChartMember[]; childrenOf: Map<string, ChartMember[]> } {
+  const byEmployeeId = new Map(branchMembers.filter((m) => m.employeeId).map((m) => [m.employeeId!, m]));
+  const explicitlyManaged = new Set<string>(); // employeeId لكل من له مدير محدَّد ضمن المجموعة
+  const childrenOf = new Map<string, ChartMember[]>();
+
+  const addChild = (parentId: string, child: ChartMember) => {
+    childrenOf.set(parentId, [...(childrenOf.get(parentId) ?? []), child]);
+  };
+
+  for (const m of branchMembers) {
+    const managerId = m.directManagerEmployeeId;
+    const manager = managerId ? byEmployeeId.get(managerId) : undefined;
+    if (manager && manager.id !== m.id) {
+      addChild(manager.id, m);
+      if (m.employeeId) explicitlyManaged.add(m.employeeId);
+    }
+  }
+
+  const managementPeers = branchMembers
+    .filter((m) => (m.organizationalLevelId ? levelById.get(m.organizationalLevelId)?.isManagementLevel : false))
+    .sort((a, b) => levelOrder(a, levelById) - levelOrder(b, levelById));
+  const defaultManager = managementPeers.find((m) => !(m.employeeId && explicitlyManaged.has(m.employeeId)));
+
+  const roots: ChartMember[] = [];
+  for (const m of branchMembers) {
+    const managerId = m.directManagerEmployeeId;
+    const hasExplicitManagerInGroup = managerId && byEmployeeId.has(managerId) && byEmployeeId.get(managerId)!.id !== m.id;
+    if (hasExplicitManagerInGroup) continue; // already nested above
+    if (defaultManager && m.id !== defaultManager.id && m !== defaultManager) {
+      addChild(defaultManager.id, m);
+    } else {
+      roots.push(m);
+    }
+  }
+
+  for (const list of childrenOf.values()) list.sort((a, b) => levelOrder(a, levelById) - levelOrder(b, levelById));
+  roots.sort((a, b) => levelOrder(a, levelById) - levelOrder(b, levelById));
+
+  return { roots, childrenOf };
 }
 
 function DeptCard({
@@ -39,7 +86,7 @@ function DeptCard({
   onToggleCollapse,
 }: {
   dept: Department;
-  members: DepartmentMember[];
+  members: ChartMember[];
   canEdit: boolean;
   onEdit: (dept: Department) => void;
   color: string;
@@ -121,7 +168,7 @@ function MemberLeafCard({
   levelById,
   classificationById,
 }: {
-  member: DepartmentMember;
+  member: ChartMember;
   color: string;
   levelById: Map<string, OrganizationalLevel>;
   classificationById: Map<string, OrganizationalClassification>;
@@ -150,6 +197,41 @@ function MemberLeafCard({
   );
 }
 
+function MemberBranchNode({
+  member,
+  childrenOf,
+  color,
+  levelById,
+  classificationById,
+}: {
+  member: ChartMember;
+  childrenOf: Map<string, ChartMember[]>;
+  color: string;
+  levelById: Map<string, OrganizationalLevel>;
+  classificationById: Map<string, OrganizationalClassification>;
+}) {
+  const children = childrenOf.get(member.id) ?? [];
+  return (
+    <li>
+      <MemberLeafCard member={member} color={color} levelById={levelById} classificationById={classificationById} />
+      {children.length > 0 && (
+        <ul>
+          {children.map((c) => (
+            <MemberBranchNode
+              key={c.id}
+              member={c}
+              childrenOf={childrenOf}
+              color={color}
+              levelById={levelById}
+              classificationById={classificationById}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
 function OrgTreeNode({
   dept,
   departments,
@@ -165,7 +247,7 @@ function OrgTreeNode({
 }: {
   dept: Department;
   departments: Department[];
-  members: DepartmentMember[];
+  members: ChartMember[];
   canEdit: boolean;
   onEdit: (dept: Department) => void;
   colorMap: Map<string, string>;
@@ -176,12 +258,12 @@ function OrgTreeNode({
   onToggleCollapse: (id: string) => void;
 }) {
   const children = departments.filter((d) => d.parentDepartmentId === dept.id);
-  const branchMembers = sortByLevel(
+  const { roots: memberRoots, childrenOf } = buildMemberTree(
     members.filter((m) => m.departmentId === dept.id && m.role !== "head"),
     levelById
   );
   const color = colorMap.get(dept.id) ?? "#5B6472";
-  const hasBranches = children.length > 0 || branchMembers.length > 0;
+  const hasBranches = children.length > 0 || memberRoots.length > 0;
   const collapsed = collapsedIds.has(dept.id);
 
   return (
@@ -217,10 +299,15 @@ function OrgTreeNode({
               onToggleCollapse={onToggleCollapse}
             />
           ))}
-          {branchMembers.map((m) => (
-            <li key={m.id}>
-              <MemberLeafCard member={m} color={color} levelById={levelById} classificationById={classificationById} />
-            </li>
+          {memberRoots.map((m) => (
+            <MemberBranchNode
+              key={m.id}
+              member={m}
+              childrenOf={childrenOf}
+              color={color}
+              levelById={levelById}
+              classificationById={classificationById}
+            />
           ))}
         </ul>
       )}
@@ -230,6 +317,49 @@ function OrgTreeNode({
 
 /** عرض بديل بشكل قائمة متداخلة عمودية بلا تمرير أفقي — للجوال والشاشات الضيقة، حيث
  * شجرة البطاقات الأفقية تصبح غير عملية. */
+function MobileMemberRow({
+  member,
+  childrenOf,
+  depth,
+  levelById,
+  classificationById,
+}: {
+  member: ChartMember;
+  childrenOf: Map<string, ChartMember[]>;
+  depth: number;
+  levelById: Map<string, OrganizationalLevel>;
+  classificationById: Map<string, OrganizationalClassification>;
+}) {
+  const level = member.organizationalLevelId ? levelById.get(member.organizationalLevelId) : undefined;
+  const classification = member.organizationalClassificationId
+    ? classificationById.get(member.organizationalClassificationId)
+    : undefined;
+  const children = childrenOf.get(member.id) ?? [];
+
+  return (
+    <>
+      <div style={{ marginRight: depth * 14 }} className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+        <span className="text-xs text-ink">{member.fullName}</span>
+        {member.title && <span className="text-[11px] text-ink-soft">— {member.title}</span>}
+        {level && <span className="text-[10px] text-accent bg-accent-bg rounded-full px-1.5 py-0.5">{level.name}</span>}
+        {classification && (
+          <span className="text-[10px] text-warn bg-warn-bg rounded-full px-1.5 py-0.5">{classification.name}</span>
+        )}
+      </div>
+      {children.map((c) => (
+        <MobileMemberRow
+          key={c.id}
+          member={c}
+          childrenOf={childrenOf}
+          depth={depth + 1}
+          levelById={levelById}
+          classificationById={classificationById}
+        />
+      ))}
+    </>
+  );
+}
+
 function MobileOrgRow({
   dept,
   departments,
@@ -241,7 +371,7 @@ function MobileOrgRow({
 }: {
   dept: Department;
   departments: Department[];
-  members: DepartmentMember[];
+  members: ChartMember[];
   colorMap: Map<string, string>;
   depth: number;
   levelById: Map<string, OrganizationalLevel>;
@@ -250,13 +380,13 @@ function MobileOrgRow({
   const children = departments.filter((d) => d.parentDepartmentId === dept.id);
   const deptMembers = members.filter((m) => m.departmentId === dept.id);
   const head = deptMembers.find((m) => m.role === "head");
-  const rest = sortByLevel(
+  const { roots: memberRoots, childrenOf } = buildMemberTree(
     deptMembers.filter((m) => m.role !== "head"),
     levelById
   );
   const color = colorMap.get(dept.id) ?? "#5B6472";
   const [open, setOpen] = useState(true);
-  const hasContent = children.length > 0 || rest.length > 0;
+  const hasContent = children.length > 0 || memberRoots.length > 0;
 
   return (
     <div style={{ marginRight: depth * 14 }} className="mt-2">
@@ -278,22 +408,16 @@ function MobileOrgRow({
 
       {open && (
         <>
-          {rest.map((m) => {
-            const level = m.organizationalLevelId ? levelById.get(m.organizationalLevelId) : undefined;
-            const classification = m.organizationalClassificationId
-              ? classificationById.get(m.organizationalClassificationId)
-              : undefined;
-            return (
-              <div key={m.id} style={{ marginRight: (depth + 1) * 14 }} className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs text-ink">{m.fullName}</span>
-                {m.title && <span className="text-[11px] text-ink-soft">— {m.title}</span>}
-                {level && <span className="text-[10px] text-accent bg-accent-bg rounded-full px-1.5 py-0.5">{level.name}</span>}
-                {classification && (
-                  <span className="text-[10px] text-warn bg-warn-bg rounded-full px-1.5 py-0.5">{classification.name}</span>
-                )}
-              </div>
-            );
-          })}
+          {memberRoots.map((m) => (
+            <MobileMemberRow
+              key={m.id}
+              member={m}
+              childrenOf={childrenOf}
+              depth={depth + 1}
+              levelById={levelById}
+              classificationById={classificationById}
+            />
+          ))}
           {children.map((c) => (
             <MobileOrgRow
               key={c.id}
@@ -325,7 +449,7 @@ export function OrgTreeChart({
   companyName: string;
   roots: Department[];
   departments: Department[];
-  members: DepartmentMember[];
+  members: ChartMember[];
   canEdit: boolean;
   onEdit: (dept: Department) => void;
   levels?: OrganizationalLevel[];
