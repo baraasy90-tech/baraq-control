@@ -1,4 +1,3 @@
-import { useLayoutEffect, useRef, useState } from "react";
 import { Pencil } from "lucide-react";
 import { computeBranchColors } from "@/features/company/lib/branchColors";
 import type { Department, DepartmentMember, MemberRole, OrganizationalLevel, OrganizationalClassification } from "@/types/domain";
@@ -211,52 +210,14 @@ export function OrgTreeChart({
   levels?: OrganizationalLevel[];
   classifications?: OrganizationalClassification[];
 }) {
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const treeRef = useRef<HTMLUListElement>(null);
-  const [fit, setFit] = useState({ scale: 1, naturalWidth: 0, naturalHeight: 0 });
   const colorMap = computeBranchColors(roots, departments);
   const levelById = new Map(levels.map((l) => [l.id, l]));
   const classificationById = new Map(classifications.map((c) => [c.id, c]));
 
-  useLayoutEffect(() => {
-    const wrapper = wrapperRef.current;
-    const tree = treeRef.current;
-    if (!wrapper || !tree) return;
-
-    const update = () => {
-      // scrollWidth/scrollHeight يعكسان الحجم الطبيعي دائماً بغض النظر عن أي transform
-      // مطبّق على عنصر أب — القياس هنا دقيق دون الحاجة لإلغاء أي تصغير سابق يدوياً،
-      // بشرط ألا يضغط flex العناصر لتتقلّص (محلول عبر flex-shrink:0 بملف الأنماط).
-      const naturalWidth = tree.scrollWidth;
-      const naturalHeight = tree.scrollHeight;
-      const availableWidth = wrapper.clientWidth;
-      const scale = naturalWidth > availableWidth && availableWidth > 0 ? availableWidth / naturalWidth : 1;
-      setFit({ scale, naturalWidth, naturalHeight });
-    };
-
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(wrapper);
-    return () => ro.disconnect();
-  }, [roots, departments, members]);
-
-  const needsShrink = fit.scale < 1;
-
   return (
-    <div
-      ref={wrapperRef}
-      className="w-full overflow-auto"
-      style={{ height: needsShrink ? fit.naturalHeight * fit.scale : undefined }}
-    >
-      <div
-        dir="ltr"
-        style={
-          needsShrink
-            ? { transform: `scale(${fit.scale})`, transformOrigin: "top left", width: fit.naturalWidth }
-            : undefined
-        }
-      >
-        <ul ref={treeRef} className="org-tree">
+    <div className="w-full max-h-[78vh] overflow-auto">
+      <div dir="ltr">
+        <ul className="org-tree">
           <li>
             <div className="bg-navy rounded-xl px-5 py-3 text-white text-sm font-bold shadow-sm w-[190px] text-center">
               <span dir="rtl">{companyName}</span>

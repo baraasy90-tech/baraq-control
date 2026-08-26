@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, FileText } from "lucide-react";
+import { Plus, Trash2, FileText, FileSpreadsheet } from "lucide-react";
 import { SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText, Modal, ExportMenu } from "@/components/ui";
 import { printOrgChart, type OrgChartNode } from "@/features/company/lib/printOrgChart";
+import { exportToExcel } from "@/utils/exportExcel";
 import { useCompany } from "@/features/company/useCompany";
 import { useDepartments } from "@/features/company/api/useDepartments";
 import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
@@ -224,13 +225,37 @@ export function StructureScreen() {
     printOrgChart({ companyName: company.name, roots: roots.map(buildOrgNode) });
   };
 
+  const handleExportExcel = async () => {
+    const jobTitleById = new Map(jobTitles.map((j) => [j.id, j]));
+    const levelById = new Map(levels.map((l) => [l.id, l]));
+    const classificationById = new Map(classifications.map((c) => [c.id, c]));
+    const rows = departments.flatMap((d) =>
+      chartMembers
+        .filter((m) => m.departmentId === d.id)
+        .map((m) => ({
+          القسم: d.name,
+          الاسم: m.fullName,
+          الدور: roleLabel(d, m.role),
+          "المسمى الوظيفي": m.title || (m.jobTitleId ? jobTitleById.get(m.jobTitleId)?.name ?? "" : ""),
+          "المستوى الإداري": m.organizationalLevelId ? levelById.get(m.organizationalLevelId)?.name ?? "" : "",
+          التصنيف: m.organizationalClassificationId ? classificationById.get(m.organizationalClassificationId)?.name ?? "" : "",
+        }))
+    );
+    await exportToExcel(`الهيكل التنظيمي - ${company.name}`, [{ name: "الهيكل التنظيمي", rows }]);
+  };
+
   return (
-    <div className="min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">
+    <div className="min-h-screen p-4 sm:p-6 max-w-[1600px] mx-auto">
       <div className="flex items-center justify-between mb-4 gap-2">
         <h1 className="text-lg sm:text-xl font-bold text-ink">الأقسام والهيكلة</h1>
         <div className="flex items-center gap-2 shrink-0">
           {tab === "chart" && roots.length > 0 && (
-            <ExportMenu options={[{ label: "تصدير PDF", icon: FileText, onSelect: handleExportOrgChart }]} />
+            <ExportMenu
+              options={[
+                { label: "تصدير PDF", icon: FileText, onSelect: handleExportOrgChart },
+                { label: "تصدير Excel", icon: FileSpreadsheet, onSelect: handleExportExcel },
+              ]}
+            />
           )}
           {tab === "chart" && canEdit && (
             <SecondaryButton onClick={openCreate} className="text-sm inline-flex items-center gap-1.5">
