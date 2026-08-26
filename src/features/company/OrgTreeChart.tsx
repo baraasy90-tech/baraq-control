@@ -54,12 +54,17 @@ function buildMemberTree(
     .sort((a, b) => levelOrder(a, levelById) - levelOrder(b, levelById));
   const defaultManager = managementPeers.find((m) => !(m.employeeId && explicitlyManaged.has(m.employeeId)));
 
+  const isManagementLevel = (m: ChartMember) =>
+    !!(m.organizationalLevelId && levelById.get(m.organizationalLevelId)?.isManagementLevel);
+
   const roots: ChartMember[] = [];
   for (const m of branchMembers) {
     const managerId = m.directManagerEmployeeId;
     const hasExplicitManagerInGroup = managerId && byEmployeeId.has(managerId) && byEmployeeId.get(managerId)!.id !== m.id;
     if (hasExplicitManagerInGroup) continue; // already nested above
-    if (defaultManager && m.id !== defaultManager.id && m !== defaultManager) {
+    // فقط الأعضاء غير الإداريين بلا مدير محدَّد يُنسبون تلقائياً للمدير الافتراضي —
+    // أي مدير قسم آخر (حتى بلا مدير مباشر محدَّد له) يبقى نداً مستقلاً بمستوى الجذر.
+    if (defaultManager && m.id !== defaultManager.id && !isManagementLevel(m)) {
       addChild(defaultManager.id, m);
     } else {
       roots.push(m);

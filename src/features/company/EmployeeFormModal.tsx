@@ -40,6 +40,19 @@ export function EmployeeFormModal({
 
   const managerCandidates = employees.filter((e) => isNew || e.id !== employee.id);
 
+  const levelById = new Map(levels.map((l) => [l.id, l]));
+  const selectedLevelIsManagement = levelId ? levelById.get(levelId)?.isManagementLevel ?? false : false;
+  const existingManagerInDept =
+    departmentId && selectedLevelIsManagement
+      ? employees.find(
+          (e) =>
+            e.departmentId === departmentId &&
+            (isNew || e.id !== employee.id) &&
+            e.organizationalLevelId &&
+            levelById.get(e.organizationalLevelId)?.isManagementLevel
+        )
+      : undefined;
+
   const handleSave = async () => {
     if (!fullName.trim()) return;
     setError("");
@@ -122,6 +135,12 @@ export function EmployeeFormModal({
           </select>
         </div>
       </div>
+      {existingManagerInDept && (
+        <p className="text-xs text-warn bg-warn-bg rounded-lg px-3 py-2 mt-2">
+          يوجد بالفعل مدير بمستوى إداري لهذا القسم ({existingManagerInDept.fullName}) — هل ترغب باختيار مستوى مختلف؟ (لا مانع
+          من وجود أكثر من مدير بنفس القسم إن كان ذلك مقصوداً، سيظهران بمستوى متساوٍ على الشجرة)
+        </p>
+      )}
       <div className="mb-3" />
 
       <FieldLabel>المسمّى الوظيفي</FieldLabel>
