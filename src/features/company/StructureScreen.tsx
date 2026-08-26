@@ -17,8 +17,11 @@ import { DepartmentActivityView } from "@/features/company/DepartmentsScreen";
 import { OrgTreeChart } from "@/features/company/OrgTreeChart";
 import { OrgTaxonomyScreen } from "@/features/company/OrgTaxonomyScreen";
 import { EmployeesScreen } from "@/features/company/EmployeesScreen";
+import { EmployeeFormModal } from "@/features/company/EmployeeFormModal";
 import { useOrganizationalLevels } from "@/features/company/api/useOrganizationalLevels";
 import { useOrganizationalClassifications } from "@/features/company/api/useOrganizationalClassifications";
+import { useJobTitles } from "@/features/company/api/useJobTitles";
+import { useEmployees } from "@/features/company/api/useEmployees";
 import type { Department, DepartmentType, MemberRole } from "@/types/domain";
 
 const PROJECT_COLOR_PALETTE = [
@@ -66,6 +69,11 @@ export function StructureScreen() {
   const levels = levelsQuery.data ?? [];
   const classificationsQuery = useOrganizationalClassifications(company.id);
   const classifications = classificationsQuery.data ?? [];
+  const jobTitlesQuery = useJobTitles(company.id);
+  const jobTitles = jobTitlesQuery.data ?? [];
+  const employeesQuery = useEmployees(company.id);
+  const employeesList = employeesQuery.data ?? [];
+  const [addingEmployee, setAddingEmployee] = useState(false);
   const updateDepartment = useUpdateDepartment();
   const createDepartment = useCreateDepartment();
   const deleteDepartment = useDeleteDepartment(company.id);
@@ -207,6 +215,11 @@ export function StructureScreen() {
           {tab === "chart" && canEdit && (
             <SecondaryButton onClick={openCreate} className="text-sm inline-flex items-center gap-1.5">
               <Plus size={15} strokeWidth={2.5} /> إضافة قسم
+            </SecondaryButton>
+          )}
+          {tab === "chart" && canSeeAll && (
+            <SecondaryButton onClick={() => setAddingEmployee(true)} className="text-sm inline-flex items-center gap-1.5">
+              <Plus size={15} strokeWidth={2.5} /> إضافة موظف
             </SecondaryButton>
           )}
           <SecondaryButton onClick={() => navigate("/")} className="text-sm">
@@ -429,6 +442,19 @@ export function StructureScreen() {
             </button>
           </div>
         </Modal>
+      )}
+
+      {addingEmployee && (
+        <EmployeeFormModal
+          companyId={company.id}
+          employee="new"
+          departments={departments}
+          levels={levels}
+          classifications={classifications}
+          jobTitles={jobTitles}
+          employees={employeesList}
+          onClose={() => setAddingEmployee(false)}
+        />
       )}
     </div>
   );

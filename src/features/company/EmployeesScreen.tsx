@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { Card, SecondaryButton, PrimaryButton, IconButton, ErrorText, FieldLabel, TextInput, Modal } from "@/components/ui";
-import { useEmployees, useSaveEmployee, useDeleteEmployee } from "@/features/company/api/useEmployees";
+import { Card, SecondaryButton, IconButton, Modal } from "@/components/ui";
+import { useEmployees, useDeleteEmployee } from "@/features/company/api/useEmployees";
 import { useDepartments } from "@/features/company/api/useDepartments";
 import { useOrganizationalLevels } from "@/features/company/api/useOrganizationalLevels";
 import { useOrganizationalClassifications } from "@/features/company/api/useOrganizationalClassifications";
 import { useJobTitles } from "@/features/company/api/useJobTitles";
-import { getErrorMessage } from "@/utils/errors";
+import { EmployeeFormModal } from "@/features/company/EmployeeFormModal";
 import type { Employee, EmployeeStatus } from "@/types/domain";
 
 const STATUS_LABEL: Record<EmployeeStatus, string> = {
@@ -34,7 +34,6 @@ export function EmployeesScreen({ companyId, canEdit }: { companyId: string; can
   const jobTitlesQuery = useJobTitles(companyId);
   const jobTitles = jobTitlesQuery.data ?? [];
 
-  const save = useSaveEmployee();
   const del = useDeleteEmployee(companyId);
 
   const departmentById = new Map(departments.map((d) => [d.id, d]));
@@ -44,66 +43,7 @@ export function EmployeesScreen({ companyId, canEdit }: { companyId: string; can
   const employeeById = new Map(employees.map((e) => [e.id, e]));
 
   const [editing, setEditing] = useState<Employee | "new" | null>(null);
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [departmentId, setDepartmentId] = useState("");
-  const [levelId, setLevelId] = useState("");
-  const [classificationId, setClassificationId] = useState("");
-  const [jobTitleId, setJobTitleId] = useState("");
-  const [managerId, setManagerId] = useState("");
-  const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<Employee | null>(null);
-
-  const openNew = () => {
-    setFullName("");
-    setEmail("");
-    setPhone("");
-    setDepartmentId("");
-    setLevelId("");
-    setClassificationId("");
-    setJobTitleId("");
-    setManagerId("");
-    setError("");
-    setEditing("new");
-  };
-  const openEdit = (e: Employee) => {
-    setFullName(e.fullName);
-    setEmail(e.email ?? "");
-    setPhone(e.phone ?? "");
-    setDepartmentId(e.departmentId ?? "");
-    setLevelId(e.organizationalLevelId ?? "");
-    setClassificationId(e.organizationalClassificationId ?? "");
-    setJobTitleId(e.jobTitleId ?? "");
-    setManagerId(e.directManagerEmployeeId ?? "");
-    setError("");
-    setEditing(e);
-  };
-
-  const handleSave = async () => {
-    if (!fullName.trim()) return;
-    setError("");
-    try {
-      await save.mutateAsync({
-        id: editing !== "new" && editing ? editing.id : undefined,
-        companyId,
-        fullName: fullName.trim(),
-        email: email.trim() || null,
-        phone: phone.trim() || null,
-        departmentId: departmentId || null,
-        organizationalLevelId: levelId || null,
-        organizationalClassificationId: classificationId || null,
-        jobTitleId: jobTitleId || null,
-        directManagerEmployeeId: managerId || null,
-        status: editing !== "new" && editing ? editing.status : "pending",
-      });
-      setEditing(null);
-    } catch (err) {
-      setError(getErrorMessage(err, "تعذّر الحفظ، حاول مجدداً"));
-    }
-  };
-
-  const managerCandidates = employees.filter((e) => !(editing !== "new" && editing && e.id === editing.id));
 
   return (
     <Card>
@@ -116,7 +56,7 @@ export function EmployeesScreen({ companyId, canEdit }: { companyId: string; can
           </p>
         </div>
         {canEdit && (
-          <SecondaryButton onClick={openNew} className="text-xs px-3 py-1.5 inline-flex items-center gap-1 shrink-0">
+          <SecondaryButton onClick={() => setEditing("new")} className="text-xs px-3 py-1.5 inline-flex items-center gap-1 shrink-0">
             <Plus size={14} /> إضافة موظف قبل الدعوة
           </SecondaryButton>
         )}
@@ -128,6 +68,7 @@ export function EmployeesScreen({ companyId, canEdit }: { companyId: string; can
         <div className="flex flex-col gap-2">
           {employees.map((e) => {
             const manager = e.directManagerEmployeeId ? employeeById.get(e.directManagerEmployeeId) : undefined;
+            const directReports = employees.filter((other) => other.directManagerEmployeeId === e.id);
             return (
               <div key={e.id} className="flex items-center justify-between gap-2 bg-bg border border-line/60 rounded-lg px-3 py-2.5">
                 <div className="min-w-0">
@@ -151,11 +92,14 @@ export function EmployeesScreen({ companyId, canEdit }: { companyId: string; can
                       </span>
                     )}
                     {manager && <span>— يتبع لـ: {manager.fullName}</span>}
+                    {directReports.length > 0 && (
+                      <span>— يُدير {directReports.length} {directReports.length === 1 ? "شخصاً" : "أشخاص"} مباشرة</span>
+                    )}
                   </div>
                 </div>
                 {canEdit && (
                   <div className="flex items-center gap-1 shrink-0">
-                    <IconButton icon={Pencil} label="تعديل" onClick={() => openEdit(e)} />
+                    <IconButton icon={Pencil} label="تعديل" onClick={() => setEditing(e)} />
                     <IconButton icon={Trash2} label="حذف" tone="critical" onClick={() => setConfirmDelete(e)} />
                   </div>
                 )}
@@ -166,73 +110,16 @@ export function EmployeesScreen({ companyId, canEdit }: { companyId: string; can
       )}
 
       {editing && (
-        <Modal title={editing === "new" ? "إضافة موظف قبل الدعوة" : "تعديل بيانات الموظف"} onClose={() => setEditing(null)}>
-          <FieldLabel>الاسم الكامل</FieldLabel>
-          <TextInput value={fullName} onChange={(e) => setFullName(e.target.value)} />
-          <div className="mb-3" />
-          <FieldLabel>البريد الإلكتروني (لإرسال الدعوة لاحقاً)</FieldLabel>
-          <TextInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <div className="mb-3" />
-          <FieldLabel>الهاتف (اختياري)</FieldLabel>
-          <TextInput value={phone} onChange={(e) => setPhone(e.target.value)} />
-          <div className="mb-3" />
-
-          <FieldLabel>القسم</FieldLabel>
-          <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink">
-            <option value="">— بلا قسم —</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
-          <div className="mb-3" />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <FieldLabel>المستوى الإداري</FieldLabel>
-              <select value={levelId} onChange={(e) => setLevelId(e.target.value)} className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink">
-                <option value="">— بلا مستوى —</option>
-                {levels.map((l) => (
-                  <option key={l.id} value={l.id}>{l.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <FieldLabel>التصنيف</FieldLabel>
-              <select value={classificationId} onChange={(e) => setClassificationId(e.target.value)} className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink">
-                <option value="">— بلا تصنيف —</option>
-                {classifications.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="mb-3" />
-
-          <FieldLabel>المسمّى الوظيفي</FieldLabel>
-          <select value={jobTitleId} onChange={(e) => setJobTitleId(e.target.value)} className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink">
-            <option value="">— بلا مسمّى —</option>
-            {jobTitles.map((j) => (
-              <option key={j.id} value={j.id}>{j.name}</option>
-            ))}
-          </select>
-          <div className="mb-3" />
-
-          <FieldLabel>المدير المباشر (اختياري)</FieldLabel>
-          <select value={managerId} onChange={(e) => setManagerId(e.target.value)} className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink">
-            <option value="">— بلا مدير مباشر —</option>
-            {managerCandidates.map((m) => (
-              <option key={m.id} value={m.id}>{m.fullName}</option>
-            ))}
-          </select>
-
-          <ErrorText>{error}</ErrorText>
-          <div className="flex gap-2 mt-4">
-            <PrimaryButton onClick={handleSave} disabled={!fullName.trim() || save.isPending} className="flex-1">
-              {save.isPending ? "جارٍ الحفظ..." : "حفظ"}
-            </PrimaryButton>
-            <SecondaryButton onClick={() => setEditing(null)} className="flex-1">إلغاء</SecondaryButton>
-          </div>
-        </Modal>
+        <EmployeeFormModal
+          companyId={companyId}
+          employee={editing}
+          departments={departments}
+          levels={levels}
+          classifications={classifications}
+          jobTitles={jobTitles}
+          employees={employees}
+          onClose={() => setEditing(null)}
+        />
       )}
 
       {confirmDelete && (
