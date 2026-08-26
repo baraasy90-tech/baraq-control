@@ -4,6 +4,7 @@ import { useCompany } from "@/features/company/useCompany";
 import { useDepartments } from "@/features/company/api/useDepartments";
 import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
 import { useMemberWorkSummaries } from "@/features/company/api/useMemberWork";
+import { useEmployees } from "@/features/company/api/useEmployees";
 import { DEPARTMENT_TYPE_LABEL } from "@/features/company/departmentTypeLabels";
 import { manageableDepartmentIdsFor } from "@/features/company/lib/effectiveHead";
 import { computeBranchColors } from "@/features/company/lib/branchColors";
@@ -65,6 +66,9 @@ export function DepartmentActivityView() {
   const workQuery = useMemberWorkSummaries(memberUserIds);
   const workByUser = workQuery.data;
 
+  const employeesQuery = useEmployees(company.id);
+  const pendingEmployees = (employeesQuery.data ?? []).filter((e) => !e.userId && e.departmentId);
+
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const isLoading = departmentsQuery.isLoading || membersQuery.isLoading;
@@ -72,7 +76,9 @@ export function DepartmentActivityView() {
   return (
     <div>
       <p className="text-xs text-ink-soft mb-4">
-        عرض للاطلاع على نشاط الأعضاء ونسب الإنجاز فقط — لا يمكن اعتماد أو إنجاز أي مرحلة من هذه الشاشة.
+        متابعة عبء العمل الفعلي لكل عضو — المرحلة الحالية التي يعمل عليها بأي مشروع، ونسبة إنجازه، وأي بنود تحتاج
+        طلباً قريباً — عرض للاطلاع فقط، لا يمكن اعتماد أو إنجاز أي مرحلة من هذه الشاشة. الموظفون المضافون بالهيكلة
+        بلا حساب دخول فعلي يظهرون بلا نشاط لأنهم لم يستخدموا النظام بعد.
       </p>
 
       {isLoading && <p className="text-sm text-ink-soft">جارٍ التحميل...</p>}
@@ -93,6 +99,7 @@ export function DepartmentActivityView() {
         {departments.map((dept) => {
           const subtreeIds = getSubtreeDepartmentIds(allDepartments, dept.id);
           const deptMembers = members.filter((m) => subtreeIds.has(m.departmentId));
+          const deptPendingEmployees = pendingEmployees.filter((e) => subtreeIds.has(e.departmentId!));
           const isOpen = expandedId === dept.id;
 
           return (
@@ -108,17 +115,21 @@ export function DepartmentActivityView() {
                   </span>
                 </div>
                 <div className="flex items-center gap-3 shrink-0 text-xs text-ink-soft">
-                  <span>{deptMembers.length} عضو</span>
+                  <span>
+                    {deptMembers.length} عضو
+                    {deptPendingEmployees.length > 0 && ` + ${deptPendingEmployees.length} بانتظار الدعوة`}
+                  </span>
                   <span className="text-ink-soft">{isOpen ? "▲" : "▼"}</span>
                 </div>
               </button>
 
               {isOpen && (
                 <div className="px-5 pb-5 pt-1 border-t border-line/60 flex flex-col gap-3">
-                  {deptMembers.length === 0 ? (
+                  {deptMembers.length === 0 && deptPendingEmployees.length === 0 ? (
                     <p className="text-xs text-ink-soft">لا يوجد أعضاء بعد</p>
                   ) : (
-                    deptMembers.map((m) => {
+                    <>
+                    {deptMembers.map((m) => {
                       const work = workByUser?.get(m.userId);
                       const memberDept = allDepartments.find((d) => d.id === m.departmentId);
                       const memberColor = memberDept ? branchColorMap.get(memberDept.id) : undefined;
@@ -181,7 +192,30 @@ export function DepartmentActivityView() {
                           )}
                         </div>
                       );
-                    })
+                    })}
+                    {deptPendingEmployees.map((e) => {
+                      const memberDept = allDepartments.find((d) => d.id === e.departmentId);
+                      const memberColor = memberDept ? branchColorMap.get(memberDept.id) : undefined;
+                      return (
+                        <div key={e.id} className="bg-bg rounded-lg p-3 border border-dashed border-line/70">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <div className="min-w-0">
+                              <span className="text-sm" style={memberColor ? { color: memberColor } : undefined}>
+                                {e.fullName}
+                              </span>
+                              {memberDept && memberDept.id !== dept.id && (
+                                <span className="text-[10px] text-ink-soft block">{memberDept.name}</span>
+                              )}
+                            </div>
+                            <span className="text-xs text-ink-soft bg-panel border border-line/60 rounded-full px-2 py-0.5 shrink-0">
+                              بانتظار الدعوة
+                            </span>
+                          </div>
+                          <p className="text-xs text-warn">لا يوجد لهذا الموظف حساب دخول فعلي بعد — لا نشاط يمكن عرضه</p>
+                        </div>
+                      );
+                    })}
+                    </>
                   )}
                 </div>
               )}
