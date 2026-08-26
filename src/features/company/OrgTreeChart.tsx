@@ -32,7 +32,6 @@ function DeptCard({
 }) {
   const deptMembers = members.filter((m) => m.departmentId === dept.id);
   const head = deptMembers.find((m) => m.role === "head");
-  const rest = deptMembers.filter((m) => m.role !== "head");
   const headLevel = head?.organizationalLevelId ? levelById.get(head.organizationalLevelId) : undefined;
   const headClassification = head?.organizationalClassificationId
     ? classificationById.get(head.organizationalClassificationId)
@@ -81,7 +80,41 @@ function DeptCard({
           )}
         </div>
       )}
-      {rest.length > 0 && <div className="text-[11px] text-ink-soft/80 mt-0.5">+{rest.length} أعضاء آخرين</div>}
+    </div>
+  );
+}
+
+function MemberLeafCard({
+  member,
+  color,
+  levelById,
+  classificationById,
+}: {
+  member: DepartmentMember;
+  color: string;
+  levelById: Map<string, OrganizationalLevel>;
+  classificationById: Map<string, OrganizationalClassification>;
+}) {
+  const level = member.organizationalLevelId ? levelById.get(member.organizationalLevelId) : undefined;
+  const classification = member.organizationalClassificationId
+    ? classificationById.get(member.organizationalClassificationId)
+    : undefined;
+
+  return (
+    <div
+      className="relative bg-panel rounded-xl px-3 py-2 shadow-sm w-[170px] text-center border border-line/60 border-r-[3px]"
+      style={{ borderRightColor: color }}
+    >
+      <div className="text-xs font-semibold text-ink truncate">{member.fullName}</div>
+      {member.title && <div className="text-[11px] text-ink-soft truncate">{member.title}</div>}
+      {(level || classification) && (
+        <div className="flex items-center justify-center gap-1 mt-1 flex-wrap">
+          {level && <span className="text-[10px] text-accent bg-accent-bg rounded-full px-1.5 py-0.5">{level.name}</span>}
+          {classification && (
+            <span className="text-[10px] text-warn bg-warn-bg rounded-full px-1.5 py-0.5">{classification.name}</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -108,6 +141,18 @@ function OrgTreeNode({
   classificationById: Map<string, OrganizationalClassification>;
 }) {
   const children = departments.filter((d) => d.parentDepartmentId === dept.id);
+  const branchMembers = members
+    .filter((m) => m.departmentId === dept.id && m.role !== "head")
+    .sort((a, b) => {
+      const aOrder = a.organizationalLevelId ? levelById.get(a.organizationalLevelId)?.orderIndex : undefined;
+      const bOrder = b.organizationalLevelId ? levelById.get(b.organizationalLevelId)?.orderIndex : undefined;
+      if (aOrder == null && bOrder == null) return 0;
+      if (aOrder == null) return 1;
+      if (bOrder == null) return -1;
+      return aOrder - bOrder;
+    });
+  const color = colorMap.get(dept.id) ?? "#5B6472";
+
   return (
     <li>
       <DeptCard
@@ -115,12 +160,12 @@ function OrgTreeNode({
         members={members}
         canEdit={canEdit}
         onEdit={onEdit}
-        color={colorMap.get(dept.id) ?? "#5B6472"}
+        color={color}
         isRoot={depth === 0}
         levelById={levelById}
         classificationById={classificationById}
       />
-      {children.length > 0 && (
+      {(children.length > 0 || branchMembers.length > 0) && (
         <ul>
           {children.map((c) => (
             <OrgTreeNode
@@ -135,6 +180,11 @@ function OrgTreeNode({
               levelById={levelById}
               classificationById={classificationById}
             />
+          ))}
+          {branchMembers.map((m) => (
+            <li key={m.id}>
+              <MemberLeafCard member={m} color={color} levelById={levelById} classificationById={classificationById} />
+            </li>
           ))}
         </ul>
       )}
