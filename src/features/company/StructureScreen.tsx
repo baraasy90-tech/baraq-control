@@ -74,6 +74,26 @@ export function StructureScreen() {
   const employeesQuery = useEmployees(company.id);
   const employeesList = employeesQuery.data ?? [];
   const [addingEmployee, setAddingEmployee] = useState(false);
+
+  /** موظفون قبل الدعوة (بلا حساب مستخدم فعلي) لا يملكون صف department_members حتى
+   * الآن — نضيفهم كعناصر صورية لعرضهم على الشجرة ضمن قسمهم مباشرة، بدل أن يبقوا غير
+   * ظاهرين إلا بتبويب "الموظفون" المنفصل. */
+  const chartMembers = [
+    ...members,
+    ...employeesList
+      .filter((e) => !e.userId && e.departmentId)
+      .map((e) => ({
+        id: `employee-${e.id}`,
+        departmentId: e.departmentId!,
+        userId: `employee-${e.id}`,
+        role: "member" as MemberRole,
+        fullName: e.fullName,
+        title: null,
+        organizationalLevelId: e.organizationalLevelId,
+        organizationalClassificationId: e.organizationalClassificationId,
+        jobTitleId: e.jobTitleId,
+      })),
+  ];
   const updateDepartment = useUpdateDepartment();
   const createDepartment = useCreateDepartment();
   const deleteDepartment = useDeleteDepartment(company.id);
@@ -278,7 +298,7 @@ export function StructureScreen() {
                   companyName={company.name}
                   roots={roots}
                   departments={departments}
-                  members={members}
+                  members={chartMembers}
                   canEdit={canEdit}
                   onEdit={openEdit}
                   levels={levels}
