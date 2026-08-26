@@ -79,14 +79,22 @@ export function StructureScreen() {
 
   /** موظفون قبل الدعوة (بلا حساب مستخدم فعلي) لا يملكون صف department_members حتى
    * الآن — نضيفهم كعناصر صورية لعرضهم على الشجرة ضمن قسمهم مباشرة، بدل أن يبقوا غير
-   * ظاهرين إلا بتبويب "الموظفون" المنفصل. كما نُرفق directManagerEmployeeId لكل عضو
-   * (حقيقي أو صوري) عبر جدول employees، لتبني الشجرة تفرّعاً حقيقياً حسب "المدير
-   * المباشر" بدل عرض الجميع بمستوى واحد مسطّح. */
+   * ظاهرين إلا بتبويب "الموظفون" المنفصل. كما نقرأ المستوى/التصنيف/المسمّى/المدير
+   * المباشر من سجل employees المرتبط (وليس من أعمدة department_members نفسها) —
+   * employees هو المكان الوحيد القابل للتعديل لهذه الحقول الآن (من "الموظفون" لمدير
+   * الحساب، أو من هذه القائمة لرئيس القسم)، فيبقى الأعمدة المطابقة على department_members
+   * قديمة/غير مُحدَّثة بعد اليوم ويجب تجاهلها كمصدر عرض. */
   const chartMembers: ChartMember[] = [
-    ...members.map((m) => ({
-      ...m,
-      directManagerEmployeeId: m.employeeId ? employeeById.get(m.employeeId)?.directManagerEmployeeId ?? null : null,
-    })),
+    ...members.map((m) => {
+      const linkedEmployee = m.employeeId ? employeeById.get(m.employeeId) : undefined;
+      return {
+        ...m,
+        organizationalLevelId: linkedEmployee?.organizationalLevelId ?? null,
+        organizationalClassificationId: linkedEmployee?.organizationalClassificationId ?? null,
+        jobTitleId: linkedEmployee?.jobTitleId ?? null,
+        directManagerEmployeeId: linkedEmployee?.directManagerEmployeeId ?? null,
+      };
+    }),
     ...employeesList
       .filter((e) => !e.userId && e.departmentId)
       .map((e) => ({

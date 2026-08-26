@@ -18,6 +18,7 @@ import { computeBranchColors } from "@/features/company/lib/branchColors";
 import { getSubtreeDepartmentIds } from "@/features/company/lib/departmentTree";
 import { useOrganizationalLevels } from "@/features/company/api/useOrganizationalLevels";
 import { useOrganizationalClassifications } from "@/features/company/api/useOrganizationalClassifications";
+import { useEmployees, useUpdateEmployeeFields } from "@/features/company/api/useEmployees";
 import type { Department, DepartmentMember, DepartmentType, MemberRole } from "@/types/domain";
 
 const ROLE_LABEL: Record<MemberRole, string> = { member: "عضو", head: "رئيس القسم" };
@@ -107,6 +108,9 @@ export function TeamSection({ companyId }: { companyId: string }) {
   const levels = levelsQuery.data ?? [];
   const classificationsQuery = useOrganizationalClassifications(companyId);
   const classifications = classificationsQuery.data ?? [];
+  const employeesQuery = useEmployees(companyId);
+  const employeeById = new Map((employeesQuery.data ?? []).map((e) => [e.id, e]));
+  const updateEmployeeFields = useUpdateEmployeeFields(companyId);
 
   const isOwner = company.createdBy === profile.id;
   const isExecutive = members.some(
@@ -399,11 +403,11 @@ export function TeamSection({ companyId }: { companyId: string }) {
                               </option>
                             ))}
                           </select>
-                          {levels.length > 0 && (
+                          {levels.length > 0 && m.employeeId && (
                             <select
-                              value={m.organizationalLevelId ?? ""}
+                              value={employeeById.get(m.employeeId)?.organizationalLevelId ?? ""}
                               onChange={(e) =>
-                                updateMember.mutate({ id: m.id, organizationalLevelId: e.target.value || null })
+                                updateEmployeeFields.mutate({ id: m.employeeId!, organizationalLevelId: e.target.value || null })
                               }
                               className="text-xs px-2 py-1 border border-line rounded-lg bg-white"
                             >
@@ -415,11 +419,14 @@ export function TeamSection({ companyId }: { companyId: string }) {
                               ))}
                             </select>
                           )}
-                          {classifications.length > 0 && (
+                          {classifications.length > 0 && m.employeeId && (
                             <select
-                              value={m.organizationalClassificationId ?? ""}
+                              value={employeeById.get(m.employeeId)?.organizationalClassificationId ?? ""}
                               onChange={(e) =>
-                                updateMember.mutate({ id: m.id, organizationalClassificationId: e.target.value || null })
+                                updateEmployeeFields.mutate({
+                                  id: m.employeeId!,
+                                  organizationalClassificationId: e.target.value || null,
+                                })
                               }
                               className="text-xs px-2 py-1 border border-line rounded-lg bg-white"
                             >

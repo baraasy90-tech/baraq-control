@@ -92,6 +92,42 @@ export function useSaveEmployee() {
   });
 }
 
+export interface UpdateEmployeeFieldsInput {
+  id: string;
+  organizationalLevelId?: string | null;
+  organizationalClassificationId?: string | null;
+  jobTitleId?: string | null;
+  directManagerEmployeeId?: string | null;
+}
+
+/** تعديل جزئي سريع لحقل أو أكثر من سجل موظف موجود بالفعل (بدون الحاجة لتمرير كل
+ * الحقول كما في useSaveEmployee) — تستخدمه شاشات لا تحمّل بيانات الموظف كاملة، مثل
+ * قائمة أعضاء القسم برئاسة قسم غير مدير الحساب. */
+export function useUpdateEmployeeFields(companyId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateEmployeeFieldsInput) => {
+      const patch: {
+        organizational_level_id?: string | null;
+        organizational_classification_id?: string | null;
+        job_title_id?: string | null;
+        direct_manager_employee_id?: string | null;
+      } = {};
+      if (input.organizationalLevelId !== undefined) patch.organizational_level_id = input.organizationalLevelId;
+      if (input.organizationalClassificationId !== undefined)
+        patch.organizational_classification_id = input.organizationalClassificationId;
+      if (input.jobTitleId !== undefined) patch.job_title_id = input.jobTitleId;
+      if (input.directManagerEmployeeId !== undefined) patch.direct_manager_employee_id = input.directManagerEmployeeId;
+      const { error } = await supabase.from("employees").update(patch).eq("id", input.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employees", companyId] });
+    },
+  });
+}
+
 export function useDeleteEmployee(companyId: string | undefined) {
   const queryClient = useQueryClient();
 
