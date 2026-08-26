@@ -1,13 +1,28 @@
-import { Pencil } from "lucide-react";
+import { useState } from "react";
+import { Pencil, ChevronDown, ChevronUp, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import { computeBranchColors } from "@/features/company/lib/branchColors";
 import type { Department, DepartmentMember, MemberRole, OrganizationalLevel, OrganizationalClassification } from "@/types/domain";
 
 const ROLE_LABEL: Record<string, string> = { member: "عضو", head: "رئيس القسم" };
+const ZOOM_MIN = 0.4;
+const ZOOM_MAX = 1.5;
+const ZOOM_STEP = 0.1;
 
 function roleLabel(dept: { headLabel: string | null; memberLabel: string | null } | undefined, role: MemberRole): string {
   if (!dept) return ROLE_LABEL[role];
   if (role === "head") return dept.headLabel || ROLE_LABEL.head;
   return dept.memberLabel || ROLE_LABEL.member;
+}
+
+function sortByLevel(items: DepartmentMember[], levelById: Map<string, OrganizationalLevel>): DepartmentMember[] {
+  return [...items].sort((a, b) => {
+    const aOrder = a.organizationalLevelId ? levelById.get(a.organizationalLevelId)?.orderIndex : undefined;
+    const bOrder = b.organizationalLevelId ? levelById.get(b.organizationalLevelId)?.orderIndex : undefined;
+    if (aOrder == null && bOrder == null) return 0;
+    if (aOrder == null) return 1;
+    if (bOrder == null) return -1;
+    return aOrder - bOrder;
+  });
 }
 
 function DeptCard({
@@ -19,6 +34,9 @@ function DeptCard({
   isRoot,
   levelById,
   classificationById,
+  collapsible,
+  collapsed,
+  onToggleCollapse,
 }: {
   dept: Department;
   members: DepartmentMember[];
@@ -28,6 +46,9 @@ function DeptCard({
   isRoot: boolean;
   levelById: Map<string, OrganizationalLevel>;
   classificationById: Map<string, OrganizationalClassification>;
+  collapsible: boolean;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
 }) {
   const deptMembers = members.filter((m) => m.departmentId === dept.id);
   const head = deptMembers.find((m) => m.role === "head");
@@ -51,6 +72,16 @@ function DeptCard({
           className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-panel border border-line/70 text-ink-soft flex items-center justify-center cursor-pointer shadow-sm hover:text-ink"
         >
           <Pencil size={12} />
+        </button>
+      )}
+      {collapsible && (
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          title={collapsed ? "إظهار الفروع" : "طي الفروع"}
+          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-panel border border-line/70 text-ink-soft flex items-center justify-center cursor-pointer shadow-sm hover:text-ink"
+        >
+          {collapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
         </button>
       )}
       <div className="flex items-center justify-center gap-1.5">
@@ -79,6 +110,7 @@ function DeptCard({
           )}
         </div>
       )}
+      {collapsible && collapsed && <div className="text-[10px] text-ink-soft/70 mt-1">— مطوي —</div>}
     </div>
   );
 }
@@ -128,6 +160,8 @@ function OrgTreeNode({
   depth,
   levelById,
   classificationById,
+  collapsedIds,
+  onToggleCollapse,
 }: {
   dept: Department;
   departments: Department[];
@@ -138,19 +172,17 @@ function OrgTreeNode({
   depth: number;
   levelById: Map<string, OrganizationalLevel>;
   classificationById: Map<string, OrganizationalClassification>;
+  collapsedIds: Set<string>;
+  onToggleCollapse: (id: string) => void;
 }) {
   const children = departments.filter((d) => d.parentDepartmentId === dept.id);
-  const branchMembers = members
-    .filter((m) => m.departmentId === dept.id && m.role !== "head")
-    .sort((a, b) => {
-      const aOrder = a.organizationalLevelId ? levelById.get(a.organizationalLevelId)?.orderIndex : undefined;
-      const bOrder = b.organizationalLevelId ? levelById.get(b.organizationalLevelId)?.orderIndex : undefined;
-      if (aOrder == null && bOrder == null) return 0;
-      if (aOrder == null) return 1;
-      if (bOrder == null) return -1;
-      return aOrder - bOrder;
-    });
+  const branchMembers = sortByLevel(
+    members.filter((m) => m.departmentId === dept.id && m.role !== "head"),
+    levelById
+  );
   const color = colorMap.get(dept.id) ?? "#5B6472";
+  const hasBranches = children.length > 0 || branchMembers.length > 0;
+  const collapsed = collapsedIds.has(dept.id);
 
   return (
     <li>
@@ -163,8 +195,11 @@ function OrgTreeNode({
         isRoot={depth === 0}
         levelById={levelById}
         classificationById={classificationById}
+        collapsible={hasBranches}
+        collapsed={collapsed}
+        onToggleCollapse={() => onToggleCollapse(dept.id)}
       />
-      {(children.length > 0 || branchMembers.length > 0) && (
+      {hasBranches && !collapsed && (
         <ul>
           {children.map((c) => (
             <OrgTreeNode
@@ -178,6 +213,8 @@ function OrgTreeNode({
               depth={depth + 1}
               levelById={levelById}
               classificationById={classificationById}
+              collapsedIds={collapsedIds}
+              onToggleCollapse={onToggleCollapse}
             />
           ))}
           {branchMembers.map((m) => (
@@ -188,6 +225,90 @@ function OrgTreeNode({
         </ul>
       )}
     </li>
+  );
+}
+
+/** عرض بديل بشكل قائمة متداخلة عمودية بلا تمرير أفقي — للجوال والشاشات الضيقة، حيث
+ * شجرة البطاقات الأفقية تصبح غير عملية. */
+function MobileOrgRow({
+  dept,
+  departments,
+  members,
+  colorMap,
+  depth,
+  levelById,
+  classificationById,
+}: {
+  dept: Department;
+  departments: Department[];
+  members: DepartmentMember[];
+  colorMap: Map<string, string>;
+  depth: number;
+  levelById: Map<string, OrganizationalLevel>;
+  classificationById: Map<string, OrganizationalClassification>;
+}) {
+  const children = departments.filter((d) => d.parentDepartmentId === dept.id);
+  const deptMembers = members.filter((m) => m.departmentId === dept.id);
+  const head = deptMembers.find((m) => m.role === "head");
+  const rest = sortByLevel(
+    deptMembers.filter((m) => m.role !== "head"),
+    levelById
+  );
+  const color = colorMap.get(dept.id) ?? "#5B6472";
+  const [open, setOpen] = useState(true);
+  const hasContent = children.length > 0 || rest.length > 0;
+
+  return (
+    <div style={{ marginRight: depth * 14 }} className="mt-2">
+      <div
+        className="bg-panel border border-line/60 rounded-lg px-3 py-2 border-r-[3px] flex items-center justify-between gap-2 cursor-pointer"
+        style={{ borderRightColor: color }}
+        onClick={() => hasContent && setOpen((v) => !v)}
+      >
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-ink truncate">{dept.name}</div>
+          <div className="text-xs text-ink-soft truncate">
+            {head ? `${roleLabel(dept, "head")}: ${head.fullName}` : `بدون ${roleLabel(dept, "head")}`}
+          </div>
+        </div>
+        {hasContent && (
+          <span className="text-ink-soft shrink-0">{open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</span>
+        )}
+      </div>
+
+      {open && (
+        <>
+          {rest.map((m) => {
+            const level = m.organizationalLevelId ? levelById.get(m.organizationalLevelId) : undefined;
+            const classification = m.organizationalClassificationId
+              ? classificationById.get(m.organizationalClassificationId)
+              : undefined;
+            return (
+              <div key={m.id} style={{ marginRight: (depth + 1) * 14 }} className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs text-ink">{m.fullName}</span>
+                {m.title && <span className="text-[11px] text-ink-soft">— {m.title}</span>}
+                {level && <span className="text-[10px] text-accent bg-accent-bg rounded-full px-1.5 py-0.5">{level.name}</span>}
+                {classification && (
+                  <span className="text-[10px] text-warn bg-warn-bg rounded-full px-1.5 py-0.5">{classification.name}</span>
+                )}
+              </div>
+            );
+          })}
+          {children.map((c) => (
+            <MobileOrgRow
+              key={c.id}
+              dept={c}
+              departments={departments}
+              members={members}
+              colorMap={colorMap}
+              depth={depth + 1}
+              levelById={levelById}
+              classificationById={classificationById}
+            />
+          ))}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -213,35 +334,97 @@ export function OrgTreeChart({
   const colorMap = computeBranchColors(roots, departments);
   const levelById = new Map(levels.map((l) => [l.id, l]));
   const classificationById = new Map(classifications.map((c) => [c.id, c]));
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+  const [zoom, setZoom] = useState(1);
+
+  const toggleCollapse = (id: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   return (
-    <div className="w-full max-h-[78vh] overflow-auto">
-      <div dir="ltr">
-        <ul className="org-tree">
-          <li>
-            <div className="bg-navy rounded-xl px-5 py-3 text-white text-sm font-bold shadow-sm w-[190px] text-center">
-              <span dir="rtl">{companyName}</span>
-            </div>
-            {roots.length > 0 && (
-              <ul>
-                {roots.map((r) => (
-                  <OrgTreeNode
-                    key={r.id}
-                    dept={r}
-                    departments={departments}
-                    members={members}
-                    canEdit={canEdit}
-                    onEdit={onEdit}
-                    colorMap={colorMap}
-                    depth={0}
-                    levelById={levelById}
-                    classificationById={classificationById}
-                  />
-                ))}
-              </ul>
-            )}
-          </li>
-        </ul>
+    <div>
+      {/* عرض الجوال/الشاشات الضيقة — قائمة عمودية متداخلة بلا تمرير أفقي */}
+      <div className="sm:hidden">
+        <div className="bg-navy rounded-xl px-4 py-2.5 text-white text-sm font-bold shadow-sm text-center">{companyName}</div>
+        {roots.map((r) => (
+          <MobileOrgRow
+            key={r.id}
+            dept={r}
+            departments={departments}
+            members={members}
+            colorMap={colorMap}
+            depth={0}
+            levelById={levelById}
+            classificationById={classificationById}
+          />
+        ))}
+      </div>
+
+      {/* عرض الشاشات الأوسع — شجرة بطاقات أفقية مع تكبير/تصغير وطي */}
+      <div className="hidden sm:block">
+        <div className="flex items-center justify-end gap-1.5 mb-2">
+          <button
+            type="button"
+            onClick={() => setZoom((z) => Math.max(ZOOM_MIN, +(z - ZOOM_STEP).toFixed(2)))}
+            title="تصغير"
+            className="w-7 h-7 rounded-lg bg-panel border border-line/70 text-ink-soft flex items-center justify-center cursor-pointer hover:text-ink"
+          >
+            <ZoomOut size={14} />
+          </button>
+          <span className="text-xs text-ink-soft w-10 text-center font-mono">{Math.round(zoom * 100)}%</span>
+          <button
+            type="button"
+            onClick={() => setZoom((z) => Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(2)))}
+            title="تكبير"
+            className="w-7 h-7 rounded-lg bg-panel border border-line/70 text-ink-soft flex items-center justify-center cursor-pointer hover:text-ink"
+          >
+            <ZoomIn size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setZoom(1)}
+            title="إعادة الضبط"
+            className="w-7 h-7 rounded-lg bg-panel border border-line/70 text-ink-soft flex items-center justify-center cursor-pointer hover:text-ink"
+          >
+            <Maximize2 size={13} />
+          </button>
+        </div>
+        <div className="w-full h-[80vh] overflow-auto border border-line/60 rounded-xl bg-bg">
+          <div dir="ltr" style={{ transform: `scale(${zoom})`, transformOrigin: "top left", padding: 16 }}>
+            <ul className="org-tree">
+              <li>
+                <div className="bg-navy rounded-xl px-5 py-3 text-white text-sm font-bold shadow-sm w-[190px] text-center">
+                  <span dir="rtl">{companyName}</span>
+                </div>
+                {roots.length > 0 && (
+                  <ul>
+                    {roots.map((r) => (
+                      <OrgTreeNode
+                        key={r.id}
+                        dept={r}
+                        departments={departments}
+                        members={members}
+                        canEdit={canEdit}
+                        onEdit={onEdit}
+                        colorMap={colorMap}
+                        depth={0}
+                        levelById={levelById}
+                        classificationById={classificationById}
+                        collapsedIds={collapsedIds}
+                        onToggleCollapse={toggleCollapse}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   );
