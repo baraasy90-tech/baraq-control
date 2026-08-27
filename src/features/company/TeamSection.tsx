@@ -261,6 +261,7 @@ export function TeamSection({ companyId }: { companyId: string }) {
       <div className="flex flex-col gap-4 mb-6">
         {departments.map((dept) => {
           const deptMembers = members.filter((m) => m.departmentId === dept.id);
+          const deptPendingEmployees = (employeesQuery.data ?? []).filter((e) => !e.userId && e.departmentId === dept.id);
           const isEditing = editingDeptId === dept.id;
           const isDragOver = dragOverDeptId === dept.id;
           return (
@@ -370,10 +371,23 @@ export function TeamSection({ companyId }: { companyId: string }) {
                 </div>
               )}
 
-              {deptMembers.length === 0 ? (
+              <p className="text-[11px] text-ink-soft mb-2">
+                {deptMembers.length + deptPendingEmployees.length} عضو — {deptMembers.length} فاعل
+                {deptPendingEmployees.length > 0 && ` — ${deptPendingEmployees.length} بانتظار التفعيل`}
+              </p>
+
+              {deptMembers.length === 0 && deptPendingEmployees.length === 0 ? (
                 <p className="text-xs text-ink-soft">لا يوجد أعضاء بعد</p>
               ) : (
                 <div className="flex flex-col gap-1.5">
+                  {deptPendingEmployees.map((e) => (
+                    <div key={e.id} className="flex items-center justify-between gap-2 text-sm flex-wrap">
+                      <span className="truncate text-ink-soft">{e.fullName}</span>
+                      <span className="text-[10px] text-warn bg-warn-bg rounded-full px-2 py-0.5 shrink-0">
+                        بانتظار التفعيل — بلا حساب دخول
+                      </span>
+                    </div>
+                  ))}
                   {deptMembers.map((m) => {
                     const memberColor = branchColorMap.get(dept.id);
                     const nameStyle = memberColor ? { color: memberColor } : undefined;
