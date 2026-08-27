@@ -21,6 +21,14 @@ function levelOrder(m: ChartMember, levelById: Map<string, OrganizationalLevel>)
   return order ?? Number.MAX_SAFE_INTEGER;
 }
 
+/** حجم بطاقة الموظف يعتمد على ترتيب مستواه الإداري (order_index) نفسه، وليس عمقه
+ * البصري بالشجرة — بهذا يتساوى حجم أي شخصين بنفس المستوى دائماً بغض النظر عن مكانهما
+ * بالشجرة، ويصغر الحجم تدريجياً كلما ابتعد المستوى عن القمة. */
+function levelCardWidth(level: OrganizationalLevel | undefined): number {
+  if (!level) return 160;
+  return Math.max(130, Math.min(200, 200 - level.orderIndex * 14));
+}
+
 /** يبني تفرّعاً حقيقياً بين أعضاء نفس القسم بدل عرضهم جميعاً بمستوى واحد مسطّح:
  * 1) إن كان لعضو "مدير مباشر" محدَّد صراحة وهو ضمن نفس مجموعة الأعضاء، يتفرّع منه.
  * 2) وإلا، إن وُجد عضو بمستوى إداري (is_management_level) بلا مدير مباشر محدَّد ضمن
@@ -182,11 +190,12 @@ function MemberLeafCard({
   const classification = member.organizationalClassificationId
     ? classificationById.get(member.organizationalClassificationId)
     : undefined;
+  const width = levelCardWidth(level);
 
   return (
     <div
-      className="relative bg-panel rounded-xl px-3 py-2 shadow-sm w-[170px] text-center border border-line/60 border-r-[3px]"
-      style={{ borderRightColor: color }}
+      className="relative bg-panel rounded-xl shadow-sm text-center border border-line/60 border-r-[3px]"
+      style={{ borderRightColor: color, width, padding: width < 160 ? "6px 10px" : "8px 12px" }}
     >
       <div className="text-xs font-semibold text-ink truncate">{member.fullName}</div>
       {member.title && <div className="text-[11px] text-ink-soft truncate">{member.title}</div>}
