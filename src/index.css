@@ -143,6 +143,10 @@ body {
  * (سواء شجرة أفقية أو قائمة أو أي محتوى آخر)، وكل شيء آخر بالصفحة يُخفى — بدل توليد
  * مستند PDF منفصل مُصمَّم بشكل مختلف عمّا يظهر فعلياً على الشاشة وقت الضغط على تصدير. */
 @media print {
+  @page {
+    size: landscape;
+    margin: 10mm;
+  }
   body * {
     visibility: hidden;
   }
@@ -155,8 +159,12 @@ body {
     inset: 0;
     width: 100%;
   }
+  /* --print-zoom تُحسَب بالجافاسكربت (وقت beforeprint) لتحتوي كامل المحتوى الطبيعي
+   * ضمن مقاس صفحة الطباعة بدل أن يُقصّ أو يمتد على عدة صفحات — إن لم تُحسَب لأي سبب
+   * (مثلاً محتوى غير شجرة الأقسام) تبقى القيمة الافتراضية 1 (بلا تصغير). */
   .print-reset-transform {
-    transform: none !important;
+    transform: scale(var(--print-zoom, 1)) !important;
+    transform-origin: top center !important;
   }
   .print-reset-bounds {
     height: auto !important;

@@ -496,6 +496,28 @@ export function OrgTreeChart({
     return () => ro.disconnect();
   }, [roots, departments, members, collapsedIds]);
 
+  useLayoutEffect(() => {
+    const tree = treeRef.current;
+    if (!tree) return;
+
+    // لا نعرف مسبقاً هل سيختار المستخدم طباعة أفقية أو عمودية من نافذة الطباعة نفسها —
+    // فنحسب مقياساً محافظاً يضمن احتواء المحتوى ضمن أضيق بُعد مشترك بين الاتجاهين
+    // (عرض A4 العمودي القابل للطباعة تقريباً 190مم ≈ 718px بعد الهوامش)، فيصحّ الاحتواء
+    // بأي من الاتجاهين حتى لو غيّره المستخدم يدوياً في نافذة الطباعة.
+    const PRINT_SAFE_BOX_PX = 718;
+
+    const handleBeforePrint = () => {
+      const naturalWidth = tree.scrollWidth;
+      const naturalHeight = tree.scrollHeight;
+      if (naturalWidth === 0 || naturalHeight === 0) return;
+      const printFit = Math.min(1, PRINT_SAFE_BOX_PX / naturalWidth, PRINT_SAFE_BOX_PX / naturalHeight);
+      tree.style.setProperty("--print-zoom", String(Math.max(0.1, printFit)));
+    };
+
+    window.addEventListener("beforeprint", handleBeforePrint);
+    return () => window.removeEventListener("beforeprint", handleBeforePrint);
+  }, []);
+
   const toggleCollapse = (id: string) => {
     setCollapsedIds((prev) => {
       const next = new Set(prev);
@@ -508,7 +530,7 @@ export function OrgTreeChart({
   return (
     <div>
       {/* عرض الجوال/الشاشات الضيقة — قائمة عمودية متداخلة بلا تمرير أفقي */}
-      <div className="sm:hidden">
+      <div className="sm:hidden print:hidden">
         <div className="bg-navy rounded-xl px-4 py-2.5 text-white text-sm font-bold shadow-sm text-center">{companyName}</div>
         {roots.map((r) => (
           <MobileOrgRow
@@ -525,7 +547,7 @@ export function OrgTreeChart({
       </div>
 
       {/* عرض الشاشات الأوسع — شجرة بطاقات أفقية مع تكبير/تصغير وطي */}
-      <div className="hidden sm:block">
+      <div className="hidden sm:block print:block">
         <div className="flex items-center justify-end gap-1.5 mb-2 print:hidden">
           <button
             type="button"
