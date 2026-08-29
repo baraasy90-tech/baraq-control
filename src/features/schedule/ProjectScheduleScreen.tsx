@@ -481,6 +481,7 @@ function PreviewTab({ activities, schedule }: { activities: Activity[]; schedule
   const { company } = useCompany();
   const completionDates = getCompletionDates(activities);
   const rows = flattenTree(activities).filter((r) => schedule[r.activity.id]);
+  const groupIds = new Set(activities.map((a) => a.parentId).filter((id): id is string => !!id));
 
   const todayForRange = todayISO();
   const starts = rows.flatMap((r) => [schedule[r.activity.id].start, ...(r.activity.actualStartDate ? [r.activity.actualStartDate] : [])]);
@@ -601,11 +602,12 @@ function PreviewTab({ activities, schedule }: { activities: Activity[]; schedule
               }
 
               const actualColor = hasActual ? actualToneColor(activity, sc) : undefined;
+              const isGroup = groupIds.has(activity.id);
 
               return (
                 <div key={activity.id} className="flex items-center">
                   <div
-                    className="w-48 shrink-0 text-xs text-ink truncate pl-2"
+                    className={`w-48 shrink-0 text-xs truncate pl-2 ${isGroup ? "font-bold text-ink" : "text-ink"}`}
                     style={{ paddingRight: depth * 12 }}
                     title={activity.name}
                   >
@@ -644,22 +646,36 @@ function PreviewTab({ activities, schedule }: { activities: Activity[]; schedule
                     {todayPct !== null && (
                       <div className="absolute top-0 bottom-0 w-px bg-primary z-10" style={{ left: `${todayPct}%` }} />
                     )}
-                    <div
-                      title={`مخطط: ${fmt(sc.start)} → ${fmt(sc.end)}`}
-                      className="absolute rounded"
-                      style={{
-                        left: `${leftPct}%`,
-                        width: `${Math.max(widthPct, 1.5)}%`,
-                        background: hasActual
-                          ? `repeating-linear-gradient(45deg, ${toneColor(activity, sc)}, ${toneColor(activity, sc)} 4px, transparent 4px, transparent 8px)`
-                          : toneColor(activity, sc),
-                        border: hasActual ? `1px solid ${toneColor(activity, sc)}` : undefined,
-                        boxSizing: "border-box",
-                        top: 3,
-                        height: hasActual ? 13 : "auto",
-                        bottom: hasActual ? undefined : 3,
-                      }}
-                    />
+                    {isGroup ? (
+                      <div
+                        title={`إجمالي فترة المهام الفرعية: ${fmt(sc.start)} → ${fmt(sc.end)}`}
+                        className="absolute rounded-full bg-ink"
+                        style={{
+                          left: `${leftPct}%`,
+                          width: `${Math.max(widthPct, 1.5)}%`,
+                          top: "50%",
+                          height: 5,
+                          transform: "translateY(-50%)",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        title={`مخطط: ${fmt(sc.start)} → ${fmt(sc.end)}`}
+                        className="absolute rounded"
+                        style={{
+                          left: `${leftPct}%`,
+                          width: `${Math.max(widthPct, 1.5)}%`,
+                          background: hasActual
+                            ? `repeating-linear-gradient(45deg, ${toneColor(activity, sc)}, ${toneColor(activity, sc)} 4px, transparent 4px, transparent 8px)`
+                            : toneColor(activity, sc),
+                          border: hasActual ? `1px solid ${toneColor(activity, sc)}` : undefined,
+                          boxSizing: "border-box",
+                          top: 3,
+                          height: hasActual ? 13 : "auto",
+                          bottom: hasActual ? undefined : 3,
+                        }}
+                      />
+                    )}
                     {hasActual && (
                       <div
                         title={`فعلي: ${fmt(activity.actualStartDate)} → ${activity.actualEndDate ? fmt(activity.actualEndDate) : "مستمر"}`}
@@ -702,6 +718,9 @@ function PreviewTab({ activities, schedule }: { activities: Activity[]; schedule
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-0.5 h-2.5 bg-primary" /> اليوم
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-1 rounded-full bg-ink" /> قسم (إجمالي مدة أبنائه)
         </span>
         <span className="flex items-center gap-1.5 border-r border-line/60 pr-3">
           <span className="w-2.5 h-2.5 rounded-full" style={{ background: TONE_COLOR.onTime }} /> المسار الفعلي — على الموعد
