@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { FieldLabel, TextInput, PrimaryButton, SecondaryButton, ErrorText } from "@/components/ui";
 import { todayISO } from "@/utils/dates";
+import { fmtMoney } from "@/utils/money";
+import type { ProjectContractPayment } from "@/features/budget/api/useContractPaymentsForProject";
 
 const SOURCE_OPTIONS = [
   { value: "contract", label: "عقد مقاول" },
@@ -12,16 +14,26 @@ export function AddActualEntryForm({
   onSubmit,
   onCancel,
   submitting,
+  contractPayments,
 }: {
-  onSubmit: (values: { date: string; amount: number; source: string; note: string | null; contractRef: string | null }) => void;
+  onSubmit: (values: {
+    date: string;
+    amount: number;
+    source: string;
+    note: string | null;
+    contractRef: string | null;
+    contractPaymentId: string | null;
+  }) => void;
   onCancel: () => void;
   submitting?: boolean;
+  contractPayments: ProjectContractPayment[];
 }) {
   const [date, setDate] = useState(todayISO());
   const [amount, setAmount] = useState("");
   const [source, setSource] = useState(SOURCE_OPTIONS[0].value);
   const [note, setNote] = useState("");
   const [contractRef, setContractRef] = useState("");
+  const [contractPaymentId, setContractPaymentId] = useState("");
   const [error, setError] = useState("");
 
   const canSubmit = Number(amount) > 0;
@@ -39,6 +51,7 @@ export function AddActualEntryForm({
       source,
       note: note.trim() || null,
       contractRef: contractRef.trim() || null,
+      contractPaymentId: source === "contract" ? contractPaymentId || null : null,
     });
   };
 
@@ -70,10 +83,31 @@ export function AddActualEntryForm({
         </select>
       </div>
 
-      <div>
-        <FieldLabel>رقم العقد/المرجع (اختياري)</FieldLabel>
-        <TextInput value={contractRef} onChange={(e) => setContractRef(e.target.value)} />
-      </div>
+      {source === "contract" ? (
+        <div>
+          <FieldLabel>دفعة العقد المرتبطة</FieldLabel>
+          <select
+            value={contractPaymentId}
+            onChange={(e) => setContractPaymentId(e.target.value)}
+            className="w-full px-3 py-2.5 border border-line rounded-lg text-sm font-sans bg-white box-border"
+          >
+            <option value="">— بلا ربط بدفعة عقد محدَّدة —</option>
+            {contractPayments.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.contractName} — {p.title} ({fmtMoney(p.amount ?? 0)})
+              </option>
+            ))}
+          </select>
+          {contractPayments.length === 0 && (
+            <p className="text-[11px] text-warn mt-1">لا توجد دفعات عقد مسجّلة بعد لهذا المشروع.</p>
+          )}
+        </div>
+      ) : (
+        <div>
+          <FieldLabel>رقم العقد/المرجع (اختياري)</FieldLabel>
+          <TextInput value={contractRef} onChange={(e) => setContractRef(e.target.value)} />
+        </div>
+      )}
 
       <div>
         <FieldLabel>ملاحظة (اختياري)</FieldLabel>

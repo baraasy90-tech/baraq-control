@@ -225,6 +225,7 @@ export interface BudgetActualEntry {
   source: string;
   note: string | null;
   contractRef: string | null;
+  contractPaymentId: string | null;
 }
 
 export interface CustomCalendar {
@@ -612,6 +613,7 @@ export interface ApprovalChainStep {
 }
 
 export type ReconciliationStatus = "pending" | "approved" | "rejected";
+export type ReconciliationKind = "value_vs_planned" | "paid_vs_actual";
 
 export interface BudgetReconciliationNote {
   id: string;
@@ -625,6 +627,7 @@ export interface BudgetReconciliationNote {
   reviewedBy: string | null;
   reviewedAt: string | null;
   reviewNote: string | null;
+  kind: ReconciliationKind;
 }
 
 export interface ScheduleEntry {

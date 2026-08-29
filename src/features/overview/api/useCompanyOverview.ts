@@ -99,6 +99,7 @@ export function useCompanyOverview(companyId: string | undefined) {
                   source: "",
                   note: null,
                   contractRef: null,
+                  contractPaymentId: null,
                 },
               ]
             : [];

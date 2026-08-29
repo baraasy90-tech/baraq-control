@@ -9,6 +9,7 @@ export interface CreateBudgetEntryInput {
   source: string;
   note: string | null;
   contractRef: string | null;
+  contractPaymentId?: string | null;
 }
 
 export function useCreateBudgetEntry() {
@@ -23,6 +24,7 @@ export function useCreateBudgetEntry() {
         source: input.source,
         note: input.note,
         contract_ref: input.contractRef,
+        contract_payment_id: input.contractPaymentId ?? null,
       });
       if (error) throw error;
     },

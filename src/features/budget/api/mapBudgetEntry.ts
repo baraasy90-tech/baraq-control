@@ -12,5 +12,6 @@ export function mapBudgetEntry(row: BudgetEntryRow): BudgetActualEntry {
     source: row.source,
     note: row.note,
     contractRef: row.contract_ref,
+    contractPaymentId: row.contract_payment_id,
   };
 }

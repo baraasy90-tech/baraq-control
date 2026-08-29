@@ -11,6 +11,7 @@ import { useDepartments } from "@/features/company/api/useDepartments";
 import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
 import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
+import type { ReconciliationKind } from "@/types/domain";
 
 const TOLERANCE = 1;
 
@@ -25,10 +26,20 @@ export function BudgetVarianceBanner({
   projectId,
   contractValue,
   trackedBudget,
+  kind = "value_vs_planned",
+  title = "اختلاف بين قيمة العقد والميزانية المسجّلة عند مدير المشروع",
+  valueLabel = "قيمة العقد (المالية)",
+  budgetLabel = "الميزانية المخطط لها (مدير المشروع)",
+  approvedTitle = "اختلاف الميزانية معتمد",
 }: {
   projectId: string;
   contractValue: number | null;
   trackedBudget: number;
+  kind?: ReconciliationKind;
+  title?: string;
+  valueLabel?: string;
+  budgetLabel?: string;
+  approvedTitle?: string;
 }) {
   const { company, profile } = useCompany();
   const departmentsQuery = useDepartments(company.id);
@@ -44,7 +55,7 @@ export function BudgetVarianceBanner({
   );
   const canApprove = isOwner || isExecutive || isFinanceMember;
 
-  const notesQuery = useReconciliationNotes(projectId);
+  const notesQuery = useReconciliationNotes(projectId, kind);
   const addNote = useAddReconciliationNote();
   const reviewNote = useReviewReconciliationNote();
   const [formOpen, setFormOpen] = useState(false);
@@ -67,7 +78,7 @@ export function BudgetVarianceBanner({
     if (!note.trim()) return;
     setError("");
     try {
-      await addNote.mutateAsync({ projectId, contractValue, trackedBudgetValue: trackedBudget, note: note.trim() });
+      await addNote.mutateAsync({ projectId, kind, contractValue, trackedBudgetValue: trackedBudget, note: note.trim() });
       setNote("");
       setFormOpen(false);
     } catch {
@@ -79,7 +90,7 @@ export function BudgetVarianceBanner({
     if (!latestNote) return;
     setError("");
     try {
-      await reviewNote.mutateAsync({ id: latestNote.id, projectId, status, reviewNote: reviewComment.trim() || null });
+      await reviewNote.mutateAsync({ id: latestNote.id, projectId, kind, status, reviewNote: reviewComment.trim() || null });
       setReviewComment("");
     } catch {
       setError("تعذّر تسجيل القرار، حاول مجدداً");
@@ -97,7 +108,7 @@ export function BudgetVarianceBanner({
           <div className="flex items-start gap-2">
             <CheckCircle2 size={18} className="text-accent shrink-0 mt-0.5" />
             <div className="min-w-0">
-              <div className="text-sm font-bold text-ink">اختلاف الميزانية معتمد</div>
+              <div className="text-sm font-bold text-ink">{approvedTitle}</div>
               <div className="text-xs text-ink-soft mt-1">{latestNote!.note}</div>
             </div>
           </div>
@@ -109,7 +120,7 @@ export function BudgetVarianceBanner({
             <div className="min-w-0">
               <div className="text-sm font-bold text-ink">اختلاف بانتظار الاعتماد</div>
               <div className="text-xs text-ink-soft mt-1">
-                قيمة العقد: {fmtMoney(contractValue)} — الميزانية المخطط لها: {fmtMoney(trackedBudget)} — الفرق:{" "}
+                {valueLabel}: {fmtMoney(contractValue)} — {budgetLabel}: {fmtMoney(trackedBudget)} — الفرق:{" "}
                 {fmtMoney(Math.abs((contractValue ?? 0) - trackedBudget))}
               </div>
               <div className="text-xs text-ink mt-2 bg-panel border border-line/60 rounded-lg px-3 py-2">{latestNote!.note}</div>
@@ -142,9 +153,9 @@ export function BudgetVarianceBanner({
           <div className="flex items-start gap-2 mb-2">
             <AlertTriangle size={18} className="text-warn shrink-0 mt-0.5" />
             <div className="min-w-0">
-              <div className="text-sm font-bold text-ink">اختلاف بين قيمة العقد والميزانية المسجّلة عند مدير المشروع</div>
+              <div className="text-sm font-bold text-ink">{title}</div>
               <div className="text-xs text-ink-soft mt-1">
-                قيمة العقد (المالية): {fmtMoney(contractValue)} — الميزانية المخطط لها (مدير المشروع): {fmtMoney(trackedBudget)} — الفرق:{" "}
+                {valueLabel}: {fmtMoney(contractValue)} — {budgetLabel}: {fmtMoney(trackedBudget)} — الفرق:{" "}
                 {fmtMoney(Math.abs((contractValue ?? 0) - trackedBudget))}
               </div>
             </div>
@@ -193,7 +204,7 @@ export function BudgetVarianceBanner({
                   <div className="text-ink">{n.note}</div>
                   {n.reviewNote && <div className="text-ink-soft mt-0.5">ملاحظة الاعتماد: {n.reviewNote}</div>}
                   <div className="text-ink-soft mt-0.5">
-                    {fmt(n.createdAt)} · عقد: {n.contractValue != null ? fmtMoney(n.contractValue) : "—"} · ميزانية:{" "}
+                    {fmt(n.createdAt)} · {valueLabel}: {n.contractValue != null ? fmtMoney(n.contractValue) : "—"} · {budgetLabel}:{" "}
                     {n.trackedBudgetValue != null ? fmtMoney(n.trackedBudgetValue) : "—"}
                   </div>
                 </div>

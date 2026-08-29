@@ -23,6 +23,8 @@ import { useDeleteBudgetEntry } from "@/features/budget/api/useDeleteBudgetEntry
 import { computeBudgetRollup, getPlannedAmount } from "@/features/budget/lib/budget";
 import { computeSCurve, computeSCurveFromTotal } from "@/features/budget/lib/sCurve";
 import { useContracts } from "@/features/contracts/api/useContract";
+import { useContractPaymentsForProject } from "@/features/budget/api/useContractPaymentsForProject";
+import { computeNetPaymentAmount } from "@/features/contracts/lib/payments";
 import { BudgetVarianceBanner } from "@/features/budget/BudgetVarianceBanner";
 import { useCompany } from "@/features/company/useCompany";
 import { useCustomCalendarMap } from "@/features/schedule/api/useCustomCalendars";
@@ -42,10 +44,24 @@ export function BudgetScreen({ project }: { project: Project }) {
   const { company } = useCompany();
   const activitiesQuery = useActivities(project.id);
   const contractsQuery = useContracts(project.id);
+  const contractPaymentsQuery = useContractPaymentsForProject(project.id);
   const customCalendars = useCustomCalendarMap(company.id);
   const totalContractValue = (contractsQuery.data ?? [])
     .filter((c) => c.status === "approved")
     .reduce((sum, c) => sum + (c.totalValue ?? 0), 0);
+  const contractPayments = contractPaymentsQuery.data ?? [];
+  const totalContractPaid = contractPayments
+    .filter((p) => p.paid)
+    .reduce(
+      (sum, p) =>
+        sum +
+        computeNetPaymentAmount(p, {
+          hasAdvancePayment: p.contractHasAdvancePayment,
+          advanceDeductionPercentage: p.contractAdvanceDeductionPercentage,
+          retentionPercentage: p.contractRetentionPercentage,
+        }),
+      0
+    );
   const createEntry = useCreateBudgetEntry();
   const deleteEntry = useDeleteBudgetEntry(project.id);
   const updateActivity = useUpdateActivity();
@@ -90,7 +106,14 @@ export function BudgetScreen({ project }: { project: Project }) {
 
   const selectedRollup = selected ? computeBudgetRollup(selected.id, activities) : null;
 
-  const handleAddEntry = async (values: { date: string; amount: number; source: string; note: string | null; contractRef: string | null }) => {
+  const handleAddEntry = async (values: {
+    date: string;
+    amount: number;
+    source: string;
+    note: string | null;
+    contractRef: string | null;
+    contractPaymentId: string | null;
+  }) => {
     if (!selected) return;
     setError("");
     try {
@@ -219,6 +242,17 @@ export function BudgetScreen({ project }: { project: Project }) {
         projectId={project.id}
         contractValue={contractsQuery.data && contractsQuery.data.length > 0 ? totalContractValue : null}
         trackedBudget={overallRollup.planned}
+      />
+
+      <BudgetVarianceBanner
+        projectId={project.id}
+        kind="paid_vs_actual"
+        title="اختلاف بين المدفوع فعلياً من العقود والفعلي المسجَّل بالميزانية"
+        valueLabel="إجمالي المدفوع من العقود"
+        budgetLabel="إجمالي الفعلي بالميزانية"
+        approvedTitle="اختلاف الدفعات معتمد"
+        contractValue={contractPayments.length > 0 ? totalContractPaid : null}
+        trackedBudget={overallRollup.actual}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
@@ -357,9 +391,16 @@ export function BudgetScreen({ project }: { project: Project }) {
                     <div key={entry.id} className="flex items-center justify-between gap-2 bg-bg border border-line/60 rounded-lg px-3 py-2.5">
                       <div className="min-w-0">
                         <div className="text-sm font-semibold text-ink font-mono">{fmtMoney(entry.amount)}</div>
-                        <div className="text-xs text-ink-soft truncate">
-                          {fmt(entry.date)} · {SOURCE_LABEL[entry.source] ?? entry.source}
-                          {entry.contractRef && ` · ${entry.contractRef}`}
+                        <div className="text-xs text-ink-soft truncate flex items-center gap-1.5 flex-wrap">
+                          <span>
+                            {fmt(entry.date)} · {SOURCE_LABEL[entry.source] ?? entry.source}
+                            {entry.contractRef && ` · ${entry.contractRef}`}
+                          </span>
+                          {entry.source === "contract" && !entry.contractPaymentId && (
+                            <span className="text-[10px] text-warn bg-warn-bg rounded-full px-1.5 py-0.5 shrink-0">
+                              غير مرتبط بدفعة عقد فعلية
+                            </span>
+                          )}
                         </div>
                         {entry.note && <div className="text-xs text-ink-soft truncate">{entry.note}</div>}
                       </div>
@@ -377,7 +418,12 @@ export function BudgetScreen({ project }: { project: Project }) {
       {formOpen && selected && (
         <Modal title={`دفعة جديدة — ${selected.name}`} onClose={() => setFormOpen(false)}>
           <ErrorText>{error}</ErrorText>
-          <AddActualEntryForm onSubmit={handleAddEntry} onCancel={() => setFormOpen(false)} submitting={createEntry.isPending} />
+          <AddActualEntryForm
+            onSubmit={handleAddEntry}
+            onCancel={() => setFormOpen(false)}
+            submitting={createEntry.isPending}
+            contractPayments={contractPayments}
+          />
         </Modal>
       )}
 

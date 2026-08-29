@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
-import type { BudgetReconciliationNote, ReconciliationStatus } from "@/types/domain";
+import type { BudgetReconciliationNote, ReconciliationKind, ReconciliationStatus } from "@/types/domain";
 
 function mapNote(row: {
   id: string;
@@ -15,6 +15,7 @@ function mapNote(row: {
   reviewed_by: string | null;
   reviewed_at: string | null;
   review_note: string | null;
+  kind: ReconciliationKind;
 }): BudgetReconciliationNote {
   return {
     id: row.id,
@@ -28,18 +29,20 @@ function mapNote(row: {
     reviewedBy: row.reviewed_by,
     reviewedAt: row.reviewed_at,
     reviewNote: row.review_note,
+    kind: row.kind,
   };
 }
 
-export function useReconciliationNotes(projectId: string | undefined) {
+export function useReconciliationNotes(projectId: string | undefined, kind: ReconciliationKind) {
   return useQuery({
-    queryKey: ["budget-reconciliation-notes", projectId],
+    queryKey: ["budget-reconciliation-notes", projectId, kind],
     enabled: !!projectId,
     queryFn: async (): Promise<BudgetReconciliationNote[]> => {
       const { data, error } = await supabase
         .from("budget_reconciliation_notes")
         .select("*")
         .eq("project_id", projectId!)
+        .eq("kind", kind)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data.map(mapNote);
@@ -49,6 +52,7 @@ export function useReconciliationNotes(projectId: string | undefined) {
 
 export interface AddReconciliationNoteInput {
   projectId: string;
+  kind: ReconciliationKind;
   contractValue: number | null;
   trackedBudgetValue: number | null;
   note: string;
@@ -63,6 +67,7 @@ export function useAddReconciliationNote() {
       if (!user) throw new Error("not authenticated");
       const { error } = await supabase.from("budget_reconciliation_notes").insert({
         project_id: input.projectId,
+        kind: input.kind,
         contract_value: input.contractValue,
         tracked_budget_value: input.trackedBudgetValue,
         note: input.note,
@@ -71,7 +76,7 @@ export function useAddReconciliationNote() {
       if (error) throw error;
     },
     onSuccess: (_data, input) => {
-      queryClient.invalidateQueries({ queryKey: ["budget-reconciliation-notes", input.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["budget-reconciliation-notes", input.projectId, input.kind] });
     },
   });
 }
@@ -79,6 +84,7 @@ export function useAddReconciliationNote() {
 export interface ReviewReconciliationNoteInput {
   id: string;
   projectId: string;
+  kind: ReconciliationKind;
   status: "approved" | "rejected";
   reviewNote: string | null;
 }
@@ -102,7 +108,7 @@ export function useReviewReconciliationNote() {
       if (error) throw error;
     },
     onSuccess: (_data, input) => {
-      queryClient.invalidateQueries({ queryKey: ["budget-reconciliation-notes", input.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["budget-reconciliation-notes", input.projectId, input.kind] });
     },
   });
 }

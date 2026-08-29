@@ -517,6 +517,7 @@ export interface Database {
           source: string;
           note: string | null;
           contract_ref: string | null;
+          contract_payment_id: string | null;
         };
         Insert: {
           id?: string;
@@ -526,6 +527,7 @@ export interface Database {
           source?: string;
           note?: string | null;
           contract_ref?: string | null;
+          contract_payment_id?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["budget_actual_entries"]["Insert"]>;
         Relationships: [];
@@ -1193,6 +1195,7 @@ export interface Database {
           reviewed_by: string | null;
           reviewed_at: string | null;
           review_note: string | null;
+          kind: "value_vs_planned" | "paid_vs_actual";
         };
         Insert: {
           id?: string;
@@ -1206,6 +1209,7 @@ export interface Database {
           reviewed_by?: string | null;
           reviewed_at?: string | null;
           review_note?: string | null;
+          kind?: "value_vs_planned" | "paid_vs_actual";
         };
         Update: Partial<Database["public"]["Tables"]["budget_reconciliation_notes"]["Insert"]>;
         Relationships: [];
