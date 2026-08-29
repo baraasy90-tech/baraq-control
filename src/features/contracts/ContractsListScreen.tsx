@@ -11,6 +11,7 @@ import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
 import { STATUS_LABEL, STATUS_TONE } from "@/features/contracts/statusLabels";
 import { useCompany } from "@/features/company/useCompany";
+import { getErrorMessage } from "@/utils/errors";
 
 export function ContractsListScreen() {
   const { id: projectId } = useParams<{ id: string }>();
@@ -54,8 +55,8 @@ export function ContractsListScreen() {
       setCreating(false);
       setNewName("");
       navigate(`/projects/${projectId}/contract/${result.id}`);
-    } catch {
-      setError("تعذّر إنشاء العقد، حاول مجدداً");
+    } catch (err) {
+      setError(getErrorMessage(err, "تعذّر إنشاء العقد، حاول مجدداً"));
     }
   };
 
