@@ -37,17 +37,20 @@ function TreeNode({
     <div>
       <button
         onClick={() => onSelect(activity)}
+        title={activity.name}
         style={{ paddingRight: depth * 16 }}
         className={clsx(
-          "w-full text-right flex items-center justify-between gap-2 py-2 px-2 rounded-lg cursor-pointer border-none",
+          "w-full text-right flex flex-col gap-0.5 py-2 px-2 rounded-lg cursor-pointer border-none",
           selectedId === activity.id ? "bg-primary-bg" : "bg-transparent hover:bg-bg"
         )}
       >
-        <span className={clsx("text-sm truncate", selectedId === activity.id ? "font-bold text-ink" : "text-ink")}>
+        <span
+          className={clsx("text-sm break-words", selectedId === activity.id ? "font-bold text-ink" : "text-ink")}
+        >
           {activity.name}
         </span>
         {hasBudget && (
-          <span className="text-xs font-mono text-ink-soft shrink-0">{fmtMoney(rollup.actual)} / {fmtMoney(rollup.planned)}</span>
+          <span className="text-xs font-mono text-ink-soft">{fmtMoney(rollup.actual)} / {fmtMoney(rollup.planned)}</span>
         )}
       </button>
       {children.map((child) => (

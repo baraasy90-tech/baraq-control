@@ -310,8 +310,8 @@ export function BudgetScreen({ project }: { project: Project }) {
           <SCurveChart points={sCurvePoints} />
         </div>
       ) : (
-      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
-        <Card className="lg:max-h-[70vh] lg:overflow-y-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-4">
+        <Card className="lg:max-h-[70vh] lg:overflow-auto lg:resize-x lg:w-[320px] lg:min-w-[220px] lg:max-w-[70vw]">
           <BudgetTree activities={activities} selectedId={selectedId} onSelect={(a) => setSelectedId(a.id)} />
         </Card>
 
