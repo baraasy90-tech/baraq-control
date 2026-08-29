@@ -347,20 +347,45 @@ export function BudgetScreen({ project }: { project: Project }) {
                   )}
                 </p>
                 <div className="flex items-center gap-1 shrink-0">
-                  <IconButton icon={Pencil} label="تعديل الميزانية" onClick={openEditBudget} />
+                  {getPlannedAmount(selected) === 0 && (
+                    <SecondaryButton onClick={openEditBudget} className="text-xs px-3 py-1.5">
+                      إضافة ميزانية
+                    </SecondaryButton>
+                  )}
                   {getPlannedAmount(selected) > 0 && (
-                    <IconButton
-                      icon={Trash2}
-                      label="حذف الميزانية المرفقة"
-                      tone="critical"
-                      onClick={() => {
-                        setBudgetError("");
-                        setConfirmRemoveBudget(true);
-                      }}
-                    />
+                    <>
+                      <IconButton icon={Pencil} label="تعديل الميزانية" onClick={openEditBudget} />
+                      <IconButton
+                        icon={Trash2}
+                        label="حذف الميزانية المرفقة"
+                        tone="critical"
+                        onClick={() => {
+                          setBudgetError("");
+                          setConfirmRemoveBudget(true);
+                        }}
+                      />
+                    </>
                   )}
                 </div>
               </div>
+
+              {getPlannedAmount(selected) === 0 && selectedRollup && selectedRollup.planned > 0 && (
+                <div className="bg-warn-bg border border-warn/30 rounded-lg px-3 py-2.5 mb-3">
+                  <p className="text-xs text-ink mb-1.5">
+                    القيمة الظاهرة أعلاه ({fmtMoney(selectedRollup.planned)}) مجموع ميزانيات الأقسام الفرعية التالية — هذا البند
+                    نفسه بلا ميزانية خاصة به، ولحذف/تعديل أي رقم يجب فتح البند الفرعي المسؤول عنه من القائمة يساراً:
+                  </p>
+                  <ul className="text-xs text-ink-soft list-disc pr-4">
+                    {activities
+                      .filter((a) => a.parentId === selected.id && getPlannedAmount(a) > 0)
+                      .map((a) => (
+                        <li key={a.id}>
+                          {a.name} — {fmtMoney(getPlannedAmount(a))}
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
 
               {getPlannedAmount(selected) > 0 && schedule[selected.id] && (
                 <div className="mb-4">
