@@ -1,11 +1,23 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, FileSpreadsheet } from "lucide-react";
-import { Card, StatCard, SecondaryButton, PrimaryButton, IconButton, Modal, ErrorText, ExportMenu } from "@/components/ui";
+import { Plus, Trash2, FileSpreadsheet, Pencil } from "lucide-react";
+import {
+  Card,
+  StatCard,
+  SecondaryButton,
+  PrimaryButton,
+  IconButton,
+  Modal,
+  ErrorText,
+  ExportMenu,
+  FieldLabel,
+  TextInput,
+} from "@/components/ui";
 import { BudgetTree } from "@/features/budget/BudgetTree";
 import { AddActualEntryForm } from "@/features/budget/AddActualEntryForm";
 import { SCurveChart } from "@/features/budget/SCurveChart";
 import { useActivities } from "@/features/schedule/api/useActivities";
+import { useUpdateActivity } from "@/features/schedule/api/useUpdateActivity";
 import { useCreateBudgetEntry } from "@/features/budget/api/useCreateBudgetEntry";
 import { useDeleteBudgetEntry } from "@/features/budget/api/useDeleteBudgetEntry";
 import { computeBudgetRollup, getPlannedAmount } from "@/features/budget/lib/budget";
@@ -18,7 +30,8 @@ import { computeSchedule } from "@/features/schedule/lib/schedule";
 import { fmtMoney } from "@/utils/money";
 import { fmt, todayISO } from "@/utils/dates";
 import { exportToExcel } from "@/utils/exportExcel";
-import type { Project } from "@/types/domain";
+import { getErrorMessage } from "@/utils/errors";
+import type { Project, BudgetType } from "@/types/domain";
 
 const SOURCE_LABEL: Record<string, string> = { contract: "عقد مقاول", purchase: "شراء مباشر", other: "أخرى" };
 
@@ -35,6 +48,7 @@ export function BudgetScreen({ project }: { project: Project }) {
     .reduce((sum, c) => sum + (c.totalValue ?? 0), 0);
   const createEntry = useCreateBudgetEntry();
   const deleteEntry = useDeleteBudgetEntry(project.id);
+  const updateActivity = useUpdateActivity();
 
   const [tab, setTab] = useState<Tab>("budget");
   const [scurveMode, setScurveMode] = useState<"detailed" | "auto">("detailed");
@@ -42,6 +56,16 @@ export function BudgetScreen({ project }: { project: Project }) {
   const [formOpen, setFormOpen] = useState(false);
   const [error, setError] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [deleteEntryError, setDeleteEntryError] = useState("");
+
+  const [editingBudget, setEditingBudget] = useState(false);
+  const [confirmRemoveBudget, setConfirmRemoveBudget] = useState(false);
+  const [budgetType, setBudgetType] = useState<BudgetType>("lumpsum");
+  const [plannedAmountInput, setPlannedAmountInput] = useState("");
+  const [boqQtyInput, setBoqQtyInput] = useState("");
+  const [boqUnitInput, setBoqUnitInput] = useState("");
+  const [boqUnitPriceInput, setBoqUnitPriceInput] = useState("");
+  const [budgetError, setBudgetError] = useState("");
 
   const activities = activitiesQuery.data ?? [];
   const schedule = computeSchedule(activities, customCalendars);
@@ -74,6 +98,76 @@ export function BudgetScreen({ project }: { project: Project }) {
       setFormOpen(false);
     } catch {
       setError("تعذّر إضافة الدفعة، حاول مجدداً");
+    }
+  };
+
+  const handleDeleteEntry = async (entryId: string) => {
+    setDeleteEntryError("");
+    try {
+      await deleteEntry.mutateAsync(entryId);
+    } catch (err) {
+      setDeleteEntryError(getErrorMessage(err, "تعذّر حذف الدفعة، حاول مجدداً"));
+    }
+  };
+
+  const openEditBudget = () => {
+    if (!selected) return;
+    setBudgetType(selected.budgetType ?? "lumpsum");
+    setPlannedAmountInput(selected.plannedAmount?.toString() ?? "");
+    setBoqQtyInput(selected.boqQty?.toString() ?? "");
+    setBoqUnitInput(selected.boqUnit ?? "");
+    setBoqUnitPriceInput(selected.boqUnitPrice?.toString() ?? "");
+    setBudgetError("");
+    setEditingBudget(true);
+  };
+
+  const handleSaveBudget = async () => {
+    if (!selected) return;
+    setBudgetError("");
+    try {
+      if (budgetType === "lumpsum") {
+        await updateActivity.mutateAsync({
+          id: selected.id,
+          projectId: project.id,
+          budgetType: "lumpsum",
+          plannedAmount: Number(plannedAmountInput) || 0,
+          boqQty: null,
+          boqUnit: null,
+          boqUnitPrice: null,
+        });
+      } else {
+        await updateActivity.mutateAsync({
+          id: selected.id,
+          projectId: project.id,
+          budgetType: "boq",
+          plannedAmount: null,
+          boqQty: Number(boqQtyInput) || 0,
+          boqUnit: boqUnitInput.trim() || null,
+          boqUnitPrice: Number(boqUnitPriceInput) || 0,
+        });
+      }
+      setEditingBudget(false);
+    } catch (err) {
+      setBudgetError(getErrorMessage(err, "تعذّر حفظ الميزانية، حاول مجدداً"));
+    }
+  };
+
+  const handleRemoveBudget = async () => {
+    if (!selected) return;
+    setBudgetError("");
+    try {
+      await updateActivity.mutateAsync({
+        id: selected.id,
+        projectId: project.id,
+        budgetType: null,
+        plannedAmount: null,
+        boqQty: null,
+        boqUnit: null,
+        boqUnitPrice: null,
+      });
+      setConfirmRemoveBudget(false);
+    } catch (err) {
+      setBudgetError(getErrorMessage(err, "تعذّر حذف الميزانية، حاول مجدداً"));
     }
   };
 
@@ -206,13 +300,33 @@ export function BudgetScreen({ project }: { project: Project }) {
                 </div>
               )}
 
-              {getPlannedAmount(selected) > 0 && (
-                <p className="text-xs text-ink-soft mb-3">
-                  ميزانية هذا البند تحديداً: {fmtMoney(getPlannedAmount(selected))}
-                  {selected.budgetType === "boq" &&
-                    ` (${selected.boqQty} ${selected.boqUnit ?? ""} × ${fmtMoney(selected.boqUnitPrice)})`}
+              <div className="flex items-center justify-between gap-2 bg-bg border border-line/60 rounded-lg px-3 py-2.5 mb-3">
+                <p className="text-xs text-ink-soft">
+                  {getPlannedAmount(selected) > 0 ? (
+                    <>
+                      ميزانية هذا البند تحديداً: <span className="font-semibold text-ink">{fmtMoney(getPlannedAmount(selected))}</span>
+                      {selected.budgetType === "boq" &&
+                        ` (${selected.boqQty} ${selected.boqUnit ?? ""} × ${fmtMoney(selected.boqUnitPrice)})`}
+                    </>
+                  ) : (
+                    "لا توجد ميزانية مرفقة لهذا البند تحديداً"
+                  )}
                 </p>
-              )}
+                <div className="flex items-center gap-1 shrink-0">
+                  <IconButton icon={Pencil} label="تعديل الميزانية" onClick={openEditBudget} />
+                  {getPlannedAmount(selected) > 0 && (
+                    <IconButton
+                      icon={Trash2}
+                      label="حذف الميزانية المرفقة"
+                      tone="critical"
+                      onClick={() => {
+                        setBudgetError("");
+                        setConfirmRemoveBudget(true);
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
 
               {getPlannedAmount(selected) > 0 && schedule[selected.id] && (
                 <div className="mb-4">
@@ -234,6 +348,7 @@ export function BudgetScreen({ project }: { project: Project }) {
               </PrimaryButton>
 
               <h3 className="text-sm font-bold text-ink mb-2">الدفعات الفعلية</h3>
+              <ErrorText>{deleteEntryError}</ErrorText>
               {selected.actualEntries.length === 0 ? (
                 <p className="text-sm text-ink-soft">لا توجد دفعات مسجّلة بعد</p>
               ) : (
@@ -248,7 +363,7 @@ export function BudgetScreen({ project }: { project: Project }) {
                         </div>
                         {entry.note && <div className="text-xs text-ink-soft truncate">{entry.note}</div>}
                       </div>
-                      <IconButton icon={Trash2} label="حذف" tone="critical" onClick={() => deleteEntry.mutate(entry.id)} />
+                      <IconButton icon={Trash2} label="حذف" tone="critical" onClick={() => handleDeleteEntry(entry.id)} />
                     </div>
                   ))}
                 </div>
@@ -263,6 +378,85 @@ export function BudgetScreen({ project }: { project: Project }) {
         <Modal title={`دفعة جديدة — ${selected.name}`} onClose={() => setFormOpen(false)}>
           <ErrorText>{error}</ErrorText>
           <AddActualEntryForm onSubmit={handleAddEntry} onCancel={() => setFormOpen(false)} submitting={createEntry.isPending} />
+        </Modal>
+      )}
+
+      {editingBudget && selected && (
+        <Modal title={`تعديل الميزانية — ${selected.name}`} onClose={() => setEditingBudget(false)}>
+          <FieldLabel>نوع الميزانية</FieldLabel>
+          <div className="flex gap-2 mb-3">
+            <button
+              type="button"
+              onClick={() => setBudgetType("lumpsum")}
+              className={`text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer border flex-1 ${
+                budgetType === "lumpsum" ? "border-ink bg-ink text-white" : "border-line/60 bg-panel text-ink-soft"
+              }`}
+            >
+              مبلغ مقطوع
+            </button>
+            <button
+              type="button"
+              onClick={() => setBudgetType("boq")}
+              className={`text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer border flex-1 ${
+                budgetType === "boq" ? "border-ink bg-ink text-white" : "border-line/60 bg-panel text-ink-soft"
+              }`}
+            >
+              كمية × سعر وحدة (BOQ)
+            </button>
+          </div>
+
+          {budgetType === "lumpsum" ? (
+            <>
+              <FieldLabel>المبلغ المخطط</FieldLabel>
+              <TextInput type="number" value={plannedAmountInput} onChange={(e) => setPlannedAmountInput(e.target.value)} />
+            </>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <FieldLabel>الكمية</FieldLabel>
+                <TextInput type="number" value={boqQtyInput} onChange={(e) => setBoqQtyInput(e.target.value)} />
+              </div>
+              <div>
+                <FieldLabel>الوحدة</FieldLabel>
+                <TextInput value={boqUnitInput} onChange={(e) => setBoqUnitInput(e.target.value)} placeholder="م٢، طن..." />
+              </div>
+              <div>
+                <FieldLabel>سعر الوحدة</FieldLabel>
+                <TextInput type="number" value={boqUnitPriceInput} onChange={(e) => setBoqUnitPriceInput(e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          <ErrorText>{budgetError}</ErrorText>
+          <div className="flex gap-2 mt-4">
+            <PrimaryButton onClick={handleSaveBudget} disabled={updateActivity.isPending} className="flex-1">
+              {updateActivity.isPending ? "جارٍ الحفظ..." : "حفظ"}
+            </PrimaryButton>
+            <SecondaryButton onClick={() => setEditingBudget(false)} className="flex-1">
+              إلغاء
+            </SecondaryButton>
+          </div>
+        </Modal>
+      )}
+
+      {confirmRemoveBudget && selected && (
+        <Modal title="تأكيد حذف الميزانية" onClose={() => setConfirmRemoveBudget(false)}>
+          <p className="text-sm text-ink-soft mb-5">
+            هل أنت متأكد من حذف الميزانية المرفقة بـ"{selected.name}"؟ لن يُحذف البند نفسه من الجدولة، فقط قيمة ميزانيته المخططة.
+          </p>
+          <ErrorText>{budgetError}</ErrorText>
+          <div className="flex gap-2">
+            <SecondaryButton onClick={() => setConfirmRemoveBudget(false)} className="flex-1">
+              إلغاء
+            </SecondaryButton>
+            <button
+              onClick={handleRemoveBudget}
+              disabled={updateActivity.isPending}
+              className="flex-1 py-2.5 rounded-lg bg-critical text-white border-none font-bold text-sm cursor-pointer disabled:opacity-50"
+            >
+              {updateActivity.isPending ? "جارٍ الحذف..." : "حذف نهائياً"}
+            </button>
+          </div>
         </Modal>
       )}
     </div>
