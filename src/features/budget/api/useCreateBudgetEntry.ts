@@ -10,6 +10,8 @@ export interface CreateBudgetEntryInput {
   note: string | null;
   contractRef: string | null;
   contractPaymentId?: string | null;
+  /** الحسابات الفردية بلا سلسلة اعتماد (لا مدير مشاريع/مالية غير صاحب الحساب نفسه) — تُعتمد الدفعة مباشرة. */
+  autoApprove?: boolean;
 }
 
 export function useCreateBudgetEntry() {
@@ -25,6 +27,7 @@ export function useCreateBudgetEntry() {
         note: input.note,
         contract_ref: input.contractRef,
         contract_payment_id: input.contractPaymentId ?? null,
+        status: input.autoApprove ? "approved" : undefined,
       });
       if (error) throw error;
     },

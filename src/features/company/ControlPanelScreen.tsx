@@ -42,7 +42,7 @@ const COUNTRY_OPTIONS: { code: string; label: string }[] = [
 
 type SectionKey = "appearance" | "print" | "team" | "structure" | "archive" | "calendars" | "audit";
 
-const SECTIONS: { key: SectionKey; label: string; icon: typeof Palette }[] = [
+const ALL_SECTIONS: { key: SectionKey; label: string; icon: typeof Palette }[] = [
   { key: "appearance", label: "المظهر", icon: Palette },
   { key: "print", label: "إعدادات الطباعة", icon: Printer },
   { key: "team", label: "الدعوات والموظفين", icon: Users },
@@ -51,6 +51,8 @@ const SECTIONS: { key: SectionKey; label: string; icon: typeof Palette }[] = [
   { key: "calendars", label: "التقاويم والمناسبات", icon: CalendarDays },
   { key: "audit", label: "سجل التدقيق", icon: ShieldCheck },
 ];
+
+const INDIVIDUAL_SECTION_KEYS = new Set<SectionKey>(["print", "archive", "calendars"]);
 
 function SectionCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
@@ -79,8 +81,9 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
   );
   const canManage = isOwner || isExecutive;
   const isDeptHead = members.some((m) => m.userId === profile?.id && m.role === "head");
+  const SECTIONS = company.isIndividual ? ALL_SECTIONS.filter((s) => INDIVIDUAL_SECTION_KEYS.has(s.key)) : ALL_SECTIONS;
 
-  const [activeSection, setActiveSection] = useState<SectionKey>("appearance");
+  const [activeSection, setActiveSection] = useState<SectionKey>(company.isIndividual ? "print" : "appearance");
   const [name, setName] = useState(company.name);
   const [countryCode, setCountryCode] = useState(company.countryCode);
   const [vatRate, setVatRate] = useState((company.vatRate ?? 15).toString());

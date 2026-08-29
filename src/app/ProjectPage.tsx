@@ -72,9 +72,13 @@ export function ProjectPage() {
     { label: "الاستلام", icon: PackageCheck, onClick: () => navigate(`/projects/${project.id}/receiving`) },
     { label: "الميزانية", icon: Wallet, onClick: () => navigate(`/projects/${project.id}/budget`) },
     { label: "العقود", icon: FileText, onClick: () => navigate(`/projects/${project.id}/contract`) },
-    { label: "اعتماد المواد والمشتريات", icon: Package, onClick: () => navigate(`/projects/${project.id}/materials`) },
+    ...(company.isIndividual
+      ? []
+      : [{ label: "اعتماد المواد والمشتريات", icon: Package, onClick: () => navigate(`/projects/${project.id}/materials`) }]),
     { label: "المستندات", icon: Folder, onClick: () => navigate(`/projects/${project.id}/documents`) },
-    { label: "الفريق", icon: Users, onClick: () => navigate(`/projects/${project.id}/team`) },
+    ...(company.isIndividual
+      ? []
+      : [{ label: "الفريق", icon: Users, onClick: () => navigate(`/projects/${project.id}/team`) }]),
     { label: "النطاقات", icon: Layers, onClick: () => navigate(`/projects/${project.id}/scope`) },
     { label: "المظهر", icon: Palette, onClick: () => navigate(`/projects/${project.id}/appearance`) },
   ];

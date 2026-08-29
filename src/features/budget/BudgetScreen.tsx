@@ -153,7 +153,12 @@ export function BudgetScreen({ project }: { project: Project }) {
     if (!selected) return;
     setError("");
     try {
-      await createEntry.mutateAsync({ activityId: selected.id, projectId: project.id, ...values });
+      await createEntry.mutateAsync({
+        activityId: selected.id,
+        projectId: project.id,
+        autoApprove: company.isIndividual,
+        ...values,
+      });
       setFormOpen(false);
     } catch {
       setError("تعذّر إضافة الدفعة، حاول مجدداً");

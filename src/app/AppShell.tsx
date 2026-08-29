@@ -31,6 +31,8 @@ interface NavItem {
   icon: ComponentType<{ size?: number; strokeWidth?: number }>;
 }
 
+const COMPANY_ONLY_PATHS = new Set(["/approvals", "/my-requests", "/structure"]);
+
 const NAV_ITEMS: NavItem[] = [
   { to: "/overview", label: "اللوحة التنفيذية", icon: LayoutDashboard },
   { to: "/", label: "المشاريع", icon: LayoutGrid },
@@ -40,6 +42,10 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/control-panel", label: "لوحة التحكم", icon: Settings },
   { to: "/structure", label: "الأقسام والهيكلة", icon: Network },
 ];
+
+function navItemsFor(isIndividual: boolean): NavItem[] {
+  return isIndividual ? NAV_ITEMS.filter((item) => !COMPANY_ONLY_PATHS.has(item.to)) : NAV_ITEMS;
+}
 
 function isNavItemActive(pathname: string, to: string): boolean {
   if (to === "/") return pathname === "/" || pathname.startsWith("/projects");
@@ -64,10 +70,20 @@ function SidebarBrand({ company, collapsed }: { company: Company; collapsed: boo
   );
 }
 
-function SidebarNav({ collapsed, pathname, onNavigate }: { collapsed: boolean; pathname: string; onNavigate?: () => void }) {
+function SidebarNav({
+  collapsed,
+  pathname,
+  isIndividual,
+  onNavigate,
+}: {
+  collapsed: boolean;
+  pathname: string;
+  isIndividual: boolean;
+  onNavigate?: () => void;
+}) {
   return (
     <nav className="flex-1 flex flex-col gap-1 px-2 py-3 overflow-y-auto">
-      {NAV_ITEMS.map((item) => {
+      {navItemsFor(isIndividual).map((item) => {
         const active = isNavItemActive(pathname, item.to);
         const Icon = item.icon;
         return (
@@ -175,7 +191,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         }`}
       >
         <SidebarBrand company={company} collapsed={collapsed} />
-        <SidebarNav collapsed={collapsed} pathname={location.pathname} />
+        <SidebarNav collapsed={collapsed} pathname={location.pathname} isIndividual={company.isIndividual} />
         <PlatformAdminLink collapsed={collapsed} />
         <div className="border-t border-line/60">
           <NotificationBell userId={profile.id} collapsed={collapsed} />
@@ -204,7 +220,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <X size={18} />
               </button>
             </div>
-            <SidebarNav collapsed={false} pathname={location.pathname} onNavigate={() => setMobileOpen(false)} />
+            <SidebarNav
+              collapsed={false}
+              pathname={location.pathname}
+              isIndividual={company.isIndividual}
+              onNavigate={() => setMobileOpen(false)}
+            />
             <PlatformAdminLink collapsed={false} />
             <div className="border-t border-line/60">
               <NotificationBell userId={profile.id} collapsed={false} />
