@@ -77,7 +77,11 @@ export function useCompanyOverview(companyId: string | undefined) {
         const activityIds = activityRows.map((a) => a.id);
         const { data: budgetRows, error: budgetError } =
           activityIds.length > 0
-            ? await supabase.from("budget_actual_entries").select("activity_id, amount").in("activity_id", activityIds)
+            ? await supabase
+                .from("budget_actual_entries")
+                .select("activity_id, amount")
+                .in("activity_id", activityIds)
+                .eq("status", "approved")
             : { data: [] as { activity_id: string; amount: number }[], error: null };
         if (budgetError) throw budgetError;
 
@@ -100,6 +104,12 @@ export function useCompanyOverview(companyId: string | undefined) {
                   note: null,
                   contractRef: null,
                   contractPaymentId: null,
+                  status: "approved",
+                  submittedAt: null,
+                  pmReviewedAt: null,
+                  pmReviewNote: null,
+                  financeReviewedAt: null,
+                  financeReviewNote: null,
                 },
               ]
             : [];

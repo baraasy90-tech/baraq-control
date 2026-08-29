@@ -20,13 +20,21 @@ import { useActivities } from "@/features/schedule/api/useActivities";
 import { useUpdateActivity } from "@/features/schedule/api/useUpdateActivity";
 import { useCreateBudgetEntry } from "@/features/budget/api/useCreateBudgetEntry";
 import { useDeleteBudgetEntry } from "@/features/budget/api/useDeleteBudgetEntry";
+import {
+  useSubmitBudgetEntry,
+  useReviewBudgetEntry,
+  useResetBudgetEntryToDraft,
+} from "@/features/budget/api/useBudgetEntryApproval";
 import { computeBudgetRollup, getPlannedAmount } from "@/features/budget/lib/budget";
 import { computeSCurve, computeSCurveFromTotal } from "@/features/budget/lib/sCurve";
 import { useContracts } from "@/features/contracts/api/useContract";
 import { useContractPaymentsForProject } from "@/features/budget/api/useContractPaymentsForProject";
 import { computeNetPaymentAmount } from "@/features/contracts/lib/payments";
 import { BudgetVarianceBanner } from "@/features/budget/BudgetVarianceBanner";
+import { STATUS_LABEL, STATUS_TONE } from "@/features/contracts/statusLabels";
 import { useCompany } from "@/features/company/useCompany";
+import { useDepartments } from "@/features/company/api/useDepartments";
+import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
 import { useCustomCalendarMap } from "@/features/schedule/api/useCustomCalendars";
 import { computeSchedule } from "@/features/schedule/lib/schedule";
 import { fmtMoney } from "@/utils/money";
@@ -41,11 +49,30 @@ type Tab = "budget" | "scurve";
 
 export function BudgetScreen({ project }: { project: Project }) {
   const navigate = useNavigate();
-  const { company } = useCompany();
+  const { company, profile } = useCompany();
   const activitiesQuery = useActivities(project.id);
   const contractsQuery = useContracts(project.id);
   const contractPaymentsQuery = useContractPaymentsForProject(project.id);
   const customCalendars = useCustomCalendarMap(company.id);
+  const departmentsQuery = useDepartments(company.id);
+  const departments = departmentsQuery.data ?? [];
+  const membersQuery = useDepartmentMembers(departments.map((d) => d.id));
+  const members = membersQuery.data ?? [];
+  const isOwner = company.createdBy === profile.id;
+  const isExecutive = members.some(
+    (m) => m.userId === profile.id && departments.find((d) => d.id === m.departmentId)?.type === "executive"
+  );
+  const isPmDeptHead = members.some(
+    (m) =>
+      m.userId === profile.id &&
+      m.role === "head" &&
+      departments.find((d) => d.id === m.departmentId)?.type === "project_management"
+  );
+  const isFinanceDeptHead = members.some(
+    (m) => m.userId === profile.id && m.role === "head" && departments.find((d) => d.id === m.departmentId)?.type === "finance"
+  );
+  const canPmApprove = isOwner || isExecutive || isPmDeptHead;
+  const canFinanceApprove = isOwner || isExecutive || isFinanceDeptHead;
   const totalContractValue = (contractsQuery.data ?? [])
     .filter((c) => c.status === "approved")
     .reduce((sum, c) => sum + (c.totalValue ?? 0), 0);
@@ -65,6 +92,11 @@ export function BudgetScreen({ project }: { project: Project }) {
   const createEntry = useCreateBudgetEntry();
   const deleteEntry = useDeleteBudgetEntry(project.id);
   const updateActivity = useUpdateActivity();
+  const submitEntry = useSubmitBudgetEntry(project.id);
+  const reviewEntry = useReviewBudgetEntry(project.id);
+  const resetEntryToDraft = useResetBudgetEntryToDraft(project.id);
+  const [reviewingEntryId, setReviewingEntryId] = useState<string | null>(null);
+  const [entryReviewNote, setEntryReviewNote] = useState("");
 
   const [tab, setTab] = useState<Tab>("budget");
   const [scurveMode, setScurveMode] = useState<"detailed" | "auto">("detailed");
@@ -87,7 +119,9 @@ export function BudgetScreen({ project }: { project: Project }) {
 
   const activities = activitiesQuery.data ?? [];
   const schedule = computeSchedule(activities, customCalendars);
-  const actualEntriesFlat = activities.flatMap((a) => a.actualEntries.map((e) => ({ date: e.date, amount: e.amount })));
+  const actualEntriesFlat = activities.flatMap((a) =>
+    a.actualEntries.filter((e) => e.status === "approved").map((e) => ({ date: e.date, amount: e.amount }))
+  );
   const totalContractValueForCurve = (contractsQuery.data ?? [])
     .filter((c) => c.status === "approved")
     .reduce((sum, c) => sum + (c.totalValue ?? 0), 0);
@@ -132,6 +166,35 @@ export function BudgetScreen({ project }: { project: Project }) {
       await deleteEntry.mutateAsync(entryId);
     } catch (err) {
       setDeleteEntryError(getErrorMessage(err, "تعذّر حذف الدفعة، حاول مجدداً"));
+    }
+  };
+
+  const handleSubmitEntry = async (entryId: string) => {
+    setDeleteEntryError("");
+    try {
+      await submitEntry.mutateAsync(entryId);
+    } catch (err) {
+      setDeleteEntryError(getErrorMessage(err, "تعذّر رفع الدفعة للاعتماد، حاول مجدداً"));
+    }
+  };
+
+  const handleReviewEntry = async (entryId: string, approve: boolean) => {
+    setDeleteEntryError("");
+    try {
+      await reviewEntry.mutateAsync({ entryId, approve, note: entryReviewNote.trim() || null });
+      setReviewingEntryId(null);
+      setEntryReviewNote("");
+    } catch (err) {
+      setDeleteEntryError(getErrorMessage(err, "تعذّر تنفيذ الاعتماد، حاول مجدداً"));
+    }
+  };
+
+  const handleResetEntryToDraft = async (entryId: string) => {
+    setDeleteEntryError("");
+    try {
+      await resetEntryToDraft.mutateAsync(entryId);
+    } catch (err) {
+      setDeleteEntryError(getErrorMessage(err, "تعذّر إعادة الدفعة للمسودة، حاول مجدداً"));
     }
   };
 
@@ -240,6 +303,7 @@ export function BudgetScreen({ project }: { project: Project }) {
               "التاريخ": fmt(entry.date),
               "المبلغ": entry.amount,
               "المصدر": SOURCE_LABEL[entry.source] ?? entry.source,
+              "الحالة": STATUS_LABEL[entry.status],
               "ملاحظة": entry.note ?? "",
             }))
           ),
@@ -428,7 +492,7 @@ export function BudgetScreen({ project }: { project: Project }) {
                     points={computeSCurve(
                       [selected],
                       schedule,
-                      selected.actualEntries.map((e) => ({ date: e.date, amount: e.amount }))
+                      selected.actualEntries.filter((e) => e.status === "approved").map((e) => ({ date: e.date, amount: e.amount }))
                     )}
                     title="منحنى الأداء لهذا البند"
                     height={220}
@@ -448,23 +512,93 @@ export function BudgetScreen({ project }: { project: Project }) {
               ) : (
                 <div className="flex flex-col gap-2">
                   {selected.actualEntries.map((entry) => (
-                    <div key={entry.id} className="flex items-center justify-between gap-2 bg-bg border border-line/60 rounded-lg px-3 py-2.5">
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-ink font-mono">{fmtMoney(entry.amount)}</div>
-                        <div className="text-xs text-ink-soft truncate flex items-center gap-1.5 flex-wrap">
-                          <span>
-                            {fmt(entry.date)} · {SOURCE_LABEL[entry.source] ?? entry.source}
-                            {entry.contractRef && ` · ${entry.contractRef}`}
-                          </span>
-                          {entry.source === "contract" && !entry.contractPaymentId && (
-                            <span className="text-[10px] text-warn bg-warn-bg rounded-full px-1.5 py-0.5 shrink-0">
-                              غير مرتبط بدفعة عقد فعلية
+                    <div
+                      key={entry.id}
+                      className={`bg-bg border border-line/60 rounded-lg px-3 py-2.5 ${entry.status !== "approved" ? "opacity-80" : ""}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-sm font-semibold text-ink font-mono">{fmtMoney(entry.amount)}</span>
+                            <span className={`text-[10px] font-semibold rounded-full px-1.5 py-0.5 ${STATUS_TONE[entry.status]}`}>
+                              {STATUS_LABEL[entry.status]}
                             </span>
+                          </div>
+                          <div className="text-xs text-ink-soft truncate flex items-center gap-1.5 flex-wrap">
+                            <span>
+                              {fmt(entry.date)} · {SOURCE_LABEL[entry.source] ?? entry.source}
+                              {entry.contractRef && ` · ${entry.contractRef}`}
+                            </span>
+                            {entry.source === "contract" && !entry.contractPaymentId && (
+                              <span className="text-[10px] text-warn bg-warn-bg rounded-full px-1.5 py-0.5 shrink-0">
+                                غير مرتبط بدفعة عقد فعلية
+                              </span>
+                            )}
+                            {entry.status !== "approved" && (
+                              <span className="text-[10px] text-ink-soft shrink-0">لا تُحتسب ضمن الفعلي حتى الاعتماد</span>
+                            )}
+                          </div>
+                          {entry.note && <div className="text-xs text-ink-soft truncate">{entry.note}</div>}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {entry.status === "draft" && (
+                            <>
+                              <SecondaryButton
+                                onClick={() => handleSubmitEntry(entry.id)}
+                                disabled={submitEntry.isPending}
+                                className="text-[11px] px-2 py-1"
+                              >
+                                رفع للاعتماد
+                              </SecondaryButton>
+                              <IconButton icon={Trash2} label="حذف" tone="critical" onClick={() => handleDeleteEntry(entry.id)} />
+                            </>
+                          )}
+                          {((entry.status === "pending_pm_approval" && canPmApprove) ||
+                            (entry.status === "pending_finance_approval" && canFinanceApprove)) && (
+                            <SecondaryButton
+                              onClick={() => setReviewingEntryId(reviewingEntryId === entry.id ? null : entry.id)}
+                              className="text-[11px] px-2 py-1"
+                            >
+                              {entry.status === "pending_pm_approval" ? "اعتماد أولي" : "الاعتماد المالي النهائي"}
+                            </SecondaryButton>
+                          )}
+                          {(entry.status === "approved" || entry.status === "rejected") && canPmApprove && (
+                            <SecondaryButton
+                              onClick={() => handleResetEntryToDraft(entry.id)}
+                              disabled={resetEntryToDraft.isPending}
+                              className="text-[11px] px-2 py-1"
+                            >
+                              إعادة للمسودة
+                            </SecondaryButton>
                           )}
                         </div>
-                        {entry.note && <div className="text-xs text-ink-soft truncate">{entry.note}</div>}
                       </div>
-                      <IconButton icon={Trash2} label="حذف" tone="critical" onClick={() => handleDeleteEntry(entry.id)} />
+
+                      {reviewingEntryId === entry.id && (
+                        <div className="mt-2 pt-2 border-t border-line/60">
+                          <TextInput
+                            value={entryReviewNote}
+                            onChange={(e) => setEntryReviewNote(e.target.value)}
+                            placeholder="ملاحظة الاعتماد/الرفض (اختياري)"
+                          />
+                          <div className="flex gap-2 mt-2">
+                            <PrimaryButton
+                              onClick={() => handleReviewEntry(entry.id, true)}
+                              disabled={reviewEntry.isPending}
+                              className="w-auto px-3 py-1.5 text-xs"
+                            >
+                              اعتماد
+                            </PrimaryButton>
+                            <SecondaryButton
+                              onClick={() => handleReviewEntry(entry.id, false)}
+                              disabled={reviewEntry.isPending}
+                              className="text-xs px-3 py-1.5"
+                            >
+                              رفض
+                            </SecondaryButton>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

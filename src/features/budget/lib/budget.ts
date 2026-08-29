@@ -11,7 +11,7 @@ export function getPlannedAmount(node: Activity): number {
 }
 
 export function getActualAmount(node: Activity): number {
-  return (node.actualEntries || []).reduce((s, e) => s + (e.amount || 0), 0);
+  return (node.actualEntries || []).filter((e) => e.status === "approved").reduce((s, e) => s + (e.amount || 0), 0);
 }
 
 export interface BudgetRollup {

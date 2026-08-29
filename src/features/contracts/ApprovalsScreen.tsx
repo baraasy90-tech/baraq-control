@@ -5,14 +5,16 @@ import { Card, SecondaryButton, StatCard, ExportMenu } from "@/components/ui";
 import { useCompany } from "@/features/company/useCompany";
 import { useCompanyApprovals, type ApprovalItem, type ApprovalStatus } from "@/features/contracts/api/useCompanyApprovals";
 import { useCompanyMaterialRequests } from "@/features/procurement/api/useCompanyMaterialRequests";
+import { useCompanyBudgetEntryApprovals } from "@/features/budget/api/useCompanyBudgetEntryApprovals";
 import { STATUS_LABEL, STATUS_TONE, PAYMENT_STATUS_LABEL, PAYMENT_STATUS_TONE } from "@/features/contracts/statusLabels";
 import { MATERIAL_STATUS_LABEL, MATERIAL_STATUS_TONE } from "@/features/procurement/statusLabels";
+import { fmtMoney } from "@/utils/money";
 import { exportToExcel } from "@/utils/exportExcel";
 import { todayISO } from "@/utils/dates";
 import type { ContractStatus, PaymentApprovalStatus, MaterialRequestStatus } from "@/types/domain";
 
 type Filter = "pending" | "approved" | "rejected" | "all";
-type Section = "contracts" | "materials";
+type Section = "contracts" | "materials" | "budget_entries";
 
 function statusLabel(item: ApprovalItem): string {
   return item.kind === "contract"
@@ -235,6 +237,96 @@ function MaterialApprovalsView() {
   );
 }
 
+const BUDGET_ENTRY_PENDING_STATUSES = ["pending_pm_approval", "pending_finance_approval"];
+
+function BudgetEntryApprovalsView() {
+  const navigate = useNavigate();
+  const { company } = useCompany();
+  const entriesQuery = useCompanyBudgetEntryApprovals(company.id);
+  const [filter, setFilter] = useState<Filter>("pending");
+
+  const items = entriesQuery.data ?? [];
+  const pendingCount = items.filter((i) => BUDGET_ENTRY_PENDING_STATUSES.includes(i.entry.status)).length;
+  const approvedCount = items.filter((i) => i.entry.status === "approved").length;
+  const rejectedCount = items.filter((i) => i.entry.status === "rejected").length;
+  const overdueCount = items.filter((i) => (i.daysAtCurrentStage ?? 0) >= 5).length;
+
+  const filtered = items.filter((i) => {
+    if (filter === "pending") return BUDGET_ENTRY_PENDING_STATUSES.includes(i.entry.status);
+    if (filter === "approved") return i.entry.status === "approved";
+    if (filter === "rejected") return i.entry.status === "rejected";
+    return true;
+  });
+
+  return (
+    <div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <StatCard label="معلّقة" value={pendingCount} tone={pendingCount > 0 ? "warn" : undefined} />
+        <StatCard label="معتمدة" value={approvedCount} />
+        <StatCard label="مرفوضة" value={rejectedCount} tone={rejectedCount > 0 ? "critical" : undefined} />
+        <StatCard label="متأخرة (5+ أيام)" value={overdueCount} tone={overdueCount > 0 ? "critical" : undefined} />
+      </div>
+
+      <div className="flex gap-2 mb-4">
+        {(
+          [
+            { key: "pending", label: "معلّقة" },
+            { key: "approved", label: "معتمدة" },
+            { key: "rejected", label: "مرفوضة" },
+            { key: "all", label: "الكل" },
+          ] as { key: Filter; label: string }[]
+        ).map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            className={`text-sm font-semibold px-3 py-1.5 rounded-lg cursor-pointer border ${
+              filter === f.key ? "border-primary bg-primary-bg text-ink" : "border-line/60 bg-panel text-ink-soft"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {entriesQuery.isLoading && <p className="text-sm text-ink-soft">جارٍ التحميل...</p>}
+
+      {entriesQuery.data && filtered.length === 0 ? (
+        <div className="bg-panel border border-dashed border-line rounded-xl p-10 text-center text-sm text-ink-soft">
+          لا توجد دفعات هنا
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {filtered.map((item) => (
+            <Card
+              key={item.entry.id}
+              className="cursor-pointer hover:border-primary/40"
+              onClick={() => navigate(`/projects/${item.projectId}/budget`)}
+            >
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-bold text-ink truncate">{fmtMoney(item.entry.amount)}</span>
+                    <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${STATUS_TONE[item.entry.status]}`}>
+                      {STATUS_LABEL[item.entry.status]}
+                    </span>
+                  </div>
+                  <div className="text-xs text-ink-soft mt-1">
+                    {item.projectName} · {item.activityName}
+                  </div>
+                </div>
+
+                {item.daysAtCurrentStage !== null && (
+                  <div className={`text-xs shrink-0 ${stageAgeTone(item.daysAtCurrentStage)}`}>منذ {item.daysAtCurrentStage} يوم</div>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ApprovalsScreen() {
   const navigate = useNavigate();
   const { company } = useCompany();
@@ -242,6 +334,7 @@ export function ApprovalsScreen() {
   const [exporting, setExporting] = useState(false);
   const approvalsQuery = useCompanyApprovals(company.id);
   const materialsQuery = useCompanyMaterialRequests(company.id);
+  const budgetEntriesQuery = useCompanyBudgetEntryApprovals(company.id);
 
   const handleExport = async () => {
     setExporting(true);
@@ -268,6 +361,16 @@ export function ApprovalsScreen() {
             "أيام بالمرحلة الحالية": item.daysAtCurrentStage ?? "",
           })),
         },
+        {
+          name: "الدفعات الفعلية",
+          rows: (budgetEntriesQuery.data ?? []).map((item) => ({
+            "البند": item.activityName,
+            "المشروع": item.projectName,
+            "المبلغ": item.entry.amount,
+            "الحالة": STATUS_LABEL[item.entry.status],
+            "أيام بالمرحلة الحالية": item.daysAtCurrentStage ?? "",
+          })),
+        },
       ]);
     } finally {
       setExporting(false);
@@ -291,6 +394,7 @@ export function ApprovalsScreen() {
           [
             { key: "contracts", label: "العقود والدفعات" },
             { key: "materials", label: "طلبات المواد" },
+            { key: "budget_entries", label: "الدفعات الفعلية" },
           ] as { key: Section; label: string }[]
         ).map((s) => (
           <button
@@ -305,7 +409,13 @@ export function ApprovalsScreen() {
         ))}
       </div>
 
-      {section === "contracts" ? <ContractApprovalsView /> : <MaterialApprovalsView />}
+      {section === "contracts" ? (
+        <ContractApprovalsView />
+      ) : section === "materials" ? (
+        <MaterialApprovalsView />
+      ) : (
+        <BudgetEntryApprovalsView />
+      )}
     </div>
   );
 }

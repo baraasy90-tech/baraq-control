@@ -217,6 +217,8 @@ export interface ChecklistItem {
   order: number;
 }
 
+export type BudgetEntryStatus = "draft" | "pending_pm_approval" | "pending_finance_approval" | "approved" | "rejected";
+
 export interface BudgetActualEntry {
   id: string;
   activityId: string;
@@ -226,6 +228,12 @@ export interface BudgetActualEntry {
   note: string | null;
   contractRef: string | null;
   contractPaymentId: string | null;
+  status: BudgetEntryStatus;
+  submittedAt: string | null;
+  pmReviewedAt: string | null;
+  pmReviewNote: string | null;
+  financeReviewedAt: string | null;
+  financeReviewNote: string | null;
 }
 
 export interface CustomCalendar {
