@@ -33,6 +33,7 @@ export interface UpdateActivityInput {
   boqQty?: number | null;
   boqUnit?: string | null;
   boqUnitPrice?: number | null;
+  linkedContractId?: string | null;
 }
 
 export function useUpdateActivity() {
@@ -67,6 +68,7 @@ export function useUpdateActivity() {
       if (input.boqQty !== undefined) patch.boq_qty = input.boqQty;
       if (input.boqUnit !== undefined) patch.boq_unit = input.boqUnit;
       if (input.boqUnitPrice !== undefined) patch.boq_unit_price = input.boqUnitPrice;
+      if (input.linkedContractId !== undefined) patch.linked_contract_id = input.linkedContractId;
 
       const { error } = await supabase.from("activities").update(patch).eq("id", input.id);
       if (error) throw error;

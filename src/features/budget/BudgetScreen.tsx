@@ -76,6 +76,8 @@ export function BudgetScreen({ project }: { project: Project }) {
 
   const [editingBudget, setEditingBudget] = useState(false);
   const [confirmRemoveBudget, setConfirmRemoveBudget] = useState(false);
+  const [budgetSource, setBudgetSource] = useState<"manual" | "contract">("manual");
+  const [linkedContractIdInput, setLinkedContractIdInput] = useState("");
   const [budgetType, setBudgetType] = useState<BudgetType>("lumpsum");
   const [plannedAmountInput, setPlannedAmountInput] = useState("");
   const [boqQtyInput, setBoqQtyInput] = useState("");
@@ -135,6 +137,8 @@ export function BudgetScreen({ project }: { project: Project }) {
 
   const openEditBudget = () => {
     if (!selected) return;
+    setBudgetSource(selected.linkedContractId ? "contract" : "manual");
+    setLinkedContractIdInput(selected.linkedContractId ?? "");
     setBudgetType(selected.budgetType ?? "lumpsum");
     setPlannedAmountInput(selected.plannedAmount?.toString() ?? "");
     setBoqQtyInput(selected.boqQty?.toString() ?? "");
@@ -148,10 +152,26 @@ export function BudgetScreen({ project }: { project: Project }) {
     if (!selected) return;
     setBudgetError("");
     try {
-      if (budgetType === "lumpsum") {
+      if (budgetSource === "contract") {
+        if (!linkedContractIdInput) {
+          setBudgetError("اختر عقداً أولاً");
+          return;
+        }
         await updateActivity.mutateAsync({
           id: selected.id,
           projectId: project.id,
+          linkedContractId: linkedContractIdInput,
+          budgetType: null,
+          plannedAmount: null,
+          boqQty: null,
+          boqUnit: null,
+          boqUnitPrice: null,
+        });
+      } else if (budgetType === "lumpsum") {
+        await updateActivity.mutateAsync({
+          id: selected.id,
+          projectId: project.id,
+          linkedContractId: null,
           budgetType: "lumpsum",
           plannedAmount: Number(plannedAmountInput) || 0,
           boqQty: null,
@@ -162,6 +182,7 @@ export function BudgetScreen({ project }: { project: Project }) {
         await updateActivity.mutateAsync({
           id: selected.id,
           projectId: project.id,
+          linkedContractId: null,
           budgetType: "boq",
           plannedAmount: null,
           boqQty: Number(boqQtyInput) || 0,
@@ -182,6 +203,7 @@ export function BudgetScreen({ project }: { project: Project }) {
       await updateActivity.mutateAsync({
         id: selected.id,
         projectId: project.id,
+        linkedContractId: null,
         budgetType: null,
         plannedAmount: null,
         boqQty: null,
@@ -336,9 +358,22 @@ export function BudgetScreen({ project }: { project: Project }) {
 
               <div className="flex items-center justify-between gap-2 bg-bg border border-line/60 rounded-lg px-3 py-2.5 mb-3">
                 <p className="text-xs text-ink-soft">
-                  {getPlannedAmount(selected) > 0 ? (
+                  {selected.linkedContractId ? (
+                    selected.linkedContractStatus === "approved" ? (
+                      <>
+                        مصدر الميزانية: عقد — <span className="font-semibold text-ink">{selected.linkedContractName}</span> ·{" "}
+                        <span className="font-semibold text-ink">{fmtMoney(selected.linkedContractValue ?? 0)}</span> (شامل الضريبة)
+                      </>
+                    ) : (
+                      <>
+                        مرتبط بعقد "{selected.linkedContractName}" —{" "}
+                        <span className="text-warn font-semibold">بانتظار اعتماد العقد، لا يُحتسب ضمن الميزانية حتى اعتماده</span>
+                      </>
+                    )
+                  ) : getPlannedAmount(selected) > 0 ? (
                     <>
-                      ميزانية هذا البند تحديداً: <span className="font-semibold text-ink">{fmtMoney(getPlannedAmount(selected))}</span>
+                      ميزانية هذا البند تحديداً (يدوي — غير مرتبط بعقد):{" "}
+                      <span className="font-semibold text-ink">{fmtMoney(getPlannedAmount(selected))}</span>
                       {selected.budgetType === "boq" &&
                         ` (${selected.boqQty} ${selected.boqUnit ?? ""} × ${fmtMoney(selected.boqUnitPrice)})`}
                     </>
@@ -347,12 +382,12 @@ export function BudgetScreen({ project }: { project: Project }) {
                   )}
                 </p>
                 <div className="flex items-center gap-1 shrink-0">
-                  {getPlannedAmount(selected) === 0 && (
+                  {!selected.linkedContractId && getPlannedAmount(selected) === 0 && (
                     <SecondaryButton onClick={openEditBudget} className="text-xs px-3 py-1.5">
                       إضافة ميزانية
                     </SecondaryButton>
                   )}
-                  {getPlannedAmount(selected) > 0 && (
+                  {(selected.linkedContractId || getPlannedAmount(selected) > 0) && (
                     <>
                       <IconButton icon={Pencil} label="تعديل الميزانية" onClick={openEditBudget} />
                       <IconButton
@@ -454,48 +489,99 @@ export function BudgetScreen({ project }: { project: Project }) {
 
       {editingBudget && selected && (
         <Modal title={`تعديل الميزانية — ${selected.name}`} onClose={() => setEditingBudget(false)}>
-          <FieldLabel>نوع الميزانية</FieldLabel>
+          <FieldLabel>مصدر الميزانية</FieldLabel>
           <div className="flex gap-2 mb-3">
             <button
               type="button"
-              onClick={() => setBudgetType("lumpsum")}
+              onClick={() => setBudgetSource("manual")}
               className={`text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer border flex-1 ${
-                budgetType === "lumpsum" ? "border-ink bg-ink text-white" : "border-line/60 bg-panel text-ink-soft"
+                budgetSource === "manual" ? "border-ink bg-ink text-white" : "border-line/60 bg-panel text-ink-soft"
               }`}
             >
-              مبلغ مقطوع
+              إدخال يدوي
             </button>
             <button
               type="button"
-              onClick={() => setBudgetType("boq")}
+              onClick={() => setBudgetSource("contract")}
               className={`text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer border flex-1 ${
-                budgetType === "boq" ? "border-ink bg-ink text-white" : "border-line/60 bg-panel text-ink-soft"
+                budgetSource === "contract" ? "border-ink bg-ink text-white" : "border-line/60 bg-panel text-ink-soft"
               }`}
             >
-              كمية × سعر وحدة (BOQ)
+              مرتبط بعقد
             </button>
           </div>
 
-          {budgetType === "lumpsum" ? (
+          {budgetSource === "contract" ? (
             <>
-              <FieldLabel>المبلغ المخطط</FieldLabel>
-              <TextInput type="number" value={plannedAmountInput} onChange={(e) => setPlannedAmountInput(e.target.value)} />
+              <FieldLabel>العقد</FieldLabel>
+              {(contractsQuery.data ?? []).length === 0 ? (
+                <p className="text-xs text-ink-soft mb-2">لا توجد عقود بهذا المشروع بعد — أضف عقداً أولاً من شاشة العقود.</p>
+              ) : (
+                <select
+                  value={linkedContractIdInput}
+                  onChange={(e) => setLinkedContractIdInput(e.target.value)}
+                  className="w-full text-sm border border-line/60 rounded-lg px-3 py-2 mb-2 bg-panel text-ink"
+                >
+                  <option value="">اختر عقداً...</option>
+                  {(contractsQuery.data ?? []).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} — {fmtMoney(c.totalValue ?? 0)}{" "}
+                      {c.status === "approved" ? "(معتمد)" : "(بانتظار الاعتماد)"}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <p className="text-xs text-ink-soft mb-2">
+                سيصبح "المخطط" لهذا البند = قيمة العقد شاملة الضريبة تلقائياً (فقط إن كان العقد معتمَداً)، ولن يمكن إدخال مبلغ يدوي طالما
+                الربط قائماً.
+              </p>
             </>
           ) : (
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <FieldLabel>الكمية</FieldLabel>
-                <TextInput type="number" value={boqQtyInput} onChange={(e) => setBoqQtyInput(e.target.value)} />
+            <>
+              <FieldLabel>نوع الميزانية</FieldLabel>
+              <div className="flex gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setBudgetType("lumpsum")}
+                  className={`text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer border flex-1 ${
+                    budgetType === "lumpsum" ? "border-ink bg-ink text-white" : "border-line/60 bg-panel text-ink-soft"
+                  }`}
+                >
+                  مبلغ مقطوع
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBudgetType("boq")}
+                  className={`text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer border flex-1 ${
+                    budgetType === "boq" ? "border-ink bg-ink text-white" : "border-line/60 bg-panel text-ink-soft"
+                  }`}
+                >
+                  كمية × سعر وحدة (BOQ)
+                </button>
               </div>
-              <div>
-                <FieldLabel>الوحدة</FieldLabel>
-                <TextInput value={boqUnitInput} onChange={(e) => setBoqUnitInput(e.target.value)} placeholder="م٢، طن..." />
-              </div>
-              <div>
-                <FieldLabel>سعر الوحدة</FieldLabel>
-                <TextInput type="number" value={boqUnitPriceInput} onChange={(e) => setBoqUnitPriceInput(e.target.value)} />
-              </div>
-            </div>
+
+              {budgetType === "lumpsum" ? (
+                <>
+                  <FieldLabel>المبلغ المخطط</FieldLabel>
+                  <TextInput type="number" value={plannedAmountInput} onChange={(e) => setPlannedAmountInput(e.target.value)} />
+                </>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <FieldLabel>الكمية</FieldLabel>
+                    <TextInput type="number" value={boqQtyInput} onChange={(e) => setBoqQtyInput(e.target.value)} />
+                  </div>
+                  <div>
+                    <FieldLabel>الوحدة</FieldLabel>
+                    <TextInput value={boqUnitInput} onChange={(e) => setBoqUnitInput(e.target.value)} placeholder="م٢، طن..." />
+                  </div>
+                  <div>
+                    <FieldLabel>سعر الوحدة</FieldLabel>
+                    <TextInput type="number" value={boqUnitPriceInput} onChange={(e) => setBoqUnitPriceInput(e.target.value)} />
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           <ErrorText>{budgetError}</ErrorText>

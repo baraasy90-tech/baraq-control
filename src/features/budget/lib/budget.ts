@@ -1,6 +1,9 @@
 import type { Activity } from "@/types/domain";
 
 export function getPlannedAmount(node: Activity): number {
+  if (node.linkedContractId) {
+    return node.linkedContractStatus === "approved" ? node.linkedContractValue || 0 : 0;
+  }
   if (!node.budgetType) return 0;
   if (node.budgetType === "lumpsum") return node.plannedAmount || 0;
   if (node.budgetType === "boq") return (node.boqQty || 0) * (node.boqUnitPrice || 0);

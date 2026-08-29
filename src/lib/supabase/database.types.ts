@@ -400,6 +400,7 @@ export interface Database {
           code: string | null;
           actual_start_date: string | null;
           actual_end_date: string | null;
+          linked_contract_id: string | null;
         };
         Insert: {
           id?: string;
@@ -432,6 +433,7 @@ export interface Database {
           code?: string | null;
           actual_start_date?: string | null;
           actual_end_date?: string | null;
+          linked_contract_id?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["activities"]["Insert"]>;
         Relationships: [];

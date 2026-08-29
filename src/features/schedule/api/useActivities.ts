@@ -3,8 +3,9 @@ import { supabase } from "@/lib/supabase/client";
 import { mapActivity, mapChecklistItem } from "@/features/schedule/api/mapActivity";
 import { mapChecklistResult, mapSubmission } from "@/features/receiving/api/mapSubmission";
 import { mapBudgetEntry } from "@/features/budget/api/mapBudgetEntry";
+import { computeVat } from "@/features/contracts/lib/vat";
 import { getFileUrls } from "@/lib/supabase/storage";
-import type { Submission } from "@/types/domain";
+import type { ContractStatus, Submission } from "@/types/domain";
 
 /**
  * جلب موحّد لكل بيانات أنشطة المشروع: الشجرة + الاستلامات الفرعية + تقديمات الاستلام
@@ -35,6 +36,17 @@ export function useActivities(projectId: string | undefined) {
       if (submissionsRes.error) throw submissionsRes.error;
       if (budgetRes.error) throw budgetRes.error;
       const submissionIds = submissionsRes.data.map((s) => s.id);
+
+      const linkedContractIds = [...new Set(activitiesRes.data.map((a) => a.linked_contract_id).filter((id): id is string => !!id))];
+      const linkedContractsRes =
+        linkedContractIds.length > 0
+          ? await supabase
+              .from("contracts")
+              .select("id, contract_name, status, total_value, vat_inclusive, vat_rate")
+              .in("id", linkedContractIds)
+          : { data: [], error: null };
+      if (linkedContractsRes.error) throw linkedContractsRes.error;
+      const linkedContractById = new Map(linkedContractsRes.data.map((c) => [c.id, c]));
 
       const [resultsRes, imagesRes] = await Promise.all([
         supabase.from("checklist_results").select("*").in("submission_id", submissionIds),
@@ -98,6 +110,17 @@ export function useActivities(projectId: string | undefined) {
         const activity = mapActivity(row, checklistByActivity.get(row.id) ?? []);
         activity.submissions = submissionsByActivity.get(row.id) ?? [];
         activity.actualEntries = budgetByActivity.get(row.id) ?? [];
+        const contract = row.linked_contract_id ? linkedContractById.get(row.linked_contract_id) : undefined;
+        if (contract) {
+          activity.linkedContractName = contract.contract_name;
+          activity.linkedContractStatus = contract.status as ContractStatus;
+          activity.linkedContractValue =
+            contract.total_value != null
+              ? contract.vat_rate != null
+                ? computeVat(contract.total_value, contract.vat_inclusive, contract.vat_rate).valueIncludingVat
+                : contract.total_value
+              : null;
+        }
         return activity;
       });
     },

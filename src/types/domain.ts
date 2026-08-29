@@ -273,6 +273,10 @@ export interface Activity {
   boqQty: number | null;
   boqUnit: string | null;
   boqUnitPrice: number | null;
+  linkedContractId: string | null;
+  linkedContractName: string | null;
+  linkedContractStatus: ContractStatus | null;
+  linkedContractValue: number | null;
   checklist: ChecklistItem[];
   actualEntries: BudgetActualEntry[];
   submissions: Submission[];

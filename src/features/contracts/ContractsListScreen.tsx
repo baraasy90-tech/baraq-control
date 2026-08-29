@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FileText, Plus, Trash2 } from "lucide-react";
+import { FileText, Paperclip, Plus, Trash2 } from "lucide-react";
 import { Card, SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText, Modal } from "@/components/ui";
 import { useContracts } from "@/features/contracts/api/useContract";
 import { useSaveContract } from "@/features/contracts/api/useSaveContract";
@@ -96,7 +96,14 @@ export function ContractsListScreen() {
                 <div className="min-w-0 flex items-center gap-2">
                   <FileText size={18} className="text-primary shrink-0" />
                   <div className="min-w-0">
-                    <div className="text-sm font-bold text-ink truncate">{c.name}</div>
+                    <div className="text-sm font-bold text-ink truncate flex items-center gap-1.5">
+                      {c.name}
+                      {c.pdfUrl && (
+                        <span title="يحتوي نسخة PDF مؤرشفة" className="shrink-0 inline-flex">
+                          <Paperclip size={13} className="text-ink-soft" />
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-ink-soft">
                       {c.startDate ? fmt(c.startDate) : "بدون تاريخ بدء"} · {c.durationDays ? `${c.durationDays} يوم` : "بدون مدة"}
                     </div>
