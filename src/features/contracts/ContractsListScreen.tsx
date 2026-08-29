@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FileText, Plus } from "lucide-react";
-import { Card, SecondaryButton, PrimaryButton, FieldLabel, TextInput, ErrorText, Modal } from "@/components/ui";
+import { FileText, Plus, Trash2 } from "lucide-react";
+import { Card, SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText, Modal } from "@/components/ui";
 import { useContracts } from "@/features/contracts/api/useContract";
 import { useSaveContract } from "@/features/contracts/api/useSaveContract";
+import { useDeleteContract } from "@/features/contracts/api/useDeleteContract";
 import { useActivities } from "@/features/schedule/api/useActivities";
 import { getPlannedAmount } from "@/features/budget/lib/budget";
 import { BudgetVarianceBanner } from "@/features/budget/BudgetVarianceBanner";
@@ -12,6 +13,7 @@ import { fmt } from "@/utils/dates";
 import { STATUS_LABEL, STATUS_TONE } from "@/features/contracts/statusLabels";
 import { useCompany } from "@/features/company/useCompany";
 import { getErrorMessage } from "@/utils/errors";
+import type { Contract } from "@/types/domain";
 
 export function ContractsListScreen() {
   const { id: projectId } = useParams<{ id: string }>();
@@ -20,10 +22,13 @@ export function ContractsListScreen() {
   const contractsQuery = useContracts(projectId);
   const activitiesQuery = useActivities(projectId);
   const saveContract = useSaveContract();
+  const deleteContract = useDeleteContract(projectId);
 
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [error, setError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<Contract | null>(null);
+  const [deleteError, setDeleteError] = useState("");
 
   const contracts = contractsQuery.data ?? [];
   // فقط العقود المعتمدة تُحسب ضمن قيمة العقود الرسمية — المسودات وما بانتظار الاعتماد
@@ -100,6 +105,18 @@ export function ContractsListScreen() {
                 <div className="flex items-center gap-2 shrink-0">
                   <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 ${STATUS_TONE[c.status]}`}>{STATUS_LABEL[c.status]}</span>
                   <span className="text-sm font-bold text-ink font-mono">{c.totalValue ? fmtMoney(c.totalValue) : "—"}</span>
+                  {(c.status === "draft" || c.status === "rejected") && (
+                    <IconButton
+                      icon={Trash2}
+                      label="حذف العقد"
+                      tone="critical"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteError("");
+                        setConfirmDelete(c);
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             </Card>
@@ -123,6 +140,34 @@ export function ContractsListScreen() {
             <SecondaryButton onClick={() => setCreating(false)} className="flex-1">
               إلغاء
             </SecondaryButton>
+          </div>
+        </Modal>
+      )}
+
+      {confirmDelete && (
+        <Modal title="تأكيد حذف العقد" onClose={() => setConfirmDelete(null)}>
+          <p className="text-sm text-ink-soft mb-5">
+            هل أنت متأكد من حذف عقد "{confirmDelete.name}" نهائياً؟ سيُحذف معه كل بنوده ودفعاته واستقطاعاته بشكل لا رجعة فيه.
+          </p>
+          <ErrorText>{deleteError}</ErrorText>
+          <div className="flex gap-2">
+            <SecondaryButton onClick={() => setConfirmDelete(null)} className="flex-1">
+              إلغاء
+            </SecondaryButton>
+            <button
+              onClick={async () => {
+                try {
+                  await deleteContract.mutateAsync(confirmDelete.id);
+                  setConfirmDelete(null);
+                } catch (err) {
+                  setDeleteError(getErrorMessage(err, "تعذّر حذف العقد، حاول مجدداً"));
+                }
+              }}
+              disabled={deleteContract.isPending}
+              className="flex-1 py-2.5 rounded-lg bg-critical text-white border-none font-bold text-sm cursor-pointer disabled:opacity-50"
+            >
+              {deleteContract.isPending ? "جارٍ الحذف..." : "حذف نهائياً"}
+            </button>
           </div>
         </Modal>
       )}

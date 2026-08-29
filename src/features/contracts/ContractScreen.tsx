@@ -116,12 +116,26 @@ export function ContractScreen() {
   const addDeduction = useAddDeduction(contractId);
   const deleteDeduction = useDeleteDeduction(contractId);
 
+  const bundle = bundleQuery.data;
+  const contract = bundle?.contract;
+
+  // يجب استدعاء كل الـ hooks بلا شرط قبل أي return مبكر — استدعاؤهما سابقاً بعد فحص
+  // isLoading أدناه كان يعني عدد hooks مختلف بين أول render (أثناء التحميل) والذي
+  // يليه (بعد وصول البيانات)، وهذا يخالف قواعد React ويُسبب خطأ "Rendered more hooks
+  // than during the previous render" فعلياً عند أول فتح لأي عقد بلا كاش سابق.
+  const extraWorksQuery = useExtraWorks(contract?.id);
+  const approverProfilesQuery = useProfilesByIds([
+    contract?.submittedBy,
+    contract?.pmReviewedBy,
+    contract?.financeReviewedBy,
+    contract?.settlementSubmittedBy,
+    contract?.settlementPmReviewedBy,
+    contract?.settlementFinanceReviewedBy,
+  ]);
+
   if (bundleQuery.isLoading) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-ink-soft">جارٍ التحميل...</div>;
   }
-
-  const bundle = bundleQuery.data;
-  const contract = bundle?.contract;
 
   const startEditMain = () => {
     if (contract) {
@@ -256,19 +270,10 @@ export function ContractScreen() {
 
   const totalDeductions = (bundle?.deductions ?? []).reduce((sum, d) => sum + d.deductionAmount, 0);
 
-  const extraWorksQuery = useExtraWorks(contract?.id);
   const approvedExtraWorksTotal = (extraWorksQuery.data ?? [])
     .filter((e) => e.status === "approved")
     .reduce((sum, e) => sum + e.amount, 0);
 
-  const approverProfilesQuery = useProfilesByIds([
-    contract?.submittedBy,
-    contract?.pmReviewedBy,
-    contract?.financeReviewedBy,
-    contract?.settlementSubmittedBy,
-    contract?.settlementPmReviewedBy,
-    contract?.settlementFinanceReviewedBy,
-  ]);
   const approverProfiles = approverProfilesQuery.data ?? new Map();
 
   const payments = bundle?.payments ?? [];

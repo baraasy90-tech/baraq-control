@@ -1332,6 +1332,10 @@ export interface Database {
         Args: { p_contract_id: string };
         Returns: undefined;
       };
+      delete_contract: {
+        Args: { p_contract_id: string };
+        Returns: undefined;
+      };
       is_platform_admin: {
         Args: Record<string, never>;
         Returns: boolean;
