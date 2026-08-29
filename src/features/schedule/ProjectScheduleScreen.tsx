@@ -18,6 +18,7 @@ import { suggestActivityCode } from "@/features/schedule/lib/activityCode";
 import { useScheduleHolidays } from "@/features/schedule/api/useScheduleHolidays";
 import { useCompany } from "@/features/company/useCompany";
 import { fmt, todayISO } from "@/utils/dates";
+import { getErrorMessage } from "@/utils/errors";
 import type { Activity, Project, Schedule } from "@/types/domain";
 
 export type ScheduleTab = "create" | "preview";
@@ -190,6 +191,7 @@ function CreateTab({
   const [newParentId, setNewParentId] = useState<string | null>(null);
   const [suggestedCode, setSuggestedCode] = useState<string | undefined>(undefined);
   const [confirmDelete, setConfirmDelete] = useState<Activity | null>(null);
+  const [deleteError, setDeleteError] = useState("");
   const [error, setError] = useState("");
 
   const customCalendarsQuery = useCustomCalendars(project.companyId);
@@ -286,10 +288,12 @@ function CreateTab({
   };
 
   const handleDelete = async (activity: Activity) => {
+    setDeleteError("");
     try {
       await deleteActivity.mutateAsync(activity.id);
-    } finally {
       setConfirmDelete(null);
+    } catch (err) {
+      setDeleteError(getErrorMessage(err, "تعذّر حذف البند، حاول مجدداً"));
     }
   };
 
@@ -398,19 +402,33 @@ function CreateTab({
       )}
 
       {confirmDelete && (
-        <Modal title="تأكيد الحذف" onClose={() => setConfirmDelete(null)}>
+        <Modal
+          title="تأكيد الحذف"
+          onClose={() => {
+            setConfirmDelete(null);
+            setDeleteError("");
+          }}
+        >
           <p className="text-sm text-ink-soft mb-5">
             هل أنت متأكد من حذف "{confirmDelete.name}"؟ سيتم حذف كل البنود التابعة له أيضاً بشكل نهائي.
           </p>
+          <ErrorText>{deleteError}</ErrorText>
           <div className="flex gap-2">
-            <SecondaryButton onClick={() => setConfirmDelete(null)} className="flex-1">
+            <SecondaryButton
+              onClick={() => {
+                setConfirmDelete(null);
+                setDeleteError("");
+              }}
+              className="flex-1"
+            >
               إلغاء
             </SecondaryButton>
             <button
               onClick={() => handleDelete(confirmDelete)}
-              className="flex-1 py-2.5 rounded-lg bg-critical text-white border-none font-bold text-sm cursor-pointer"
+              disabled={deleteActivity.isPending}
+              className="flex-1 py-2.5 rounded-lg bg-critical text-white border-none font-bold text-sm cursor-pointer disabled:opacity-50"
             >
-              حذف نهائياً
+              {deleteActivity.isPending ? "جارٍ الحذف..." : "حذف نهائياً"}
             </button>
           </div>
         </Modal>
