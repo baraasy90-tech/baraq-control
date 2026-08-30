@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { PrimaryButton, SecondaryButton, TextInput, ErrorText } from "@/components/ui";
 import {
   useReconciliationNotes,
@@ -30,7 +30,6 @@ export function BudgetVarianceBanner({
   title = "اختلاف بين قيمة العقود المعتمدة والميزانية المخطَّطة بالجدول الزمني",
   valueLabel = "قيمة العقد (المالية)",
   budgetLabel = "الميزانية المخطط لها (مدير المشروع)",
-  approvedTitle = "اختلاف الميزانية معتمد",
   unlinkedBudgetItems = [],
   unlinkedContracts = [],
 }: {
@@ -41,7 +40,6 @@ export function BudgetVarianceBanner({
   title?: string;
   valueLabel?: string;
   budgetLabel?: string;
-  approvedTitle?: string;
   /** بنود بميزانية مخططة يدوية بلا عقد مرتبط — سبب زيادة الميزانية عن قيمة العقود. */
   unlinkedBudgetItems?: { name: string; amount: number }[];
   /** عقود معتمدة غير مرتبطة بأي بند بالجدول الزمني — سبب زيادة قيمة العقود عن الميزانية المسجَّلة. */
@@ -139,19 +137,44 @@ export function BudgetVarianceBanner({
       </div>
     ) : null;
 
+  const historyToggle =
+    notes.length > 0 ? (
+      <div>
+        <button
+          onClick={() => setShowHistory((v) => !v)}
+          className="text-xs text-ink-soft bg-transparent border-none cursor-pointer underline"
+        >
+          {showHistory ? "إخفاء" : "عرض"} سجل معالجة الاختلافات السابقة ({notes.length})
+        </button>
+        {showHistory && (
+          <div className="flex flex-col gap-1.5 mt-2">
+            {notes.map((n) => (
+              <div key={n.id} className="text-xs bg-bg rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`font-semibold rounded-full px-2 py-0.5 ${STATUS_TONE[n.status]}`}>{STATUS_LABEL[n.status]}</span>
+                </div>
+                <div className="text-ink">{n.note}</div>
+                {n.reviewNote && <div className="text-ink-soft mt-0.5">ملاحظة الاعتماد: {n.reviewNote}</div>}
+                <div className="text-ink-soft mt-0.5">
+                  {fmt(n.createdAt)} · {valueLabel}: {n.contractValue != null ? fmtMoney(n.contractValue) : "—"} · {budgetLabel}:{" "}
+                  {n.trackedBudgetValue != null ? fmtMoney(n.trackedBudgetValue) : "—"}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    ) : null;
+
+  if (showApprovedConfirmation) {
+    // اختلاف حقيقي لا يزال قائماً لكنه مُعتمد مسبقاً بمبرر يطابق الأرقام الحالية —
+    // لا داعٍ لتذكير دائم؛ يبقى متاحاً فقط ضمن سجل المعالجات أسفل الشاشة.
+    return historyToggle ? <div className="mb-6">{historyToggle}</div> : null;
+  }
+
   return (
     <div className="mb-6">
-      {showApprovedConfirmation ? (
-        <div className="bg-accent-bg border border-accent/30 rounded-xl p-4 mb-2">
-          <div className="flex items-start gap-2">
-            <CheckCircle2 size={18} className="text-accent shrink-0 mt-0.5" />
-            <div className="min-w-0">
-              <div className="text-sm font-bold text-ink">{approvedTitle}</div>
-              <div className="text-xs text-ink-soft mt-1">{latestNote!.note}</div>
-            </div>
-          </div>
-        </div>
-      ) : showPendingReview ? (
+      {showPendingReview ? (
         <div className="bg-warn-bg border border-warn/30 rounded-xl p-4 mb-2">
           <div className="flex items-start gap-2 mb-2">
             <AlertTriangle size={18} className="text-warn shrink-0 mt-0.5" />
@@ -226,33 +249,7 @@ export function BudgetVarianceBanner({
         </div>
       ) : null}
 
-      {notes.length > 0 && (
-        <div>
-          <button
-            onClick={() => setShowHistory((v) => !v)}
-            className="text-xs text-ink-soft bg-transparent border-none cursor-pointer underline"
-          >
-            {showHistory ? "إخفاء" : "عرض"} سجل معالجة الاختلافات السابقة ({notes.length})
-          </button>
-          {showHistory && (
-            <div className="flex flex-col gap-1.5 mt-2">
-              {notes.map((n) => (
-                <div key={n.id} className="text-xs bg-bg rounded-lg px-3 py-2">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`font-semibold rounded-full px-2 py-0.5 ${STATUS_TONE[n.status]}`}>{STATUS_LABEL[n.status]}</span>
-                  </div>
-                  <div className="text-ink">{n.note}</div>
-                  {n.reviewNote && <div className="text-ink-soft mt-0.5">ملاحظة الاعتماد: {n.reviewNote}</div>}
-                  <div className="text-ink-soft mt-0.5">
-                    {fmt(n.createdAt)} · {valueLabel}: {n.contractValue != null ? fmtMoney(n.contractValue) : "—"} · {budgetLabel}:{" "}
-                    {n.trackedBudgetValue != null ? fmtMoney(n.trackedBudgetValue) : "—"}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {historyToggle}
     </div>
   );
 }

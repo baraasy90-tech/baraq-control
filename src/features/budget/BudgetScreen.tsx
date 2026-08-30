@@ -351,7 +351,6 @@ export function BudgetScreen({ project }: { project: Project }) {
         title="اختلاف بين المدفوع فعلياً من العقود والفعلي المسجَّل بالميزانية"
         valueLabel="إجمالي المدفوع من العقود"
         budgetLabel="إجمالي الفعلي بالميزانية"
-        approvedTitle="اختلاف الدفعات معتمد"
         contractValue={contractPayments.length > 0 ? totalContractPaid : null}
         trackedBudget={overallRollup.actual}
       />
