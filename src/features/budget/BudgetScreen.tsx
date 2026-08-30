@@ -28,6 +28,7 @@ import {
 import { computeBudgetRollup, getPlannedAmount } from "@/features/budget/lib/budget";
 import { computeSCurve, computeSCurveFromTotal } from "@/features/budget/lib/sCurve";
 import { useContracts } from "@/features/contracts/api/useContract";
+import { useSaveContract } from "@/features/contracts/api/useSaveContract";
 import { useContractPaymentsForProject } from "@/features/budget/api/useContractPaymentsForProject";
 import { computeNetPaymentAmount } from "@/features/contracts/lib/payments";
 import { BudgetVarianceBanner } from "@/features/budget/BudgetVarianceBanner";
@@ -97,6 +98,13 @@ export function BudgetScreen({ project }: { project: Project }) {
   const resetEntryToDraft = useResetBudgetEntryToDraft(project.id);
   const [reviewingEntryId, setReviewingEntryId] = useState<string | null>(null);
   const [entryReviewNote, setEntryReviewNote] = useState("");
+
+  const saveContract = useSaveContract();
+  const [offerDraftContract, setOfferDraftContract] = useState<{ activityId: string; activityName: string; amount: number } | null>(
+    null
+  );
+  const [creatingDraftContract, setCreatingDraftContract] = useState(false);
+  const [draftContractError, setDraftContractError] = useState("");
 
   const [tab, setTab] = useState<Tab>("budget");
   const [scurveMode, setScurveMode] = useState<"detailed" | "auto">("detailed");
@@ -237,38 +245,80 @@ export function BudgetScreen({ project }: { project: Project }) {
           id: selected.id,
           projectId: project.id,
           linkedContractId: linkedContractIdInput,
-          budgetType: null,
-          plannedAmount: null,
-          boqQty: null,
-          boqUnit: null,
-          boqUnitPrice: null,
         });
-      } else if (budgetType === "lumpsum") {
-        await updateActivity.mutateAsync({
-          id: selected.id,
-          projectId: project.id,
-          linkedContractId: null,
-          budgetType: "lumpsum",
-          plannedAmount: Number(plannedAmountInput) || 0,
-          boqQty: null,
-          boqUnit: null,
-          boqUnitPrice: null,
-        });
+        setEditingBudget(false);
       } else {
-        await updateActivity.mutateAsync({
-          id: selected.id,
-          projectId: project.id,
-          linkedContractId: null,
-          budgetType: "boq",
-          plannedAmount: null,
-          boqQty: Number(boqQtyInput) || 0,
-          boqUnit: boqUnitInput.trim() || null,
-          boqUnitPrice: Number(boqUnitPriceInput) || 0,
-        });
+        const wasFirstBudget = !selected.linkedContractId && getPlannedAmount(selected) === 0;
+        let newPlannedAmount = 0;
+        if (budgetType === "lumpsum") {
+          newPlannedAmount = Number(plannedAmountInput) || 0;
+          await updateActivity.mutateAsync({
+            id: selected.id,
+            projectId: project.id,
+            linkedContractId: null,
+            budgetType: "lumpsum",
+            plannedAmount: newPlannedAmount,
+            boqQty: null,
+            boqUnit: null,
+            boqUnitPrice: null,
+          });
+        } else {
+          const qty = Number(boqQtyInput) || 0;
+          const unitPrice = Number(boqUnitPriceInput) || 0;
+          newPlannedAmount = qty * unitPrice;
+          await updateActivity.mutateAsync({
+            id: selected.id,
+            projectId: project.id,
+            linkedContractId: null,
+            budgetType: "boq",
+            plannedAmount: null,
+            boqQty: qty,
+            boqUnit: boqUnitInput.trim() || null,
+            boqUnitPrice: unitPrice,
+          });
+        }
+        setEditingBudget(false);
+        if (wasFirstBudget && newPlannedAmount > 0) {
+          setOfferDraftContract({ activityId: selected.id, activityName: selected.name, amount: newPlannedAmount });
+        }
       }
-      setEditingBudget(false);
     } catch (err) {
       setBudgetError(getErrorMessage(err, "تعذّر حفظ الميزانية، حاول مجدداً"));
+    }
+  };
+
+  const handleCreateDraftContract = async () => {
+    if (!offerDraftContract) return;
+    setDraftContractError("");
+    setCreatingDraftContract(true);
+    try {
+      const result = await saveContract.mutateAsync({
+        projectId: project.id,
+        name: offerDraftContract.activityName,
+        startDate: null,
+        durationDays: null,
+        totalValue: offerDraftContract.amount,
+        paymentTerms: null,
+        hasAdvancePayment: false,
+        advancePaymentPercentage: null,
+        advancePaymentGuaranteeNote: null,
+        advanceDeductionPercentage: 10,
+        retentionPercentage: null,
+        retentionReleased: false,
+        retentionReleaseNote: null,
+        vatInclusive: false,
+        vatRate: company.vatRate,
+      });
+      await updateActivity.mutateAsync({
+        id: offerDraftContract.activityId,
+        projectId: project.id,
+        linkedContractId: result.id,
+      });
+      setOfferDraftContract(null);
+    } catch (err) {
+      setDraftContractError(getErrorMessage(err, "تعذّر إنشاء العقد المسودة، حاول مجدداً"));
+    } finally {
+      setCreatingDraftContract(false);
     }
   };
 
@@ -761,6 +811,24 @@ export function BudgetScreen({ project }: { project: Project }) {
             >
               {updateActivity.isPending ? "جارٍ الحذف..." : "حذف نهائياً"}
             </button>
+          </div>
+        </Modal>
+      )}
+
+      {offerDraftContract && (
+        <Modal title="ربط بعقد" onClose={() => setOfferDraftContract(null)}>
+          <p className="text-sm text-ink-soft mb-4">
+            لا يوجد عقد مرتبط بـ"{offerDraftContract.activityName}" — هل تريد إنشاء عقد مسودة بنفس الاسم والقيمة (
+            {fmtMoney(offerDraftContract.amount)}) لمتابعته لاحقاً؟ يمكنك إكمال تفاصيله واعتماده من شاشة العقود في أي وقت.
+          </p>
+          <ErrorText>{draftContractError}</ErrorText>
+          <div className="flex gap-2">
+            <PrimaryButton onClick={handleCreateDraftContract} disabled={creatingDraftContract} className="flex-1">
+              {creatingDraftContract ? "جارٍ الإنشاء..." : "إنشاء عقد مسودة"}
+            </PrimaryButton>
+            <SecondaryButton onClick={() => setOfferDraftContract(null)} className="flex-1">
+              لا، شكراً
+            </SecondaryButton>
           </div>
         </Modal>
       )}

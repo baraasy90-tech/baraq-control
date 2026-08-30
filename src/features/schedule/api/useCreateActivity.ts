@@ -31,6 +31,7 @@ export interface CreateActivityInput {
   boqQty: number | null;
   boqUnit: string | null;
   boqUnitPrice: number | null;
+  linkedContractId?: string | null;
 }
 
 export function useCreateActivity() {
@@ -65,6 +66,7 @@ export function useCreateActivity() {
         boq_qty: input.boqQty,
         boq_unit: input.boqUnit,
         boq_unit_price: input.boqUnitPrice,
+        linked_contract_id: input.linkedContractId ?? null,
       };
       const { data, error } = await supabase.from("activities").insert(payload).select().single();
       if (error) throw error;

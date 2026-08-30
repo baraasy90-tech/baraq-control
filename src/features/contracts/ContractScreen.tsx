@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FileText, Trash2, Upload } from "lucide-react";
-import { Card, StatCard, SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText } from "@/components/ui";
+import { Card, StatCard, SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText, Modal } from "@/components/ui";
 import { useContract } from "@/features/contracts/api/useContract";
 import { useSaveContract } from "@/features/contracts/api/useSaveContract";
 import { useSubmitContract, useReviewContract, useSubmitPayment, useReviewPayment } from "@/features/contracts/api/useContractApproval";
@@ -18,6 +18,8 @@ import { useCompany } from "@/features/company/useCompany";
 import { useDepartments } from "@/features/company/api/useDepartments";
 import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
 import { useProject } from "@/features/projects/api/useProject";
+import { useActivities } from "@/features/schedule/api/useActivities";
+import { useCreateActivity } from "@/features/schedule/api/useCreateActivity";
 import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
 import { STATUS_LABEL, STATUS_TONE, PAYMENT_STATUS_LABEL, PAYMENT_STATUS_TONE } from "@/features/contracts/statusLabels";
@@ -46,9 +48,14 @@ export function ContractScreen() {
   const saveContract = useSaveContract();
   const submitContract = useSubmitContract();
   const reviewContract = useReviewContract();
+  const activitiesQuery = useActivities(projectId);
+  const createActivity = useCreateActivity();
   const [reviewNoteInput, setReviewNoteInput] = useState("");
   const [finalizing, setFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState("");
+  const [offerDraftActivity, setOfferDraftActivity] = useState<{ name: string; amount: number } | null>(null);
+  const [creatingDraftActivity, setCreatingDraftActivity] = useState(false);
+  const [draftActivityError, setDraftActivityError] = useState("");
 
   const { company, profile } = useCompany();
   const departmentsQuery = useDepartments(company.id);
@@ -178,6 +185,10 @@ export function ContractScreen() {
   const saveMain = async () => {
     setMainError("");
     try {
+      const newTotalValue = numOrNull(totalValue);
+      const isFirstValue = !!contract && (contract.totalValue == null || contract.totalValue === 0) && !!newTotalValue && newTotalValue > 0;
+      const hasLinkedActivity = !!contract && (activitiesQuery.data ?? []).some((a) => a.linkedContractId === contract.id);
+
       await saveContract.mutateAsync({
         id: contract?.id ?? contractId,
         projectId: projectId!,
@@ -185,7 +196,7 @@ export function ContractScreen() {
         pdfFile,
         startDate: startDate || null,
         durationDays: numOrNull(durationDays),
-        totalValue: numOrNull(totalValue),
+        totalValue: newTotalValue,
         vatInclusive,
         vatRate: company.vatRate,
         paymentTerms: paymentTerms || null,
@@ -199,8 +210,51 @@ export function ContractScreen() {
         resetToDraft: contract?.status === "approved",
       });
       setEditingMain(false);
+      if (isFirstValue && !hasLinkedActivity) {
+        setOfferDraftActivity({ name: name.trim(), amount: newTotalValue! });
+      }
     } catch {
       setMainError("تعذّر حفظ بيانات العقد، حاول مجدداً");
+    }
+  };
+
+  const handleCreateDraftActivity = async () => {
+    if (!offerDraftActivity || !contract || !projectId) return;
+    setDraftActivityError("");
+    setCreatingDraftActivity(true);
+    try {
+      const rootOrders = (activitiesQuery.data ?? []).filter((a) => a.parentId === null).map((a) => a.order);
+      const nextOrder = rootOrders.length > 0 ? Math.max(...rootOrders) + 1 : 0;
+      await createActivity.mutateAsync({
+        projectId,
+        parentId: null,
+        name: offerDraftActivity.name,
+        code: null,
+        order: nextOrder,
+        durationDays: 5,
+        startDate: null,
+        calendarType: "calendar",
+        dependsOn: null,
+        depType: null,
+        lagDays: 0,
+        lagUnit: "day",
+        critical: false,
+        alertLeadDays: 7,
+        requiresReceiving: false,
+        scopeType: "project",
+        scopeRef: null,
+        budgetType: "lumpsum",
+        plannedAmount: offerDraftActivity.amount,
+        boqQty: null,
+        boqUnit: null,
+        boqUnitPrice: null,
+        linkedContractId: contract.id,
+      });
+      setOfferDraftActivity(null);
+    } catch (err) {
+      setDraftActivityError(getErrorMessage(err, "تعذّر إنشاء بند الجدول الزمني، حاول مجدداً"));
+    } finally {
+      setCreatingDraftActivity(false);
     }
   };
 
@@ -916,6 +970,25 @@ export function ContractScreen() {
 
           <RecordAuditTimeline tableName="contracts" recordId={contract.id} />
         </>
+      )}
+
+      {offerDraftActivity && (
+        <Modal title="ربط بالجدول الزمني" onClose={() => setOfferDraftActivity(null)}>
+          <p className="text-sm text-ink-soft mb-4">
+            لا يوجد بند بالجدول الزمني مرتبط بهذا العقد — هل تريد إنشاء بند مسودة بنفس الاسم والقيمة (
+            {fmtMoney(offerDraftActivity.amount)}) لمتابعته لاحقاً؟ يمكنك إكمال تفاصيله (المدة، التبعيات...) من الجدول الزمني في أي
+            وقت.
+          </p>
+          <ErrorText>{draftActivityError}</ErrorText>
+          <div className="flex gap-2">
+            <PrimaryButton onClick={handleCreateDraftActivity} disabled={creatingDraftActivity} className="flex-1">
+              {creatingDraftActivity ? "جارٍ الإنشاء..." : "إنشاء بند مسودة"}
+            </PrimaryButton>
+            <SecondaryButton onClick={() => setOfferDraftActivity(null)} className="flex-1">
+              لا، شكراً
+            </SecondaryButton>
+          </div>
+        </Modal>
       )}
     </div>
   );

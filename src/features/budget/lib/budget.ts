@@ -1,13 +1,15 @@
 import type { Activity } from "@/types/domain";
 
 export function getPlannedAmount(node: Activity): number {
+  const manual = !node.budgetType
+    ? 0
+    : node.budgetType === "lumpsum"
+      ? node.plannedAmount || 0
+      : (node.boqQty || 0) * (node.boqUnitPrice || 0);
   if (node.linkedContractId) {
-    return node.linkedContractStatus === "approved" ? node.linkedContractValue || 0 : 0;
+    return node.linkedContractStatus === "approved" ? node.linkedContractValue || 0 : manual;
   }
-  if (!node.budgetType) return 0;
-  if (node.budgetType === "lumpsum") return node.plannedAmount || 0;
-  if (node.budgetType === "boq") return (node.boqQty || 0) * (node.boqUnitPrice || 0);
-  return 0;
+  return manual;
 }
 
 export function getActualAmount(node: Activity): number {
