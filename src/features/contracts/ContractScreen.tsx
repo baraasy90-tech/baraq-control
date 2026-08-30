@@ -30,6 +30,7 @@ import { ApproverBadge } from "@/features/contracts/ApproverBadge";
 import { SettlementSection } from "@/features/contracts/SettlementSection";
 import { computeVat } from "@/features/contracts/lib/vat";
 import { RecordAuditTimeline } from "@/features/company/RecordAuditTimeline";
+import { getErrorMessage } from "@/utils/errors";
 
 function numOrNull(v: string): number | null {
   const n = Number(v);
@@ -46,6 +47,8 @@ export function ContractScreen() {
   const submitContract = useSubmitContract();
   const reviewContract = useReviewContract();
   const [reviewNoteInput, setReviewNoteInput] = useState("");
+  const [finalizing, setFinalizing] = useState(false);
+  const [finalizeError, setFinalizeError] = useState("");
 
   const { company, profile } = useCompany();
   const departmentsQuery = useDepartments(company.id);
@@ -206,6 +209,21 @@ export function ContractScreen() {
     await submitContract.mutateAsync({ contractId: contract.id, projectId });
   };
 
+  const handleFinalizeContract = async () => {
+    if (!contract || !projectId) return;
+    setFinalizeError("");
+    setFinalizing(true);
+    try {
+      await submitContract.mutateAsync({ contractId: contract.id, projectId });
+      await reviewContract.mutateAsync({ contractId: contract.id, projectId, approve: true, note: null });
+      await reviewContract.mutateAsync({ contractId: contract.id, projectId, approve: true, note: null });
+    } catch (err) {
+      setFinalizeError(getErrorMessage(err, "تعذّر اعتماد العقد، حاول مجدداً"));
+    } finally {
+      setFinalizing(false);
+    }
+  };
+
   const handleReview = async (approve: boolean) => {
     if (!contract || !projectId) return;
     await reviewContract.mutateAsync({ contractId: contract.id, projectId, approve, note: reviewNoteInput.trim() || null });
@@ -245,6 +263,7 @@ export function ContractScreen() {
       guaranteeNote: payGuarantee || null,
       order: bundle?.payments.length ?? 0,
       isAdvancePayment: payIsAdvance,
+      autoApprove: company.isIndividual,
     });
     setPayTitle("");
     setPayDueDate("");
@@ -335,12 +354,18 @@ export function ContractScreen() {
               </span>
             </div>
 
-            {contract.status === "draft" && (
-              <PrimaryButton onClick={handleSubmitForApproval} disabled={submitContract.isPending} className="w-auto px-4 py-2 text-xs">
-                {submitContract.isPending ? "جارٍ الإرسال..." : "تقديم للاعتماد"}
-              </PrimaryButton>
-            )}
+            {contract.status === "draft" &&
+              (company.isIndividual ? (
+                <PrimaryButton onClick={handleFinalizeContract} disabled={finalizing} className="w-auto px-4 py-2 text-xs">
+                  {finalizing ? "جارٍ الاعتماد..." : "اعتماد نهائي"}
+                </PrimaryButton>
+              ) : (
+                <PrimaryButton onClick={handleSubmitForApproval} disabled={submitContract.isPending} className="w-auto px-4 py-2 text-xs">
+                  {submitContract.isPending ? "جارٍ الإرسال..." : "تقديم للاعتماد"}
+                </PrimaryButton>
+              ))}
           </div>
+          <ErrorText>{finalizeError}</ErrorText>
 
           {contract.status === "pending_pm_approval" &&
             (canPmApprove ? (
@@ -794,7 +819,12 @@ export function ContractScreen() {
             </SecondaryButton>
           </Card>
 
-          <ExtraWorksSection contractId={contract.id} canPmApprove={canPmApprove} canFinanceApprove={canFinanceApprove} />
+          <ExtraWorksSection
+            contractId={contract.id}
+            canPmApprove={canPmApprove}
+            canFinanceApprove={canFinanceApprove}
+            isIndividual={company.isIndividual}
+          />
 
           {contract.retentionPercentage != null && (
             <Card className="mb-6">
@@ -844,6 +874,7 @@ export function ContractScreen() {
             totalDeductions={totalDeductions}
             retentionHeld={totalRetentionWithheld}
             totalPaidNet={paymentBreakdowns.filter((b) => b.payment.paid).reduce((s, b) => s + b.net, 0)}
+            isIndividual={company.isIndividual}
           />
 
           <Card>

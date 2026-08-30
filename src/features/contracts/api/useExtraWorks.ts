@@ -25,7 +25,7 @@ export function useCreateExtraWork(contractId: string | undefined) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (values: { title: string; description: string | null; amount: number }) => {
+    mutationFn: async (values: { title: string; description: string | null; amount: number; autoApprove?: boolean }) => {
       if (!user || !contractId) throw new Error("not ready");
       const { error } = await supabase.from("contract_extra_works").insert({
         contract_id: contractId,
@@ -33,6 +33,7 @@ export function useCreateExtraWork(contractId: string | undefined) {
         description: values.description,
         amount: values.amount,
         created_by: user.id,
+        status: values.autoApprove ? "approved" : undefined,
       });
       if (error) throw error;
     },

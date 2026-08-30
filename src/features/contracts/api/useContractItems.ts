@@ -58,6 +58,8 @@ export interface PaymentInput {
   guaranteeNote: string | null;
   order: number;
   isAdvancePayment: boolean;
+  /** الحسابات الفردية بلا سلسلة اعتماد — تُعتمد الدفعة مباشرة. */
+  autoApprove?: boolean;
 }
 
 export function useAddPayment(contractId: string | undefined) {
@@ -73,6 +75,7 @@ export function useAddPayment(contractId: string | undefined) {
         guarantee_note: input.guaranteeNote,
         order: input.order,
         is_advance_payment: input.isAdvancePayment,
+        status: input.autoApprove ? "approved" : undefined,
       });
       if (error) throw error;
     },

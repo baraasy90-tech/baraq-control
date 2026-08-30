@@ -6,6 +6,7 @@ import { approverTitle } from "@/features/company/lib/approverTitle";
 import { ApproverBadge } from "@/features/contracts/ApproverBadge";
 import { printSettlementCertificate } from "@/features/contracts/lib/printSettlementCertificate";
 import { fmtMoney } from "@/utils/money";
+import { getErrorMessage } from "@/utils/errors";
 import type { Contract, Company, Department, DepartmentMember } from "@/types/domain";
 
 const SETTLEMENT_LABEL: Record<string, string> = {
@@ -37,6 +38,7 @@ export function SettlementSection({
   totalDeductions,
   retentionHeld,
   totalPaidNet,
+  isIndividual,
 }: {
   contract: Contract;
   projectName: string;
@@ -50,12 +52,14 @@ export function SettlementSection({
   totalDeductions: number;
   retentionHeld: number;
   totalPaidNet: number;
+  isIndividual: boolean;
 }) {
   const submitSettlement = useSubmitSettlement(contract.id);
   const reviewSettlement = useReviewSettlement(contract.id);
   const [note, setNote] = useState("");
   const [reviewNote, setReviewNote] = useState("");
   const [error, setError] = useState("");
+  const [finalizing, setFinalizing] = useState(false);
 
   const approverProfilesQuery = useProfilesByIds([
     contract.settlementSubmittedBy,
@@ -74,6 +78,20 @@ export function SettlementSection({
       await submitSettlement.mutateAsync(note.trim() || null);
     } catch {
       setError("تعذّر بدء إجراءات التصفية، حاول مجدداً");
+    }
+  };
+
+  const handleFinalizeSettlement = async () => {
+    setError("");
+    setFinalizing(true);
+    try {
+      await submitSettlement.mutateAsync(note.trim() || null);
+      await reviewSettlement.mutateAsync({ approve: true, note: null });
+      await reviewSettlement.mutateAsync({ approve: true, note: null });
+    } catch (err) {
+      setError(getErrorMessage(err, "تعذّر اعتماد التصفية النهائية، حاول مجدداً"));
+    } finally {
+      setFinalizing(false);
     }
   };
 
@@ -147,9 +165,15 @@ export function SettlementSection({
           )}
           <TextInput value={note} onChange={(e) => setNote(e.target.value)} placeholder="ملاحظة التصفية (اختياري)" />
           <ErrorText>{error}</ErrorText>
-          <PrimaryButton onClick={handleSubmit} disabled={submitSettlement.isPending} className="w-auto px-4 py-2 text-xs mt-2">
-            {submitSettlement.isPending ? "جارٍ التقديم..." : "بدء إجراءات التصفية النهائية"}
-          </PrimaryButton>
+          {isIndividual ? (
+            <PrimaryButton onClick={handleFinalizeSettlement} disabled={finalizing} className="w-auto px-4 py-2 text-xs mt-2">
+              {finalizing ? "جارٍ الاعتماد..." : "اعتماد التصفية النهائية"}
+            </PrimaryButton>
+          ) : (
+            <PrimaryButton onClick={handleSubmit} disabled={submitSettlement.isPending} className="w-auto px-4 py-2 text-xs mt-2">
+              {submitSettlement.isPending ? "جارٍ التقديم..." : "بدء إجراءات التصفية النهائية"}
+            </PrimaryButton>
+          )}
         </div>
       )}
 

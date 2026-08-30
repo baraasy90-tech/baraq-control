@@ -20,10 +20,12 @@ export function ExtraWorksSection({
   contractId,
   canPmApprove,
   canFinanceApprove,
+  isIndividual,
 }: {
   contractId: string;
   canPmApprove: boolean;
   canFinanceApprove: boolean;
+  isIndividual: boolean;
 }) {
   const extraWorksQuery = useExtraWorks(contractId);
   const createExtraWork = useCreateExtraWork(contractId);
@@ -51,7 +53,12 @@ export function ExtraWorksSection({
       return;
     }
     try {
-      await createExtraWork.mutateAsync({ title: title.trim(), description: description.trim() || null, amount: parsedAmount });
+      await createExtraWork.mutateAsync({
+        title: title.trim(),
+        description: description.trim() || null,
+        amount: parsedAmount,
+        autoApprove: isIndividual,
+      });
       setCreating(false);
       setTitle("");
       setDescription("");
