@@ -27,10 +27,12 @@ export function BudgetVarianceBanner({
   contractValue,
   trackedBudget,
   kind = "value_vs_planned",
-  title = "اختلاف بين قيمة العقد والميزانية المسجّلة عند مدير المشروع",
+  title = "اختلاف بين قيمة العقود المعتمدة والميزانية المخطَّطة بالجدول الزمني",
   valueLabel = "قيمة العقد (المالية)",
   budgetLabel = "الميزانية المخطط لها (مدير المشروع)",
   approvedTitle = "اختلاف الميزانية معتمد",
+  unlinkedBudgetItems = [],
+  unlinkedContracts = [],
 }: {
   projectId: string;
   contractValue: number | null;
@@ -40,6 +42,10 @@ export function BudgetVarianceBanner({
   valueLabel?: string;
   budgetLabel?: string;
   approvedTitle?: string;
+  /** بنود بميزانية مخططة يدوية بلا عقد مرتبط — سبب زيادة الميزانية عن قيمة العقود. */
+  unlinkedBudgetItems?: { name: string; amount: number }[];
+  /** عقود معتمدة غير مرتبطة بأي بند بالجدول الزمني — سبب زيادة قيمة العقود عن الميزانية المسجَّلة. */
+  unlinkedContracts?: { name: string; amount: number }[];
 }) {
   const { company, profile } = useCompany();
   const departmentsQuery = useDepartments(company.id);
@@ -101,6 +107,38 @@ export function BudgetVarianceBanner({
   const showApprovedConfirmation = hasVariance && latestNote?.status === "approved" && latestMatchesCurrent;
   const showAttachForm = hasVariance && !showPendingReview && !showApprovedConfirmation;
 
+  const breakdown =
+    unlinkedBudgetItems.length > 0 || unlinkedContracts.length > 0 ? (
+      <div className="mt-2 flex flex-col gap-2">
+        {unlinkedBudgetItems.length > 0 && (
+          <div className="text-xs bg-panel border border-line/60 rounded-lg px-3 py-2">
+            <div className="text-ink font-semibold mb-1">
+              زيادة بالميزانية بسبب بنود بلا عقد مرتبط — أضِف عقداً لها أو اربطها بعقد موجود:
+            </div>
+            <ul className="list-disc pr-4 text-ink-soft">
+              {unlinkedBudgetItems.map((item, i) => (
+                <li key={i}>
+                  {item.name} — {fmtMoney(item.amount)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {unlinkedContracts.length > 0 && (
+          <div className="text-xs bg-panel border border-line/60 rounded-lg px-3 py-2">
+            <div className="text-ink font-semibold mb-1">عقود معتمدة غير مرتبطة بأي بند بالجدول الزمني بعد:</div>
+            <ul className="list-disc pr-4 text-ink-soft">
+              {unlinkedContracts.map((item, i) => (
+                <li key={i}>
+                  {item.name} — {fmtMoney(item.amount)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    ) : null;
+
   return (
     <div className="mb-6">
       {showApprovedConfirmation ? (
@@ -123,6 +161,7 @@ export function BudgetVarianceBanner({
                 {valueLabel}: {fmtMoney(contractValue)} — {budgetLabel}: {fmtMoney(trackedBudget)} — الفرق:{" "}
                 {fmtMoney(Math.abs((contractValue ?? 0) - trackedBudget))}
               </div>
+              {breakdown}
               <div className="text-xs text-ink mt-2 bg-panel border border-line/60 rounded-lg px-3 py-2">{latestNote!.note}</div>
             </div>
           </div>
@@ -158,6 +197,7 @@ export function BudgetVarianceBanner({
                 {valueLabel}: {fmtMoney(contractValue)} — {budgetLabel}: {fmtMoney(trackedBudget)} — الفرق:{" "}
                 {fmtMoney(Math.abs((contractValue ?? 0) - trackedBudget))}
               </div>
+              {breakdown}
             </div>
           </div>
 

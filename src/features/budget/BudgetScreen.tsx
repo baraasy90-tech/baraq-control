@@ -142,6 +142,14 @@ export function BudgetScreen({ project }: { project: Project }) {
 
   const selectedRollup = selected ? computeBudgetRollup(selected.id, activities) : null;
 
+  const unlinkedBudgetItems = activities
+    .filter((a) => !a.linkedContractId && getPlannedAmount(a) > 0)
+    .map((a) => ({ name: a.name, amount: getPlannedAmount(a) }));
+  const linkedContractIds = new Set(activities.map((a) => a.linkedContractId).filter((id): id is string => !!id));
+  const unlinkedContracts = (contractsQuery.data ?? [])
+    .filter((c) => c.status === "approved" && !linkedContractIds.has(c.id))
+    .map((c) => ({ name: c.name, amount: c.totalValue ?? 0 }));
+
   const handleAddEntry = async (values: {
     date: string;
     amount: number;
@@ -333,6 +341,8 @@ export function BudgetScreen({ project }: { project: Project }) {
         projectId={project.id}
         contractValue={contractsQuery.data && contractsQuery.data.length > 0 ? totalContractValue : null}
         trackedBudget={overallRollup.planned}
+        unlinkedBudgetItems={unlinkedBudgetItems}
+        unlinkedContracts={unlinkedContracts}
       />
 
       <BudgetVarianceBanner
