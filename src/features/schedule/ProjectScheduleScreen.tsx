@@ -282,8 +282,8 @@ function CreateTab({
       }
       setFormOpen(false);
       setEditingActivity(null);
-    } catch {
-      setError("تعذّر حفظ البند، حاول مجدداً");
+    } catch (err) {
+      setError(getErrorMessage(err, "تعذّر حفظ البند، حاول مجدداً"));
     }
   };
 
