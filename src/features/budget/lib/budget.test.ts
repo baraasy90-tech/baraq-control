@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getPlannedAmount, getActualAmount, computeBudgetRollup } from "@/features/budget/lib/budget";
+import { getPlannedAmount, getEstimatedAmount, getActualAmount, computeBudgetRollup } from "@/features/budget/lib/budget";
 import { makeActivity, makeBudgetEntry, linkedContract } from "@/test/factories";
 
 describe("getPlannedAmount", () => {
@@ -31,6 +31,26 @@ describe("getPlannedAmount", () => {
   it("returns 0 when linked to an unapproved contract and there is no manual fallback value", () => {
     const a = makeActivity({ ...linkedContract("pending_pm_approval", 500_000) });
     expect(getPlannedAmount(a)).toBe(0);
+  });
+
+  it("does not count an 'estimated' budgetType toward the planned amount", () => {
+    // القيمة التقديرية رقم مرجعي مبكر فقط — يجب ألا تُحتسب كأنها "مخطط" رسمي.
+    const a = makeActivity({ budgetType: "estimated", plannedAmount: 999_000 });
+    expect(getPlannedAmount(a)).toBe(0);
+  });
+});
+
+describe("getEstimatedAmount", () => {
+  it("returns 0 for an activity with no estimated budget", () => {
+    expect(getEstimatedAmount(makeActivity())).toBe(0);
+  });
+
+  it("returns 0 for a lumpsum/boq activity (estimated is a separate bucket)", () => {
+    expect(getEstimatedAmount(makeActivity({ budgetType: "lumpsum", plannedAmount: 10_000 }))).toBe(0);
+  });
+
+  it("returns the value when budgetType is 'estimated'", () => {
+    expect(getEstimatedAmount(makeActivity({ budgetType: "estimated", plannedAmount: 24_000_000 }))).toBe(24_000_000);
   });
 });
 

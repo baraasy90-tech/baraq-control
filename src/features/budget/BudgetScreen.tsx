@@ -25,7 +25,7 @@ import {
   useReviewBudgetEntry,
   useResetBudgetEntryToDraft,
 } from "@/features/budget/api/useBudgetEntryApproval";
-import { computeBudgetRollup, getPlannedAmount } from "@/features/budget/lib/budget";
+import { computeBudgetRollup, getPlannedAmount, getEstimatedAmount } from "@/features/budget/lib/budget";
 import { computeSCurve, computeSCurveFromTotal } from "@/features/budget/lib/sCurve";
 import { useContracts } from "@/features/contracts/api/useContract";
 import { useSaveContract } from "@/features/contracts/api/useSaveContract";
@@ -143,9 +143,9 @@ export function BudgetScreen({ project }: { project: Project }) {
     .reduce(
       (acc, root) => {
         const r = computeBudgetRollup(root.id, activities);
-        return { planned: acc.planned + r.planned, actual: acc.actual + r.actual };
+        return { planned: acc.planned + r.planned, actual: acc.actual + r.actual, estimated: acc.estimated + r.estimated };
       },
-      { planned: 0, actual: 0 }
+      { planned: 0, actual: 0, estimated: 0 }
     );
 
   const selectedRollup = selected ? computeBudgetRollup(selected.id, activities) : null;
@@ -405,7 +405,8 @@ export function BudgetScreen({ project }: { project: Project }) {
         trackedBudget={overallRollup.actual}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <StatCard label="إجمالي التقديري" value={fmtMoney(overallRollup.estimated)} />
         <StatCard label="إجمالي المخطط" value={fmtMoney(overallRollup.planned)} />
         <StatCard label="إجمالي الفعلي" value={fmtMoney(overallRollup.actual)} />
         <StatCard
@@ -473,7 +474,8 @@ export function BudgetScreen({ project }: { project: Project }) {
               <h2 className="text-base font-bold text-ink mb-3 truncate">{selected.name}</h2>
 
               {selectedRollup && (
-                <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className={`grid gap-2 mb-4 ${selectedRollup.estimated > 0 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
+                  {selectedRollup.estimated > 0 && <StatCard label="تقديري" value={fmtMoney(selectedRollup.estimated)} />}
                   <StatCard label="مخطط" value={fmtMoney(selectedRollup.planned)} />
                   <StatCard label="فعلي" value={fmtMoney(selectedRollup.actual)} />
                   <StatCard
@@ -504,6 +506,11 @@ export function BudgetScreen({ project }: { project: Project }) {
                       <span className="font-semibold text-ink">{fmtMoney(getPlannedAmount(selected))}</span>
                       {selected.budgetType === "boq" &&
                         ` (${selected.boqQty} ${selected.boqUnit ?? ""} × ${fmtMoney(selected.boqUnitPrice)})`}
+                    </>
+                  ) : getEstimatedAmount(selected) > 0 ? (
+                    <>
+                      لا توجد ميزانية رسمية لهذا البند بعد — يوجد فقط رقم تقديري مبدئي:{" "}
+                      <span className="font-semibold text-ink">{fmtMoney(getEstimatedAmount(selected))}</span>
                     </>
                   ) : (
                     "لا توجد ميزانية مرفقة لهذا البند تحديداً"

@@ -26,7 +26,7 @@ export interface CreateActivityInput {
   requiresReceiving: boolean;
   scopeType: "project" | "zone" | "unit" | "facility";
   scopeRef: string | null;
-  budgetType: "lumpsum" | "boq" | null;
+  budgetType: "lumpsum" | "boq" | "estimated" | null;
   plannedAmount: number | null;
   boqQty: number | null;
   boqUnit: string | null;

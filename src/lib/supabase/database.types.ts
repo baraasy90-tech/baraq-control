@@ -390,7 +390,7 @@ export interface Database {
           scope_type: "project" | "zone" | "unit" | "facility";
           scope_ref: string | null;
           template_group_id: string | null;
-          budget_type: "lumpsum" | "boq" | null;
+          budget_type: "lumpsum" | "boq" | "estimated" | null;
           planned_amount: number | null;
           boq_qty: number | null;
           boq_unit: string | null;
@@ -423,7 +423,7 @@ export interface Database {
           scope_type?: "project" | "zone" | "unit" | "facility";
           scope_ref?: string | null;
           template_group_id?: string | null;
-          budget_type?: "lumpsum" | "boq" | null;
+          budget_type?: "lumpsum" | "boq" | "estimated" | null;
           planned_amount?: number | null;
           boq_qty?: number | null;
           boq_unit?: string | null;
