@@ -24,7 +24,7 @@
     "react-router-dom": "^7.18.2",
     "recharts": "^3.10.1",
     "tailwindcss": "^4.3.3",
-    "xlsx": "^0.18.5",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-latest/xlsx-latest.tgz",
     "zod": "^4.4.3"
   },
   "devDependencies": {
