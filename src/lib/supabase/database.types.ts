@@ -1368,6 +1368,15 @@ export interface Database {
         Args: { p_entry_id: string };
         Returns: undefined;
       };
+      save_receiving_submission: {
+        Args: {
+          p_submission_id: string; p_activity_id: string; p_create: boolean;
+          p_manager_name: string; p_manager_signature_url: string | null;
+          p_decision: string; p_notes: string | null;
+          p_results: Json; p_images: string[];
+        };
+        Returns: Database["public"]["Tables"]["submissions"]["Row"];
+      };
       delete_contract: {
         Args: { p_contract_id: string };
         Returns: undefined;

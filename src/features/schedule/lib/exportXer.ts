@@ -1,3 +1,4 @@
+import { todayISO } from "@/utils/dates";
 import type { Activity, Project, Schedule } from "@/types/domain";
 import { encodeWindows1256 } from "@/utils/windows1256";
 
@@ -36,7 +37,7 @@ function guidFor(id: string): string {
 }
 
 export function exportPrimaveraXer(project: Project, activities: Activity[], schedule: Schedule): string {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   const projId = 1;
   const clndrId = 1;
   const obsId = 1;

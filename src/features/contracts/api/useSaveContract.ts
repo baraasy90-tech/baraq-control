@@ -72,6 +72,7 @@ export function useSaveContract() {
     onSuccess: (_data, input) => {
       queryClient.invalidateQueries({ queryKey: ["contracts", input.projectId] });
       queryClient.invalidateQueries({ queryKey: ["contract", _data.id] });
+      queryClient.invalidateQueries({ queryKey: ["activities", input.projectId] });
     },
   });
 }

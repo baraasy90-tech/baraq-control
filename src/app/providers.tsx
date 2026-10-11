@@ -1,29 +1,25 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ReactNode } from "react";
-import { AuthProvider } from "@/features/auth/AuthContext";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { useEffect, useState, type ReactNode } from "react";
+import { AuthProvider, useAuth } from "@/features/auth/AuthContext";
+import { createSessionQueryClient } from "@/lib/sessionQueryClient";
 
-// networkMode الافتراضي "online" (لكل من queries وmutations) هو أساس استمرار
-// العمل بدون انقطاع: أي قراءة أو تعديل يُطلَق أثناء انقطاع الشبكة يبقى "متوقفاً
-// مؤقتاً" (paused) بدل أن يفشل، ويُستأنف تلقائياً بمجرد عودة الاتصال — لا حاجة
-// لأي منطق مزامنة يدوي إضافي هنا؛ OfflineBanner بـ AppShell فقط يوضّح ذلك للمستخدم.
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30_000,
-      retry: 2,
-      refetchOnReconnect: true,
-    },
-    mutations: {
-      retry: 1,
-      networkMode: "online",
-    },
-  },
-});
+function SessionQueryProvider({ children }: { children: ReactNode }) {
+  const [client] = useState(createSessionQueryClient);
+  useEffect(() => () => {
+    void client.cancelQueries();
+    client.clear();
+  }, [client]);
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
+
+function SessionQueries({ children }: { children: ReactNode }) {
+  const { user, loading, cacheEpoch } = useAuth();
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-sm text-ink-soft">جارٍ التحميل...</div>;
+  return <SessionQueryProvider key={(user?.id ?? "signed-out") + ":" + cacheEpoch}>{children}</SessionQueryProvider>;
+}
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>{children}</AuthProvider>
-    </QueryClientProvider>
+    <AuthProvider><SessionQueries>{children}</SessionQueries></AuthProvider>
   );
 }

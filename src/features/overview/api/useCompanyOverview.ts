@@ -1,6 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
-import { mapActivity } from "@/features/schedule/api/mapActivity";
+import { loadActivities } from "@/features/schedule/api/useActivities";
+import { withComputedDone } from "@/features/schedule/lib/completion";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
+import { todayISO } from "@/utils/dates";
 import { mapProject } from "@/features/projects/api/mapProject";
 import { computeSchedule, getLatePhases, getCriticalUpcoming } from "@/features/schedule/lib/schedule";
 import { getPlannedAmount, getActualAmount } from "@/features/budget/lib/budget";
@@ -49,11 +52,8 @@ export function useCompanyOverview(companyId: string | undefined) {
       if (calendarsError) throw calendarsError;
       const customCalendars = new Map(calendarRows.map((c) => [c.id, c.working_weekdays]));
 
-      const { data: projectRows, error: projectsError } = await supabase
-        .from("projects")
-        .select("*")
-        .eq("company_id", companyId!);
-      if (projectsError) throw projectsError;
+      const projectRows = await fetchAllRows((from, to) => supabase.from("projects").select("*")
+        .eq("company_id", companyId!).order("id").range(from, to));
       const projects = projectRows.map(mapProject);
       const projectIds = projects.map((p) => p.id);
       const projectById = new Map(projects.map((p) => [p.id, p]));
@@ -67,56 +67,13 @@ export function useCompanyOverview(companyId: string | undefined) {
       let pendingReceivingCount = 0;
 
       if (projectIds.length > 0) {
-        const { data: activityRows, error: activitiesError } = await supabase
-          .from("activities")
-          .select("*")
-          .in("project_id", projectIds)
-          .order("order", { ascending: true });
-        if (activitiesError) throw activitiesError;
 
-        const activityIds = activityRows.map((a) => a.id);
-        const { data: budgetRows, error: budgetError } =
-          activityIds.length > 0
-            ? await supabase
-                .from("budget_actual_entries")
-                .select("activity_id, amount")
-                .in("activity_id", activityIds)
-                .eq("status", "approved")
-            : { data: [] as { activity_id: string; amount: number }[], error: null };
-        if (budgetError) throw budgetError;
-
-        const actualByActivity = new Map<string, number>();
-        for (const row of budgetRows) {
-          actualByActivity.set(row.activity_id, (actualByActivity.get(row.activity_id) ?? 0) + row.amount);
-        }
-
-        const activitiesByProject = new Map<string, ReturnType<typeof mapActivity>[]>();
-        for (const row of activityRows) {
-          const activity = mapActivity(row);
-          activity.actualEntries = actualByActivity.has(row.id)
-            ? [
-                {
-                  id: "",
-                  activityId: row.id,
-                  date: "",
-                  amount: actualByActivity.get(row.id)!,
-                  source: "",
-                  note: null,
-                  contractRef: null,
-                  contractPaymentId: null,
-                  status: "approved",
-                  submittedAt: null,
-                  pmReviewedAt: null,
-                  pmReviewNote: null,
-                  financeReviewedAt: null,
-                  financeReviewNote: null,
-                },
-              ]
-            : [];
+        const allActivities = withComputedDone(await loadActivities(projectIds, false));
+        const activitiesByProject = new Map<string, typeof allActivities>();
+        for (const activity of allActivities) {
           budget.planned += getPlannedAmount(activity);
           budget.actual += getActualAmount(activity);
           if (activity.requiresReceiving && !activity.done) pendingReceivingCount++;
-
           const list = activitiesByProject.get(activity.projectId) ?? [];
           list.push(activity);
           activitiesByProject.set(activity.projectId, list);
@@ -148,12 +105,9 @@ export function useCompanyOverview(companyId: string | undefined) {
       const taskStatusCounts: Record<TaskStatus, number> = { todo: 0, in_progress: 0, done: 0 };
       let overdueTaskCount = 0;
       if (projectIds.length > 0) {
-        const { data: taskRows, error: tasksError } = await supabase
-          .from("tasks")
-          .select("status, due_date")
-          .in("project_id", projectIds);
-        if (tasksError) throw tasksError;
-        const today = new Date().toISOString().slice(0, 10);
+        const taskRows = await fetchAllRows((from, to) => supabase.from("tasks").select("status, due_date")
+          .in("project_id", projectIds).order("id").range(from, to));
+        const today = todayISO();
         for (const t of taskRows) {
           taskStatusCounts[t.status]++;
           if (t.status !== "done" && t.due_date && t.due_date < today) overdueTaskCount++;

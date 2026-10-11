@@ -13,6 +13,7 @@ export function useSubmitContract() {
     onSuccess: (data, vars) => {
       queryClient.invalidateQueries({ queryKey: ["contract", vars.contractId] });
       queryClient.invalidateQueries({ queryKey: ["contracts", data.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["activities", data.projectId] });
     },
   });
 }
@@ -43,6 +44,7 @@ export function useReviewContract() {
     onSuccess: (data, vars) => {
       queryClient.invalidateQueries({ queryKey: ["contract", vars.contractId] });
       queryClient.invalidateQueries({ queryKey: ["contracts", data.projectId] });
+      queryClient.invalidateQueries({ queryKey: ["activities", data.projectId] });
     },
   });
 }

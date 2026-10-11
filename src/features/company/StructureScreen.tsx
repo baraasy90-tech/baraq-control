@@ -252,9 +252,9 @@ export function StructureScreen() {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-[1600px] mx-auto">
-      <div className="flex items-center justify-between mb-4 gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
         <h1 className="text-lg sm:text-xl font-bold text-ink">الأقسام والهيكلة</h1>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2">
           {tab === "chart" && roots.length > 0 && (
             <ExportMenu
               options={[
@@ -279,7 +279,7 @@ export function StructureScreen() {
         </div>
       </div>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-4">
         {(
           [
             { key: "chart", label: "الهيكلة" },

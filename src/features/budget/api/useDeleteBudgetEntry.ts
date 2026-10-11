@@ -6,7 +6,7 @@ export function useDeleteBudgetEntry(projectId: string | undefined) {
 
   return useMutation({
     mutationFn: async (entryId: string) => {
-      const { error } = await supabase.from("budget_actual_entries").delete().eq("id", entryId);
+      const { error } = await supabase.from("budget_actual_entries").delete().eq("id", entryId).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {

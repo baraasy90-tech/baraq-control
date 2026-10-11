@@ -16,6 +16,7 @@ import { computeSchedule } from "@/features/schedule/lib/schedule";
 import { useCustomCalendarMap } from "@/features/schedule/api/useCustomCalendars";
 import { getReceivingGate } from "@/features/schedule/lib/scope";
 import { fmt } from "@/utils/dates";
+import { getErrorMessage } from "@/utils/errors";
 import type { Decision, Project, Submission } from "@/types/domain";
 
 interface SubmissionPayload {
@@ -39,6 +40,7 @@ export function ReceivingScreen({ project }: { project: Project }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
   const [error, setError] = useState("");
+  const [draftId, setDraftId] = useState(() => crypto.randomUUID());
 
   const customCalendars = useCustomCalendarMap(company.id);
   const activities = activitiesQuery.data ?? [];
@@ -62,18 +64,19 @@ export function ReceivingScreen({ project }: { project: Project }) {
     setError("");
     try {
       if (editingSubmission) {
-        await updateSubmission.mutateAsync({ id: editingSubmission.id, projectId: project.id, ...payload });
+        await updateSubmission.mutateAsync({ id: editingSubmission.id, activityId: selected.id, projectId: project.id, ...payload });
       } else {
-        await createSubmission.mutateAsync({ activityId: selected.id, projectId: project.id, ...payload });
+        await createSubmission.mutateAsync({ id: draftId, activityId: selected.id, projectId: project.id, ...payload });
       }
       setFormOpen(false);
       setEditingSubmission(null);
-    } catch {
-      setError("تعذّر حفظ التقديم، حاول مجدداً");
+    } catch (cause) {
+      setError(getErrorMessage(cause, "تعذّر حفظ التقديم، حاول مجدداً"));
     }
   };
 
   const openNewSubmission = () => {
+    setDraftId(crypto.randomUUID());
     setEditingSubmission(null);
     setFormOpen(true);
   };
