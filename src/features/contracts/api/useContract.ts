@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 import { mapContract, mapDeduction, mapLineItem, mapPayment } from "@/features/contracts/api/mapContract";
 import type { Contract, ContractDeduction, ContractLineItem, ContractPayment } from "@/types/domain";
 
@@ -9,12 +10,11 @@ export function useContracts(projectId: string | undefined) {
     queryKey: ["contracts", projectId],
     enabled: !!projectId,
     queryFn: async (): Promise<Contract[]> => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from("contracts")
         .select("*")
         .eq("project_id", projectId!)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
+        .order("created_at", { ascending: true }).order("id").range(from, to));
       return data.map(mapContract);
     },
   });
@@ -43,19 +43,16 @@ export function useContract(contractId: string | undefined) {
       const contract = mapContract(contractRow);
 
       const [lineItemsRes, paymentsRes, deductionsRes] = await Promise.all([
-        supabase.from("contract_line_items").select("*").eq("contract_id", contract.id).order("order", { ascending: true }),
-        supabase.from("contract_payments").select("*").eq("contract_id", contract.id).order("order", { ascending: true }),
-        supabase.from("contract_deductions").select("*").eq("contract_id", contract.id).order("deducted_at", { ascending: false }),
+        fetchAllRows((from, to) => supabase.from("contract_line_items").select("*").eq("contract_id", contract.id).order("order", { ascending: true }).order("id").range(from, to)),
+        fetchAllRows((from, to) => supabase.from("contract_payments").select("*").eq("contract_id", contract.id).order("order", { ascending: true }).order("id").range(from, to)),
+        fetchAllRows((from, to) => supabase.from("contract_deductions").select("*").eq("contract_id", contract.id).order("deducted_at", { ascending: false }).order("id").range(from, to)),
       ]);
-      if (lineItemsRes.error) throw lineItemsRes.error;
-      if (paymentsRes.error) throw paymentsRes.error;
-      if (deductionsRes.error) throw deductionsRes.error;
 
       return {
         contract,
-        lineItems: lineItemsRes.data.map(mapLineItem),
-        payments: paymentsRes.data.map(mapPayment),
-        deductions: deductionsRes.data.map(mapDeduction),
+        lineItems: lineItemsRes.map(mapLineItem),
+        payments: paymentsRes.map(mapPayment),
+        deductions: deductionsRes.map(mapDeduction),
       };
     },
   });

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { QueryFailureScreen } from "@/components/QueryFailureScreen";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Card, SecondaryButton, PrimaryButton, Modal, ErrorText } from "@/components/ui";
@@ -80,6 +81,9 @@ export function ReceivingScreen({ project }: { project: Project }) {
     setEditingSubmission(submission);
     setFormOpen(true);
   };
+
+  if (activitiesQuery.isError) return <QueryFailureScreen title="استلام المشروع" retry={() => activitiesQuery.refetch()} />;
+  if (activitiesQuery.isPending) return <p role="status" className="p-6">جارٍ تحميل البيانات...</p>;
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">

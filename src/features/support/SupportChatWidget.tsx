@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Send } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { FunctionsHttpError } from "@supabase/supabase-js";
+import { supportRequest } from "./supportRequest";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -30,10 +31,11 @@ export function SupportChatWidget() {
     setSending(true);
     try {
       const { data, error: fnError } = await supabase.functions.invoke("support-chat", {
-        body: { message: text, history: messages.slice(-10) },
+        body: supportRequest(text, messages),
       });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
+      if (typeof data?.reply !== "string" || !data.reply.trim()) throw new Error("تعذّر الحصول على رد، حاول مجدداً");
       setMessages([...nextMessages, { role: "assistant", content: data.reply as string }]);
     } catch (err) {
       let message = "تعذّر الوصول للمساعد، حاول مجدداً";

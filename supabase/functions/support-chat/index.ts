@@ -46,21 +46,17 @@ Deno.serve(async (req: Request) => {
     try{messages=supportMessages(await readBoundedJson(req));}catch(error){return respond(400,error instanceof Error?error.message:"طلب غير صالح");}
 
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: "لم يتم إعداد مفتاح API بعد" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const model = Deno.env.get("ANTHROPIC_MODEL")?.trim();
+    if (!apiKey || !model) return respond(503,"خدمة الدعم غير مهيأة بعد؛ تواصل مع مدير الحساب");
 
-    const client = new Anthropic({ apiKey });
+    const client = new Anthropic({ apiKey, timeout: 20_000, maxRetries: 0 });
     const admin=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false}});
     const {data:withinLimit,error:limitError}=await admin.rpc("consume_edge_request",{p_actor_id:user.id,p_operation:"support-chat"});
     if(limitError)return respond(503,"تعذّر التحقق من حد الاستخدام؛ حاول لاحقاً");
     if(withinLimit!==true)return respond(429,"بلغت حد رسائل الدعم؛ حاول لاحقاً");
 
     const response = await client.messages.create({
-      model: "claude-opus-5",
+      model,
       max_tokens: 1024,
       system: SYSTEM_PROMPT,
       messages,

@@ -9649,8 +9649,8 @@ CREATE TRIGGER guard_budget_entries_value BEFORE UPDATE ON public.budget_actual_
 
 -- Fresh environments need bucket records in addition to the Storage schema.
 INSERT INTO storage.buckets(id,name,public) VALUES
-  ('logos','logos',false),('signatures','signatures',false),
-  ('photos','photos',false),('documents','documents',false)
+  ('company-logos','company-logos',false),('signatures','signatures',false),
+  ('checklist-photos','checklist-photos',false),('documents','documents',false)
 ON CONFLICT (id) DO NOTHING;
 
 COMMIT;

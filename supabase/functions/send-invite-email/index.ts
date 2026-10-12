@@ -73,7 +73,8 @@ Deno.serve(async (req: Request) => {
       });
     }
     const apiKey = Deno.env.get("RESEND_API_KEY");
-    if (!apiKey) return respond(503,"خدمة البريد غير مهيأة بعد");
+    const fromEmail = Deno.env.get("INVITE_FROM_EMAIL")?.trim();
+    if (!apiKey || !fromEmail || !/^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(fromEmail)) return respond(503,"خدمة البريد غير مهيأة بعد");
     const {data:withinLimit,error:limitError}=await supabaseAdmin.rpc("consume_edge_request",{p_actor_id:user.id,p_operation:"send-invite-email"});
     if(limitError) return respond(503,"تعذّر التحقق من حد الإرسال؛ حاول لاحقاً");
     if(withinLimit!==true) return respond(429,"بلغت حد الإرسال؛ انتظر قبل إعادة المحاولة");
@@ -116,7 +117,7 @@ Deno.serve(async (req: Request) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "BARAQ CONTROL <onboarding@resend.dev>",
+        from: `BARAQ CONTROL <${fromEmail}>`,
         to: [invite.email],
         subject: `دعوة للانضمام إلى ${companyName} على BARAQ CONTROL`,
         html,

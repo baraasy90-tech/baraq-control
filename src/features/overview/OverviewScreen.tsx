@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { QueryFailureScreen } from "@/components/QueryFailureScreen";
 import { useNavigate } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { FileSpreadsheet, FileText } from "lucide-react";
@@ -163,6 +164,11 @@ export function OverviewScreen() {
       print: company.print,
     });
   };
+
+  if (overviewQuery.isError || approvalsQuery.isError) {
+    return <QueryFailureScreen title="اللوحة التنفيذية" retry={() => Promise.all([overviewQuery.refetch(), approvalsQuery.refetch()])} />;
+  }
+  if (overviewQuery.isPending || approvalsQuery.isPending) return <p role="status" className="p-6">جارٍ تحميل البيانات...</p>;
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">

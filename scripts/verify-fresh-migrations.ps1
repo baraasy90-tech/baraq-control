@@ -32,6 +32,7 @@ Invoke-LocalSql @'
 DO $$ BEGIN
   IF (SELECT count(*) FROM pg_tables WHERE schemaname='public')<>43 THEN RAISE EXCEPTION 'Table count mismatch'; END IF;
   IF NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='material_request_attachments' AND column_name='phase') THEN RAISE EXCEPTION 'Attachment phase missing'; END IF;
+  IF (SELECT count(*) FROM storage.buckets WHERE id IN ('company-logos','signatures','checklist-photos','documents') AND NOT public AND file_size_limit IS NOT NULL AND allowed_mime_types IS NOT NULL)<>4 THEN RAISE EXCEPTION 'Private buckets or upload limits missing'; END IF;
 END $$;
 '@
 $taskReport = @{ passed=$true; database=$taskDatabase; localContainer=$taskContainer; migrations=@($taskMigrations.Name); productionDataCopied=$false; applicationRows=0 }

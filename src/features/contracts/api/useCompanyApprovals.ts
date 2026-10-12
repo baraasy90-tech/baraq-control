@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
+import { fetchAllRows, fetchRowsByIds } from "@/lib/supabase/fetchAllRows";
 import type { ContractStatus, PaymentApprovalStatus } from "@/types/domain";
 
 export type ApprovalKind = "contract" | "payment";
@@ -53,30 +54,24 @@ export function useCompanyApprovals(companyId: string | undefined) {
     queryKey: ["company-approvals", companyId],
     enabled: !!companyId,
     queryFn: async (): Promise<ApprovalItem[]> => {
-      const { data: projectRows, error: projectsError } = await supabase
+      const projectRows = await fetchAllRows((from, to) => supabase
         .from("projects")
         .select("id, name")
-        .eq("company_id", companyId!);
-      if (projectsError) throw projectsError;
+        .eq("company_id", companyId!).order("id").range(from, to));
       const projectIds = projectRows.map((p) => p.id);
       const projectNameById = new Map(projectRows.map((p) => [p.id, p.name]));
       if (projectIds.length === 0) return [];
 
-      const { data: contractRows, error: contractsError } = await supabase
+      const contractRows = await fetchRowsByIds(projectIds, (ids, from, to) => supabase
         .from("contracts")
         .select("id, project_id, contract_name, status, submitted_at, pm_reviewed_at, finance_reviewed_at")
-        .in("project_id", projectIds);
-      if (contractsError) throw contractsError;
+        .in("project_id", ids).order("id").range(from, to));
 
       const contractIds = contractRows.map((c) => c.id);
-      const { data: paymentRows, error: paymentsError } =
-        contractIds.length > 0
-          ? await supabase
-              .from("contract_payments")
-              .select("id, contract_id, title, status, submitted_at, pm_reviewed_at, finance_reviewed_at")
-              .in("contract_id", contractIds)
-          : { data: [] as never[], error: null };
-      if (paymentsError) throw paymentsError;
+      const paymentRows = await fetchRowsByIds(contractIds, (ids, from, to) => supabase
+        .from("contract_payments")
+        .select("id, contract_id, title, status, submitted_at, pm_reviewed_at, finance_reviewed_at")
+        .in("contract_id", ids).order("id").range(from, to));
 
       const contractById = new Map(contractRows.map((c) => [c.id, c]));
 

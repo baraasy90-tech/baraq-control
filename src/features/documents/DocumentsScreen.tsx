@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Folder, FileText, Trash2 } from "lucide-react";
+import { QueryFailureScreen } from "@/components/QueryFailureScreen";
 import { SecondaryButton, PrimaryButton, IconButton, Modal, ErrorText, TextInput, FieldLabel } from "@/components/ui";
 import { useDocumentFolders } from "@/features/documents/api/useDocumentFolders";
 import { useDocuments } from "@/features/documents/api/useDocuments";
@@ -103,6 +104,11 @@ export function DocumentsScreen({ project }: { project: Project }) {
       setConfirmDeleteDocId(null);
     }
   };
+
+  if (foldersQuery.isError || documentsQuery.isError) {
+    return <QueryFailureScreen title="مستندات المشروع" retry={() => Promise.all([foldersQuery.refetch(), ...(currentFolderId ? [documentsQuery.refetch()] : [])])} />;
+  }
+  if (foldersQuery.isPending || (currentFolderId && documentsQuery.isPending)) return <p role="status" className="p-6">جارٍ تحميل البيانات...</p>;
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-4xl mx-auto">
