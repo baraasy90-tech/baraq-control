@@ -3,6 +3,8 @@
 // يتطلب سرّاً باسم ANTHROPIC_API_KEY (Edge Functions → Secrets بلوحة تحكم Supabase).
 
 import Anthropic from "npm:@anthropic-ai/sdk@0.32.1";
+import {createClient} from "npm:@supabase/supabase-js@2.112.0";
+import {readBoundedJson,supportMessages} from "../_shared/request-policy.ts";
 
 const SYSTEM_PROMPT = `أنت مساعد الدعم الفني لمنصة "BARAQ CONTROL" — منصة إدارة مشاريع إنشائية باللغة العربية.
 مهمتك مساعدة المستخدمين (مدراء مشاريع، موظفين) على فهم واستخدام التطبيق، وحل المشاكل التقنية البسيطة، والإجابة عن أسئلة "كيف أسوي كذا".
@@ -22,24 +24,26 @@ const SYSTEM_PROMPT = `أنت مساعد الدعم الفني لمنصة "BARAQ
 أجب دائماً بالعربية، بإيجاز ووضوح، وبأسلوب ودود ومباشر. لو السؤال خارج نطاق التطبيق تماماً، وضّح بلطف إنك مختص بدعم هذا التطبيق فقط.`;
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": Deno.env.get("APP_BASE_URL")??"https://baraq-controll1.pages.dev",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  if(req.method!=="POST")return new Response(null,{status:405,headers:{...corsHeaders,Allow:"POST, OPTIONS"}});
 
   try {
-    const { message, history } = await req.json();
-
-    if (!message || typeof message !== "string") {
-      return new Response(JSON.stringify({ error: "الرسالة مطلوبة" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const respond=(status:number,error:string)=>new Response(JSON.stringify({error}),{status,headers:{...corsHeaders,"Content-Type":"application/json"}});
+    const authorization=req.headers.get("Authorization")??"";
+    if(!authorization.startsWith("Bearer "))return respond(401,"يلزم تسجيل الدخول");
+    const caller=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_ANON_KEY")!,{global:{headers:{Authorization:authorization}},auth:{persistSession:false}});
+    const {data:{user},error:authError}=await caller.auth.getUser();
+    if(authError||!user||user.is_anonymous)return respond(401,"يلزم حساب مسجل صالح");
+    let messages:{role:"user"|"assistant";content:string}[];
+    try{messages=supportMessages(await readBoundedJson(req));}catch(error){return respond(400,error instanceof Error?error.message:"طلب غير صالح");}
 
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
     if (!apiKey) {
@@ -50,11 +54,10 @@ Deno.serve(async (req: Request) => {
     }
 
     const client = new Anthropic({ apiKey });
-
-    const messages = [
-      ...(Array.isArray(history) ? history : []).slice(-10),
-      { role: "user" as const, content: message },
-    ];
+    const admin=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false}});
+    const {data:withinLimit,error:limitError}=await admin.rpc("consume_edge_request",{p_actor_id:user.id,p_operation:"support-chat"});
+    if(limitError)return respond(503,"تعذّر التحقق من حد الاستخدام؛ حاول لاحقاً");
+    if(withinLimit!==true)return respond(429,"بلغت حد رسائل الدعم؛ حاول لاحقاً");
 
     const response = await client.messages.create({
       model: "claude-opus-5",
@@ -69,8 +72,8 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ reply }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "حدث خطأ" }), {
+  } catch {
+    return new Response(JSON.stringify({ error: "تعذّر الاتصال بخدمة الدعم؛ حاول لاحقاً" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

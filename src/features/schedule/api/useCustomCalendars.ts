@@ -44,7 +44,7 @@ export function useSaveCustomCalendar() {
         const { error } = await supabase
           .from("custom_calendars")
           .update({ name: input.name, working_weekdays: input.workingWeekdays })
-          .eq("id", input.id);
+          .eq("id", input.id).select("id").single();
         if (error) throw error;
       } else {
         const { error } = await supabase
@@ -64,7 +64,7 @@ export function useDeleteCustomCalendar(companyId: string) {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("custom_calendars").delete().eq("id", id);
+      const { error } = await supabase.from("custom_calendars").delete().eq("id", id).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {

@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { mapContract, mapDeduction, mapLineItem, mapPayment } from "@/features/contracts/api/mapContract";
-import { getFileUrl, getFileUrls } from "@/lib/supabase/storage";
 import type { Contract, ContractDeduction, ContractLineItem, ContractPayment } from "@/types/domain";
 
 /** كل عقود المشروع (قد يكون له أكثر من عقد: عظم، تشطيبات، مصاعد...). */
@@ -16,12 +15,7 @@ export function useContracts(projectId: string | undefined) {
         .eq("project_id", projectId!)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      const urlByStored = await getFileUrls("documents", data.map((row) => row.pdf_url));
-      return data.map((row) => {
-        const contract = mapContract(row);
-        contract.pdfUrl = row.pdf_url ? urlByStored.get(row.pdf_url) ?? null : null;
-        return contract;
-      });
+      return data.map(mapContract);
     },
   });
 }
@@ -47,7 +41,6 @@ export function useContract(contractId: string | undefined) {
       if (!contractRow) return null;
 
       const contract = mapContract(contractRow);
-      contract.pdfUrl = await getFileUrl("documents", contractRow.pdf_url);
 
       const [lineItemsRes, paymentsRes, deductionsRes] = await Promise.all([
         supabase.from("contract_line_items").select("*").eq("contract_id", contract.id).order("order", { ascending: true }),

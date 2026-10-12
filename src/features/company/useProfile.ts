@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
-import { getFileUrl } from "@/lib/supabase/storage";
+import { getFileUrl, getFileUrls } from "@/lib/supabase/storage";
 import type { Database } from "@/lib/supabase/database.types";
 import type { Company, Profile } from "@/types/domain";
 
@@ -44,6 +44,7 @@ export function useProfile() {
   return useQuery({
     queryKey: ["profile", user?.id],
     enabled: !!user,
+    refetchInterval: 8 * 60 * 1000,
     queryFn: async (): Promise<{ profile: Profile; company: Company | null }> => {
       const { data: profileRow, error: profileError } = await supabase
         .from("profiles")
@@ -61,6 +62,11 @@ export function useProfile() {
           .single();
         if (companyError) throw companyError;
         company = mapCompany(companyRow);
+        const urls=await getFileUrls("company-logos",[companyRow.logo_url,companyRow.print_header_url,companyRow.print_footer_url,companyRow.print_full_page_url]);
+        company.logoUrl=companyRow.logo_url?urls.get(companyRow.logo_url)??null:null;
+        company.print.headerUrl=companyRow.print_header_url?urls.get(companyRow.print_header_url)??null:null;
+        company.print.footerUrl=companyRow.print_footer_url?urls.get(companyRow.print_footer_url)??null:null;
+        company.print.fullPageUrl=companyRow.print_full_page_url?urls.get(companyRow.print_full_page_url)??null:null;
       }
 
       return {

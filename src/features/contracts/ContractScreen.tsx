@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { StorageFileLink } from "@/components/StorageFileLink";
 import { useNavigate, useParams } from "react-router-dom";
 import { FileText, Trash2, Upload } from "lucide-react";
 import { Card, StatCard, SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText, Modal } from "@/components/ui";
@@ -514,14 +515,12 @@ export function ContractScreen() {
           </div>
 
               {contract.pdfUrl && (
-                <a
-                  href={contract.pdfUrl}
-                  target="_blank"
-                  rel="noreferrer"
+                <StorageFileLink
+                  stored={contract.pdfUrl}
                   className="inline-flex items-center gap-1.5 text-sm text-primary bg-primary-bg rounded-lg px-3 py-2 mb-4"
                 >
                   <FileText size={16} /> عرض نسخة العقد (PDF)
-                </a>
+                </StorageFileLink>
               )}
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">

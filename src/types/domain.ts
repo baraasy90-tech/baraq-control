@@ -22,7 +22,7 @@ export type SubscriptionStatus = "trial" | "active" | "expired" | "canceled";
 
 export interface Company {
   id: string;
-  createdBy: string;
+  createdBy: string | null;
   name: string;
   companyCode: string;
   companyCodeExpiresAt: string | null;

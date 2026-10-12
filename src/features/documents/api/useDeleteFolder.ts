@@ -6,11 +6,12 @@ export function useDeleteFolder(projectId: string | undefined) {
 
   return useMutation({
     mutationFn: async (folderId: string) => {
-      const { error } = await supabase.from("document_folders").delete().eq("id", folderId);
+      const { error } = await supabase.from("document_folders").delete().eq("id", folderId).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["document-folders", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
     },
   });
 }

@@ -59,17 +59,20 @@ export function ArchiveStorageFields({
           <button
             key={opt.id}
             type="button"
+            disabled={opt.id !== "cloud"}
             onClick={() => onStorageTypeChange(opt.id)}
             className={clsx(
-              "text-right p-3 rounded-lg border cursor-pointer",
+              "text-right p-3 rounded-lg border cursor-pointer disabled:cursor-not-allowed disabled:opacity-60",
               storageType === opt.id ? "border-primary bg-primary-bg" : "border-line bg-transparent"
             )}
           >
-            <div className="text-sm font-semibold text-ink">{opt.label}</div>
-            <div className="text-xs text-ink-soft mt-0.5">{opt.desc}</div>
+            <div className="text-sm font-semibold text-ink">{opt.label}{opt.id !== "cloud" && " — قريباً"}</div>
+            <div className="text-xs text-ink-soft mt-0.5">{opt.id === "cloud" ? opt.desc : "غير متاح حالياً؛ لا تُحفظ نسخة أرشيف بهذه الطريقة"}</div>
           </button>
         ))}
       </div>
+
+      {storageType !== "cloud" && <p className="text-xs text-warn mb-4">الإعداد السابق لهذه الطريقة لا ينفذ أرشفة فعلية. اختر التخزين السحابي المتاح.</p>}
 
       {storageType === "local" && (
         <div className="mb-5">
@@ -104,6 +107,6 @@ export function ArchiveStorageFields({
   );
 }
 
-export function isArchiveConfigValid(folderName: string, storageType: StorageType, localPath: string): boolean {
-  return folderName.trim().length > 0 && (storageType !== "local" || localPath.trim().length > 0);
+export function isArchiveConfigValid(folderName: string, storageType: StorageType, _localPath: string): boolean {
+  return folderName.trim().length > 0 && storageType === "cloud";
 }

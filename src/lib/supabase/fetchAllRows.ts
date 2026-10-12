@@ -14,3 +14,23 @@ export async function fetchAllRows<T>(
     from += result.data.length;
   }
 }
+
+/** Bound IN filters as well as response pages so large companies do not exceed URL limits. */
+export async function fetchRowsByIds<T>(
+  ids: string[],
+  page: (ids: string[], from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<T[]> {
+  const unique = [...new Set(ids)];
+  const batches: string[][] = [];
+  for (let offset = 0; offset < unique.length; offset += 100) batches.push(unique.slice(offset, offset + 100));
+  const results: T[][] = new Array(batches.length);
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(3, batches.length) }, async () => {
+    for (;;) {
+      const index = next++;
+      if (index >= batches.length) return;
+      results[index] = await fetchAllRows((from, to) => page(batches[index], from, to));
+    }
+  }));
+  return results.flat();
+}

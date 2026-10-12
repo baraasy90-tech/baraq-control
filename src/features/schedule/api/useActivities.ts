@@ -7,41 +7,45 @@ import { computeVat } from "@/features/contracts/lib/vat";
 import { getFileUrls } from "@/lib/supabase/storage";
 import type { ContractStatus, Submission } from "@/types/domain";
 
-import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
+import { fetchRowsByIds } from "@/lib/supabase/fetchAllRows";
 
 /** Same activity, contract and receiving semantics for project and company totals. */
 export async function loadActivities(projectIds: string[], includeDetails = true) {
   if (projectIds.length === 0) return [];
-  const activityRows = await fetchAllRows((from, to) => supabase
+  const activityRows = await fetchRowsByIds(projectIds, (ids, from, to) => supabase
     .from("activities")
     .select("*")
-    .in("project_id", projectIds)
+    .in("project_id", ids)
     .order("order", { ascending: true }).order("id").range(from, to));
+  activityRows.sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id));
   const activityIds = activityRows.map((a) => a.id);
 
   if (activityIds.length === 0) return [];
 
   const [checklistRows, submissionRows, budgetRows] = await Promise.all([
-    includeDetails ? fetchAllRows((from, to) => supabase.from("checklist_items").select("*").in("activity_id", activityIds).order("order").order("id").range(from, to)) : [],
-    fetchAllRows((from, to) => supabase.from("submissions").select("*").in("activity_id", activityIds).order("created_at").order("id").range(from, to)),
-    fetchAllRows((from, to) => supabase.from("budget_actual_entries").select("*").in("activity_id", activityIds).order("date", { ascending: false }).order("id").range(from, to)),
+    includeDetails ? fetchRowsByIds(activityIds, (ids, from, to) => supabase.from("checklist_items").select("*").in("activity_id", ids).order("order").order("id").range(from, to)) : [],
+    fetchRowsByIds(activityIds, (ids, from, to) => supabase.from("submissions").select("*").in("activity_id", ids).order("created_at").order("id").range(from, to)),
+    fetchRowsByIds(activityIds, (ids, from, to) => supabase.from("budget_actual_entries").select("*").in("activity_id", ids).order("date", { ascending: false }).order("id").range(from, to)),
   ]);
   const submissionIds = submissionRows.map((s) => s.id);
 
   const linkedContractIds = [...new Set(activityRows.map((a) => a.linked_contract_id).filter((id): id is string => !!id))];
   const linkedContracts = linkedContractIds.length > 0
-    ? await fetchAllRows((from, to) => supabase.from("contracts")
+    ? await fetchRowsByIds(linkedContractIds, (ids, from, to) => supabase.from("contracts")
         .select("id, contract_name, status, total_value, vat_inclusive, vat_rate")
-        .in("id", linkedContractIds).order("id").range(from, to)) : [];
+        .in("id", ids).order("id").range(from, to)) : [];
   const linkedContractById = new Map(linkedContracts.map((c) => [c.id, c]));
 
   const [resultRows, imageRows] = includeDetails && submissionIds.length > 0
     ? await Promise.all([
-        fetchAllRows((from, to) => supabase.from("checklist_results").select("*").in("submission_id", submissionIds).order("id").range(from, to)),
-        fetchAllRows((from, to) => supabase.from("submission_images").select("*").in("submission_id", submissionIds).order("id").range(from, to)),
+        fetchRowsByIds(submissionIds, (ids, from, to) => supabase.from("checklist_results").select("*").in("submission_id", ids).order("id").range(from, to)),
+        fetchRowsByIds(submissionIds, (ids, from, to) => supabase.from("submission_images").select("*").in("submission_id", ids).order("id").range(from, to)),
       ]) : [[], []];
   const signatureUrlByStored = includeDetails
     ? await getFileUrls("signatures", submissionRows.map((s) => s.manager_signature_url))
+    : new Map<string, string>();
+  const photoUrlByStored = includeDetails
+    ? await getFileUrls("checklist-photos", [...resultRows.map(row => row.image_url), ...imageRows.map(row => row.image_url)])
     : new Map<string, string>();
   const checklistByActivity = new Map<string, ReturnType<typeof mapChecklistItem>[]>();
   for (const row of checklistRows) {
@@ -54,6 +58,7 @@ export async function loadActivities(projectIds: string[], includeDetails = true
   const resultsBySubmission = new Map<string, ReturnType<typeof mapChecklistResult>[]>();
   for (const row of resultRows) {
     const item = mapChecklistResult(row);
+    item.imageUrl = row.image_url ? photoUrlByStored.get(row.image_url) ?? null : null;
     const list = resultsBySubmission.get(item.submissionId) ?? [];
     list.push(item);
     resultsBySubmission.set(item.submissionId, list);
@@ -76,6 +81,7 @@ export async function loadActivities(projectIds: string[], includeDetails = true
     submission.managerSignatureUrl = row.manager_signature_url
       ? signatureUrlByStored.get(row.manager_signature_url) ?? null
       : null;
+    submission.images = (imagesBySubmission.get(row.id) ?? []).map(image => photoUrlByStored.get(image.image_url)).filter((url): url is string => !!url);
     const list = submissionsByActivity.get(submission.activityId) ?? [];
     list.push(submission);
     submissionsByActivity.set(submission.activityId, list);
@@ -110,6 +116,7 @@ export async function loadActivities(projectIds: string[], includeDetails = true
 export function useActivities(projectId: string | undefined) {
   return useQuery({
     queryKey: ["activities", projectId], enabled: !!projectId,
+    refetchInterval: 8 * 60 * 1000,
     queryFn: () => loadActivities([projectId!]),
   });
 }

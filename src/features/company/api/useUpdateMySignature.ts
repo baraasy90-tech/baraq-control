@@ -15,7 +15,7 @@ export function useUpdateMySignature() {
         const blob = await dataUrlToBlob(signatureDataUrl);
         signatureUrl = await uploadFile("signatures", `${user.id}/${uniqueFileName("profile-signature.png")}`, blob);
       }
-      const { error } = await supabase.from("profiles").update({ signature_url: signatureUrl }).eq("id", user.id);
+      const { error } = await supabase.from("profiles").update({ signature_url: signatureUrl }).eq("id", user.id).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {

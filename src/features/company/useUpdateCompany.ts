@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
 import type { Database } from "@/lib/supabase/database.types";
 import type { PrintMode, StorageType } from "@/types/domain";
+import { storedFilePath } from "@/lib/supabase/storagePath";
 
 type CompanyUpdate = Database["public"]["Tables"]["companies"]["Update"];
 
@@ -35,14 +36,14 @@ export function useUpdateCompany() {
       const update: CompanyUpdate = {};
       if (patch.name !== undefined) update.name = patch.name;
       if (patch.countryCode !== undefined) update.country_code = patch.countryCode;
-      if (patch.logoUrl !== undefined) update.logo_url = patch.logoUrl;
+      if (patch.logoUrl !== undefined) update.logo_url = patch.logoUrl ? storedFilePath("company-logos",patch.logoUrl) : null;
       if (patch.archiveFolderName !== undefined) update.archive_folder_name = patch.archiveFolderName;
       if (patch.archiveStorageType !== undefined) update.archive_storage_type = patch.archiveStorageType;
       if (patch.archiveLocalPath !== undefined) update.archive_local_path = patch.archiveLocalPath;
       if (patch.printMode !== undefined) update.print_mode = patch.printMode;
-      if (patch.printHeaderUrl !== undefined) update.print_header_url = patch.printHeaderUrl;
-      if (patch.printFooterUrl !== undefined) update.print_footer_url = patch.printFooterUrl;
-      if (patch.printFullPageUrl !== undefined) update.print_full_page_url = patch.printFullPageUrl;
+      if (patch.printHeaderUrl !== undefined) update.print_header_url = patch.printHeaderUrl ? storedFilePath("company-logos",patch.printHeaderUrl) : null;
+      if (patch.printFooterUrl !== undefined) update.print_footer_url = patch.printFooterUrl ? storedFilePath("company-logos",patch.printFooterUrl) : null;
+      if (patch.printFullPageUrl !== undefined) update.print_full_page_url = patch.printFullPageUrl ? storedFilePath("company-logos",patch.printFullPageUrl) : null;
       if (patch.printMarginTop !== undefined) update.print_margin_top = patch.printMarginTop;
       if (patch.printMarginBottom !== undefined) update.print_margin_bottom = patch.printMarginBottom;
       if (patch.printMarginLeft !== undefined) update.print_margin_left = patch.printMarginLeft;
@@ -50,7 +51,7 @@ export function useUpdateCompany() {
       if (patch.headerColor !== undefined) update.header_color = patch.headerColor;
       if (patch.vatRate !== undefined) update.vat_rate = patch.vatRate;
 
-      const { error } = await supabase.from("companies").update(update).eq("id", id);
+      const { error } = await supabase.from("companies").update(update).eq("id", id).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {

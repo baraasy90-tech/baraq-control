@@ -6,7 +6,7 @@ export function useRemoveProjectMember(projectId: string) {
 
   return useMutation({
     mutationFn: async (memberId: string) => {
-      const { error } = await supabase.from("project_members").delete().eq("id", memberId);
+      const { error } = await supabase.from("project_members").delete().eq("id", memberId).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {

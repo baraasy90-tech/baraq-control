@@ -82,7 +82,7 @@ export function useSaveEmployee() {
         status: input.status,
       };
       const { error } = input.id
-        ? await supabase.from("employees").update(row).eq("id", input.id)
+        ? await supabase.from("employees").update(row).eq("id", input.id).select("id").single()
         : await supabase.from("employees").insert(row);
       if (error) throw error;
     },
@@ -119,7 +119,7 @@ export function useUpdateEmployeeFields(companyId: string | undefined) {
         patch.organizational_classification_id = input.organizationalClassificationId;
       if (input.jobTitleId !== undefined) patch.job_title_id = input.jobTitleId;
       if (input.directManagerEmployeeId !== undefined) patch.direct_manager_employee_id = input.directManagerEmployeeId;
-      const { error } = await supabase.from("employees").update(patch).eq("id", input.id);
+      const { error } = await supabase.from("employees").update(patch).eq("id", input.id).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {
@@ -133,7 +133,7 @@ export function useDeleteEmployee(companyId: string | undefined) {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("employees").delete().eq("id", id);
+      const { error } = await supabase.from("employees").delete().eq("id", id).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {
@@ -141,3 +141,4 @@ export function useDeleteEmployee(companyId: string | undefined) {
     },
   });
 }
+

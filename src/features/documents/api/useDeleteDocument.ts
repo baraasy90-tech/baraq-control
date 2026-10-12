@@ -6,7 +6,7 @@ export function useDeleteDocument(folderId: string | undefined) {
 
   return useMutation({
     mutationFn: async (documentId: string) => {
-      const { error } = await supabase.from("documents").delete().eq("id", documentId);
+      const { error } = await supabase.from("documents").delete().eq("id", documentId).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {

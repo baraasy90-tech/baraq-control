@@ -8,48 +8,23 @@ export interface ChecklistItemDraft {
   order: number;
 }
 
+const draftIds = new WeakMap<ChecklistItemDraft, string>();
+
 export function useSaveChecklist(projectId: string | undefined) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ activityId, items }: { activityId: string; items: ChecklistItemDraft[] }) => {
-      const { data: existing, error: fetchError } = await supabase
-        .from("checklist_items")
-        .select("id")
-        .eq("activity_id", activityId);
-      if (fetchError) throw fetchError;
-
-      const keepIds = new Set(items.filter((i) => i.id).map((i) => i.id));
-      const toDelete = existing.filter((row) => !keepIds.has(row.id)).map((row) => row.id);
-      if (toDelete.length > 0) {
-        const { error } = await supabase.from("checklist_items").delete().in("id", toDelete);
-        if (error) throw error;
-      }
-
-      const toUpdate = items.filter((i) => i.id);
-      for (const item of toUpdate) {
-        const { error } = await supabase
-          .from("checklist_items")
-          .update({ text: item.text, photo_required: item.photoRequired, order: item.order })
-          .eq("id", item.id!);
-        if (error) throw error;
-      }
-
-      const toInsert = items.filter((i) => !i.id);
-      if (toInsert.length > 0) {
-        const { error } = await supabase.from("checklist_items").insert(
-          toInsert.map((i) => ({
-            activity_id: activityId,
-            text: i.text,
-            photo_required: i.photoRequired,
-            order: i.order,
-          }))
-        );
-        if (error) throw error;
-      }
+      const payload = items.map(item => ({
+        id: item.id ?? (draftIds.get(item) ?? (() => { const id = crypto.randomUUID(); draftIds.set(item, id); return id; })()),
+        text: item.text, photo_required: item.photoRequired, order: item.order,
+      }));
+      const {error} = await supabase.rpc('save_checklist_atomic', {p_activity_id:activityId,p_items:payload});
+      if(error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["activities", projectId] });
     },
   });
 }
+

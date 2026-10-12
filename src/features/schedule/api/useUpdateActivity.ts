@@ -70,7 +70,7 @@ export function useUpdateActivity() {
       if (input.boqUnitPrice !== undefined) patch.boq_unit_price = input.boqUnitPrice;
       if (input.linkedContractId !== undefined) patch.linked_contract_id = input.linkedContractId;
 
-      const { error } = await supabase.from("activities").update(patch).eq("id", input.id);
+      const { error } = await supabase.from("activities").update(patch).eq("id", input.id).select("id").single();
       if (error) throw error;
     },
     onSuccess: (_data, input) => {

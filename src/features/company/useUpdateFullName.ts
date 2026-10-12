@@ -8,7 +8,7 @@ export function useUpdateFullName() {
 
   return useMutation({
     mutationFn: async (fullName: string) => {
-      const { error } = await supabase.from("profiles").update({ full_name: fullName }).eq("id", user!.id);
+      const { error } = await supabase.from("profiles").update({ full_name: fullName }).eq("id", user!.id).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {

@@ -12,17 +12,17 @@ async function actor(n,role="authenticated"){await db.exec("reset role;set role 
 const one=async sql=>(await db.query(sql)).rows[0];
 const denied=(run,pattern)=>assert.rejects(run,pattern);
 await db.exec(read("supabase/tests/phase1-fixture.sql"));
-const old=read("supabase/migrations/0044_close_rls_workflow_gaps.sql");
+const old=read("supabase/migrations-history/0044_close_rls_workflow_gaps.sql");
 await db.exec(old.match(/create or replace function public.guard_protected_columns\(\)[\s\S]*?\$\$;/)[0]);
-await db.exec(read("supabase/migrations/0075_budget_actual_entry_approval.sql"));
+await db.exec(read("supabase/migrations-history/0075_budget_actual_entry_approval.sql"));
 await actor(1);
 await test("baseline reproduces forged approved budget insertion",async()=>{
 await db.exec("insert into budget_actual_entries(id,activity_id,amount,status) values("+q(601)+","+q(301)+",100,'approved')");
 assert.equal((await one("select status from budget_actual_entries where id="+q(601))).status,"approved");
 });
 await db.exec("reset role");
-await db.exec(read("supabase/migrations/20261011150156_harden_payment_creation.sql"));
-await db.exec(read("supabase/migrations/20261011150157_save_receiving_atomically.sql"));
+await db.exec(read("supabase/migrations-history/20261011150156_harden_payment_creation.sql"));
+await db.exec(read("supabase/migrations-history/20261011150157_save_receiving_atomically.sql"));
 await actor(1);
 await test("upgrade preserves existing approved rows",async()=>assert.equal((await one("select status from budget_actual_entries where id="+q(601))).status,"approved"));
 await test("member cannot insert approved corporate payment",()=>denied(()=>db.exec("insert into budget_actual_entries(activity_id,amount,status) values("+q(301)+",100,'approved')"),/حالة الاعتماد/));
@@ -98,3 +98,4 @@ assert.equal(rows.length,5);rows.forEach(r=>assert.match(r.definition,/for updat
 fs.mkdirSync(new URL("verification-results/", root), {recursive:true});
 fs.writeFileSync(new URL("verification-results/database.json", root),JSON.stringify({engine:"PGlite PostgreSQL",fixture:"isolated representative schema; not production",tests},null,2));
 await db.close();console.log(tests.length+" SQL checks passed.");
+

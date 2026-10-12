@@ -1,19 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import type { AuditLogEntry } from "@/types/domain";
+import type { Database } from "@/lib/supabase/database.types";
 
-function mapAuditRow(row: {
-  id: string;
-  company_id: string;
-  project_id: string | null;
-  table_name: string;
-  record_id: string;
-  action: "insert" | "update" | "delete";
-  actor_id: string | null;
-  old_data: Record<string, unknown> | null;
-  new_data: Record<string, unknown> | null;
-  created_at: string;
-}): AuditLogEntry {
+function mapAuditRow(row: Database["public"]["Tables"]["audit_log"]["Row"]): AuditLogEntry {
   return {
     id: row.id,
     companyId: row.company_id,
@@ -22,8 +12,8 @@ function mapAuditRow(row: {
     recordId: row.record_id,
     action: row.action,
     actorId: row.actor_id,
-    oldData: row.old_data,
-    newData: row.new_data,
+    oldData: row.old_data && typeof row.old_data === "object" && !Array.isArray(row.old_data) ? row.old_data : null,
+    newData: row.new_data && typeof row.new_data === "object" && !Array.isArray(row.new_data) ? row.new_data : null,
     createdAt: row.created_at,
   };
 }

@@ -16,7 +16,6 @@ import { computeSchedule } from "@/features/schedule/lib/schedule";
 import { useCustomCalendarMap } from "@/features/schedule/api/useCustomCalendars";
 import { getReceivingGate } from "@/features/schedule/lib/scope";
 import { fmt } from "@/utils/dates";
-import { getErrorMessage } from "@/utils/errors";
 import type { Decision, Project, Submission } from "@/types/domain";
 
 interface SubmissionPayload {
@@ -62,17 +61,13 @@ export function ReceivingScreen({ project }: { project: Project }) {
   const handleSubmit = async (payload: SubmissionPayload) => {
     if (!selected) return;
     setError("");
-    try {
-      if (editingSubmission) {
-        await updateSubmission.mutateAsync({ id: editingSubmission.id, activityId: selected.id, projectId: project.id, ...payload });
-      } else {
-        await createSubmission.mutateAsync({ id: draftId, activityId: selected.id, projectId: project.id, ...payload });
-      }
-      setFormOpen(false);
-      setEditingSubmission(null);
-    } catch (cause) {
-      setError(getErrorMessage(cause, "تعذّر حفظ التقديم، حاول مجدداً"));
+    if (editingSubmission) {
+      await updateSubmission.mutateAsync({ id: editingSubmission.id, activityId: selected.id, projectId: project.id, ...payload });
+    } else {
+      await createSubmission.mutateAsync({ id: draftId, activityId: selected.id, projectId: project.id, ...payload });
     }
+    setFormOpen(false);
+    setEditingSubmission(null);
   };
 
   const openNewSubmission = () => {

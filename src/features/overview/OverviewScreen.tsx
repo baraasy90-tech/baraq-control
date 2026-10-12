@@ -157,7 +157,7 @@ export function OverviewScreen() {
       latePhases: data.latePhases.map((lp) => ({ project: lp.projectName, detail: `${lp.activityName} — كان يفترض ينتهي ${fmt(lp.end)}` })),
       criticalItems: data.upcomingCritical.map((uc) => ({
         project: uc.projectName,
-        detail: `${uc.activityName} — يبدأ خلال ${uc.daysToStart} يوم`,
+        detail: `${uc.activityName} — ${uc.daysToStart < 0 ? `بدأ منذ ${Math.abs(uc.daysToStart)} يوم` : uc.daysToStart === 0 ? "يبدأ اليوم" : `يبدأ خلال ${uc.daysToStart} يوم`}`,
       })),
       overdueApprovals: overdueApprovals.map((a) => ({ project: a.projectName, detail: `${a.title} — منذ ${a.daysAtCurrentStage} يوم` })),
       print: company.print,
@@ -290,7 +290,7 @@ export function OverviewScreen() {
                     >
                       <div className="text-sm font-semibold text-ink">{uc.activityName}</div>
                       <div className="text-xs text-ink-soft">
-                        {uc.projectName} · يبدأ خلال {uc.daysToStart} يوم
+                        {uc.projectName} · {uc.daysToStart < 0 ? `بدأ منذ ${Math.abs(uc.daysToStart)} يوم` : uc.daysToStart === 0 ? "يبدأ اليوم" : `يبدأ خلال ${uc.daysToStart} يوم`}
                       </div>
                     </button>
                   ))}

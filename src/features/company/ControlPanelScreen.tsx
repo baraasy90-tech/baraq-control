@@ -11,7 +11,7 @@ import { LogoUploadField } from "@/features/company/LogoUploadField";
 import { TeamSection } from "@/features/company/TeamSection";
 import { CustomCalendarsSection } from "@/features/schedule/CustomCalendarsSection";
 import { CompanyHolidaysSection } from "@/features/company/CompanyHolidaysSection";
-import { uploadFile, uniqueFileName } from "@/lib/supabase/storage";
+import { uploadFile, uniqueFileName, getFileUrl } from "@/lib/supabase/storage";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useProfile } from "@/features/company/useProfile";
 import { useDepartments } from "@/features/company/api/useDepartments";
@@ -118,7 +118,9 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
     }
     setUploading(true);
     try {
-      const url = await uploadFile("company-logos", `${user.id}/${uniqueFileName(file.name)}`, file);
+      const path = await uploadFile("company-logos", `${user.id}/${uniqueFileName(file.name)}`, file);
+      const url = await getFileUrl("company-logos",path);
+      if (!url) throw new Error("تعذّر عرض الصورة المرفوعة");
       setPrint((prev) => ({ ...prev, [field]: url }));
     } catch {
       setSubmitError("تعذّر رفع الصورة، حاول مجدداً");
@@ -388,3 +390,4 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
     </div>
   );
 }
+

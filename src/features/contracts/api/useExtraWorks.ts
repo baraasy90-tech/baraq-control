@@ -80,7 +80,7 @@ export function useDeleteExtraWork(contractId: string | undefined) {
 
   return useMutation({
     mutationFn: async (extraWorkId: string) => {
-      const { error } = await supabase.from("contract_extra_works").delete().eq("id", extraWorkId);
+      const { error } = await supabase.from("contract_extra_works").delete().eq("id", extraWorkId).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {

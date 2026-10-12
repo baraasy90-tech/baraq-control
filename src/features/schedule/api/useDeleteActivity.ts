@@ -6,7 +6,7 @@ export function useDeleteActivity(projectId: string | undefined) {
 
   return useMutation({
     mutationFn: async (activityId: string) => {
-      const { error } = await supabase.from("activities").delete().eq("id", activityId);
+      const { error } = await supabase.from("activities").delete().eq("id", activityId).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {

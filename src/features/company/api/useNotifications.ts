@@ -48,7 +48,7 @@ export function useMarkNotificationRead() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id);
+      const { error } = await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {

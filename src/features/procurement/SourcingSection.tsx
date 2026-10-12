@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { StorageFileLink } from "@/components/StorageFileLink";
 import { Paperclip, Trash2, Upload } from "lucide-react";
 import { StatCard, SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText } from "@/components/ui";
 import { ApprovalStepsList } from "@/features/procurement/ApprovalChainSection";
@@ -37,9 +38,9 @@ export function AttachmentsList({
     <div className="flex flex-wrap gap-2 mt-2">
       {attachments.map((a) => (
         <div key={a.id} className="inline-flex items-center gap-1.5 text-xs bg-bg rounded-lg px-2 py-1">
-          <a href={a.fileUrl} target="_blank" rel="noreferrer" className="text-primary inline-flex items-center gap-1">
+          <StorageFileLink stored={a.fileUrl} className="text-primary inline-flex items-center gap-1">
             <Paperclip size={11} /> {a.fileName}
-          </a>
+          </StorageFileLink>
           {canDelete && <IconButton icon={Trash2} label="حذف المرفق" tone="critical" onClick={() => onDelete(a.id)} />}
         </div>
       ))}

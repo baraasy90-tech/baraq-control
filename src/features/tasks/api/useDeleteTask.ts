@@ -6,7 +6,7 @@ export function useDeleteTask(companyId: string) {
 
   return useMutation({
     mutationFn: async (taskId: string) => {
-      const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+      const { error } = await supabase.from("tasks").delete().eq("id", taskId).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {
