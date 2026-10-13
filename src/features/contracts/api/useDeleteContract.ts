@@ -11,6 +11,7 @@ export function useDeleteContract(projectId: string | undefined) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contracts", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["activities", projectId] });
     },
   });
 }

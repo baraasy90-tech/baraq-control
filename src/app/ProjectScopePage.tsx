@@ -1,3 +1,4 @@
+import { ProjectQueryState } from "@/components/ProjectQueryState";
 import { useNavigate, useParams } from "react-router-dom";
 import { useProject } from "@/features/projects/api/useProject";
 import { useUpdateProject } from "@/features/projects/api/useUpdateProject";
@@ -11,18 +12,19 @@ export function ProjectScopePage() {
   const updateProject = useUpdateProject();
   const navigate = useNavigate();
 
-  if (!projectQuery.data) {
-    return <div className="min-h-screen flex items-center justify-center text-sm text-ink-soft">جارٍ التحميل...</div>;
+  if (projectQuery.isError || projectQuery.isPending || !projectQuery.data) {
+    return <ProjectQueryState query={projectQuery} />;
   }
+  const project = projectQuery.data;
 
   return (
     <ScopeSetupScreen
-      initial={projectQuery.data.scopeConfig}
+      initial={project.scopeConfig}
       saving={updateProject.isPending}
       onBack={() => navigate(`/projects/${id}`)}
       onComplete={(config) => {
         updateProject.mutate(
-          { id: projectQuery.data.id, companyId: company.id, scopeConfig: config },
+          { id: project.id, companyId: company.id, scopeConfig: config },
           { onSuccess: () => navigate(`/projects/${id}`) }
         );
       }}

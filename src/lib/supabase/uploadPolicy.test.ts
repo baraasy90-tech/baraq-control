@@ -1,0 +1,4 @@
+import {it,expect} from 'vitest';import {validateUpload} from './uploadPolicy';
+it('rejects active images and document types in image buckets',()=>{expect(()=>validateUpload('company-logos',new Blob(['<svg/>'],{type:'image/svg+xml'}))).toThrow();expect(()=>validateUpload('signatures',new Blob(['pdf'],{type:'application/pdf'}))).toThrow();});
+it('uses extension only when MIME is absent',()=>{const file=Object.assign(new Blob(['pdf']),{name:'contract.pdf'});expect(validateUpload('documents',file)).toBe('application/pdf');expect(()=>validateUpload('documents',Object.assign(new Blob(['script'],{type:'text/html'}),{name:'contract.pdf'}))).toThrow();});
+it('enforces different size limits',()=>{const image=new Blob([new Uint8Array(3*1024*1024)],{type:'image/png'});expect(()=>validateUpload('signatures',image)).toThrow();expect(validateUpload('company-logos',image)).toBe('image/png');});

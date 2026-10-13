@@ -1,0 +1,5 @@
+-- Existing objects remain intact; limits apply to future uploads.
+update storage.buckets set file_size_limit=5*1024*1024,allowed_mime_types=array['image/jpeg','image/png','image/webp'] where id='company-logos';
+update storage.buckets set file_size_limit=2*1024*1024,allowed_mime_types=array['image/jpeg','image/png','image/webp'] where id='signatures';
+update storage.buckets set file_size_limit=10*1024*1024,allowed_mime_types=array['image/jpeg','image/png','image/webp'] where id='checklist-photos';
+update storage.buckets set file_size_limit=25*1024*1024,allowed_mime_types=array['application/pdf','image/jpeg','image/png','image/webp','text/plain','text/csv','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/zip','application/x-zip-compressed'] where id='documents';

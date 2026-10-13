@@ -63,7 +63,7 @@ export function useDeleteMaterialOption(requestId: string | undefined) {
 
   return useMutation({
     mutationFn: async (optionId: string) => {
-      const { error } = await supabase.from("material_request_options").delete().eq("id", optionId);
+      const { error } = await supabase.from("material_request_options").delete().eq("id", optionId).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {

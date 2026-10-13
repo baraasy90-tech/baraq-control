@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase/client";
+import { supabase, logoutCurrentTab } from "@/lib/supabase/client";
 import { isIdleExpired, recordActivity } from "@/features/auth/idleTracker";
 
 interface AuthContextValue {
@@ -8,6 +8,7 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   error: string | null;
+  cacheEpoch: number;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -16,6 +17,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cacheEpoch, setCacheEpoch] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -25,9 +27,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data } = await supabase.auth.getSession();
         if (cancelled) return;
         if (data.session && isIdleExpired()) {
-          await supabase.auth.signOut();
-          if (cancelled) return;
-          setSession(null);
+          logoutCurrentTab(data.session.access_token);
+          return;
         } else {
           if (data.session) recordActivity();
           setSession(data.session);
@@ -45,6 +46,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // تسجيل دخول تفاعلي جديد — لازم يصفّر ساعة الخمول، وإلا طابع نشاط قديم متبقٍ من جلسة
       // سابقة (بأي عمر) يخلي useIdleLogout يسجّل خروجاً فورياً بعد الدخول مباشرة.
       if (event === "SIGNED_IN") recordActivity();
+      // Also rotate the cache if sign-out/sign-in events are batched for the same user.
+      if (event === "SIGNED_OUT") setCacheEpoch(epoch => epoch + 1);
       setSession(newSession);
     });
 
@@ -55,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, error }}>
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, error, cacheEpoch }}>
       {children}
     </AuthContext.Provider>
   );

@@ -45,7 +45,7 @@ export function useSaveCompanyHoliday() {
         const { error } = await supabase
           .from("company_holidays")
           .update({ name: input.name, holiday_date: input.date, recurring_yearly: input.recurringYearly })
-          .eq("id", input.id);
+          .eq("id", input.id).select("id").single();
         if (error) throw error;
       } else {
         const { error } = await supabase.from("company_holidays").insert({
@@ -89,7 +89,7 @@ export function useDeleteCompanyHoliday(companyId: string) {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("company_holidays").delete().eq("id", id);
+      const { error } = await supabase.from("company_holidays").delete().eq("id", id).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {

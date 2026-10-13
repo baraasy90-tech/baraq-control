@@ -12,7 +12,7 @@ import {
   useDeleteOrganizationalClassification,
 } from "@/features/company/api/useOrganizationalClassifications";
 import { useJobTitles, useSaveJobTitle, useDeleteJobTitle } from "@/features/company/api/useJobTitles";
-import { getErrorMessage } from "@/utils/errors";
+import { getUserErrorMessage as getErrorMessage } from "@/utils/errors";
 import type { OrganizationalLevel, OrganizationalClassification, JobTitle } from "@/types/domain";
 
 function LevelsSection({ companyId, canEdit }: { companyId: string; canEdit: boolean }) {

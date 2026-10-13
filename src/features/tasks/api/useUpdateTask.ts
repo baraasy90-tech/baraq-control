@@ -23,7 +23,7 @@ export function useUpdateTask() {
         patch.completed_at = input.status === "done" ? new Date().toISOString() : null;
       }
       if (input.assignedTo !== undefined) patch.assigned_to = input.assignedTo;
-      const { error } = await supabase.from("tasks").update(patch).eq("id", input.id);
+      const { error } = await supabase.from("tasks").update(patch).eq("id", input.id).select("id").single();
       if (error) throw error;
     },
     onSuccess: (_data, input) => {

@@ -1,0 +1,15 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';import {spawnSync} from 'node:child_process';import {createClient} from '@supabase/supabase-js';
+const read=p=>JSON.parse(fs.readFileSync(p,'utf8').replace(/^\uFEFF/,''));const config=read('.verification/local-stack/connection.json'),users=read('.verification/local-stack/browser-users.json'),fixture=read('.verification/local-stack/browser-document.json');assert.equal(new URL(config.API_URL).hostname,'127.0.0.1');
+const owner=users.find(u=>u.role==='owner');const c=createClient(config.API_URL,config.ANON_KEY,{auth:{persistSession:false}});const check=r=>{if(r.error)throw new Error(r.error.message);return r.data;};check(await c.auth.signInWithPassword(owner));
+const suffix=Date.now(),orphan=`${owner.id}/orphan-${suffix}.txt`,live=`${owner.id}/live-${suffix}.txt`,young=`${owner.id}/young-${suffix}.txt`;
+for(const path of [orphan,live,young])check(await c.storage.from('documents').upload(path,new Blob(['Synthetic orphan scan'],{type:'text/plain'})));
+check(await c.from('documents').insert({folder_id:fixture.folderId,name:'Live orphan-scan reference',file_url:live}));
+const age=`BEGIN;SET LOCAL session_replication_role=replica;UPDATE storage.objects SET created_at=now()-interval '3 days',updated_at=now()-interval '3 days' WHERE bucket_id='documents' AND name IN ('${orphan}','${live}');UPDATE app_private.storage_orphan_scan_state SET last_object_id=null;COMMIT;`;
+const r=spawnSync('docker',['exec','supabase_db_local-stack','psql','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-c',age],{encoding:'utf8'});if(r.status!==0)throw new Error('Local fixture ageing failed: '+r.stderr);
+assert.ok((await c.rpc('enqueue_storage_orphans',{p_limit:100,p_min_age_hours:24})).error);
+const response=await fetch(`${config.API_URL}/functions/v1/storage-cleanup`,{method:'POST',headers:{apikey:config.ANON_KEY,Authorization:'Bearer '+config.SERVICE_ROLE_KEY,'Content-Type':'application/json'},body:'{"limit":20}'});
+assert.equal(response.status,200,await response.clone().text());assert.ok((await response.json()).removed>=1);
+assert.ok((await c.storage.from('documents').download(orphan)).error,'Old unreferenced file survived');check(await c.storage.from('documents').download(live));check(await c.storage.from('documents').download(young));
+const missing=await c.from('documents').insert({folder_id:fixture.folderId,name:'Missing file must fail',file_url:orphan});assert.ok(missing.error,'A missing file was linked');
+fs.writeFileSync('verification-results/orphan-scan-real-local.json',JSON.stringify({passed:true,agedUnreferencedRemoved:true,agedReferencedPreserved:true,youngUploadPreserved:true,ordinaryUserCannotScan:true,missingLinkRejected:true,productionTouched:false},null,2));
+console.log('PASS orphan scanner: old unreferenced file removed; referenced and young files preserved; missing link rejected');

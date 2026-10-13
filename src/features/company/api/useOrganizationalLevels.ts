@@ -50,7 +50,7 @@ export function useSaveOrganizationalLevel() {
         is_worker_level: input.isWorkerLevel,
       };
       const { error } = input.id
-        ? await supabase.from("organizational_levels").update(row).eq("id", input.id)
+        ? await supabase.from("organizational_levels").update(row).eq("id", input.id).select("id").single()
         : await supabase.from("organizational_levels").insert(row);
       if (error) throw error;
     },
@@ -65,7 +65,7 @@ export function useDeleteOrganizationalLevel(companyId: string | undefined) {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("organizational_levels").delete().eq("id", id);
+      const { error } = await supabase.from("organizational_levels").delete().eq("id", id).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {
@@ -73,3 +73,4 @@ export function useDeleteOrganizationalLevel(companyId: string | undefined) {
     },
   });
 }
+

@@ -40,7 +40,7 @@ export function useDeleteLineItem(contractId: string | undefined) {
   const invalidate = useInvalidateContract(contractId);
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("contract_line_items").delete().eq("id", id);
+      const { error } = await supabase.from("contract_line_items").delete().eq("id", id).select("id").single();
       if (error) throw error;
     },
     onSuccess: invalidate,
@@ -87,7 +87,7 @@ export function useTogglePaymentPaid(contractId: string | undefined) {
   const invalidate = useInvalidateContract(contractId);
   return useMutation({
     mutationFn: async ({ id, paid }: { id: string; paid: boolean }) => {
-      const { error } = await supabase.from("contract_payments").update({ paid }).eq("id", id);
+      const { error } = await supabase.from("contract_payments").update({ paid }).eq("id", id).select("id").single();
       if (error) throw error;
     },
     onSuccess: invalidate,
@@ -98,7 +98,7 @@ export function useDeletePayment(contractId: string | undefined) {
   const invalidate = useInvalidateContract(contractId);
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("contract_payments").delete().eq("id", id);
+      const { error } = await supabase.from("contract_payments").delete().eq("id", id).select("id").single();
       if (error) throw error;
     },
     onSuccess: invalidate,
@@ -139,7 +139,7 @@ export function useDeleteDeduction(contractId: string | undefined) {
   const invalidate = useInvalidateContract(contractId);
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("contract_deductions").delete().eq("id", id);
+      const { error } = await supabase.from("contract_deductions").delete().eq("id", id).select("id").single();
       if (error) throw error;
     },
     onSuccess: invalidate,

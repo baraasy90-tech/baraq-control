@@ -6,11 +6,13 @@ export function useDeleteSubmission(projectId: string | undefined) {
 
   return useMutation({
     mutationFn: async (submissionId: string) => {
-      const { error } = await supabase.from("submissions").delete().eq("id", submissionId);
+      const { error } = await supabase.from("submissions").delete().eq("id", submissionId).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["activities", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["overview"] });
+      queryClient.invalidateQueries({ queryKey: ["schedule-tasks"] });
     },
   });
 }

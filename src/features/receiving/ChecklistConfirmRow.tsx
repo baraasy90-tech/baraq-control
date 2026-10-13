@@ -26,7 +26,7 @@ export function ChecklistConfirmRow({
 
   return (
     <div className="flex items-start gap-3 py-2.5 border-b border-line last:border-0">
-      <input type="checkbox" checked={state.checked} onChange={onToggle} className="mt-1 shrink-0" />
+      <input type="checkbox" aria-label={item.text} checked={state.checked} onChange={onToggle} className="mt-1 shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="text-sm text-ink">
           {item.text} {item.photoRequired && <span className="text-critical text-xs">(صورة إلزامية)</span>}

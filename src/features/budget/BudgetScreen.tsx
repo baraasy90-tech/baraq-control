@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { QueryFailureScreen } from "@/components/QueryFailureScreen";
 import { useNavigate } from "react-router-dom";
 import { Plus, Trash2, FileSpreadsheet, Pencil } from "lucide-react";
 import {
@@ -41,7 +42,7 @@ import { computeSchedule } from "@/features/schedule/lib/schedule";
 import { fmtMoney } from "@/utils/money";
 import { fmt, todayISO } from "@/utils/dates";
 import { exportToExcel } from "@/utils/exportExcel";
-import { getErrorMessage } from "@/utils/errors";
+import { getUserErrorMessage as getErrorMessage } from "@/utils/errors";
 import type { Project, BudgetType } from "@/types/domain";
 
 const SOURCE_LABEL: Record<string, string> = { contract: "عقد مقاول", purchase: "شراء مباشر", other: "أخرى" };
@@ -79,7 +80,7 @@ export function BudgetScreen({ project }: { project: Project }) {
     .reduce((sum, c) => sum + (c.totalValue ?? 0), 0);
   const contractPayments = contractPaymentsQuery.data ?? [];
   const totalContractPaid = contractPayments
-    .filter((p) => p.paid)
+    .filter((p) => p.paid && p.status === "approved")
     .reduce(
       (sum, p) =>
         sum +
@@ -376,6 +377,12 @@ export function BudgetScreen({ project }: { project: Project }) {
       setExporting(false);
     }
   };
+
+  const requiredQueries = [activitiesQuery, contractsQuery, contractPaymentsQuery, departmentsQuery, membersQuery];
+  if (requiredQueries.some(query => query.isError)) {
+    return <QueryFailureScreen title="ميزانية المشروع" retry={() => Promise.all(requiredQueries.map(query => query.refetch()))} />;
+  }
+  if ([activitiesQuery, contractsQuery, contractPaymentsQuery, departmentsQuery].some(query => query.isPending)) return <p role="status" className="p-6">جارٍ تحميل البيانات...</p>;
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">

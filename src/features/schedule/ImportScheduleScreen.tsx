@@ -1,3 +1,4 @@
+import { todayISO } from "@/utils/dates";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { SecondaryButton, PrimaryButton, ErrorText } from "@/components/ui";
@@ -9,7 +10,7 @@ import {
   readTextSmart,
   type ParsedScheduleRow,
 } from "@/features/schedule/lib/importParsers";
-import { getErrorMessage } from "@/utils/errors";
+import { getUserErrorMessage as getErrorMessage } from "@/utils/errors";
 
 const SUPPORTED_EXTENSIONS = ["xlsx", "xls", "csv", "xer", "xml"];
 
@@ -135,7 +136,7 @@ export function ImportScheduleScreen({ projectId }: { projectId: string }) {
           order: baseOrder + i + 1,
           durationDays: row.durationDays,
           calendarType: "workdays",
-          startDate: dependsOn ? null : new Date().toISOString().slice(0, 10),
+          startDate: dependsOn ? null : todayISO(),
           dependsOn,
           depType: dependsOn ? "FS" : null,
           lagDays: 0,

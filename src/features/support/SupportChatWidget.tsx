@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Send } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
-import { getErrorMessage } from "@/utils/errors";
+import { FunctionsHttpError } from "@supabase/supabase-js";
+import { supportRequest } from "./supportRequest";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -30,13 +31,21 @@ export function SupportChatWidget() {
     setSending(true);
     try {
       const { data, error: fnError } = await supabase.functions.invoke("support-chat", {
-        body: { message: text, history: messages },
+        body: supportRequest(text, messages),
       });
       if (fnError) throw fnError;
       if (data?.error) throw new Error(data.error);
+      if (typeof data?.reply !== "string" || !data.reply.trim()) throw new Error("تعذّر الحصول على رد، حاول مجدداً");
       setMessages([...nextMessages, { role: "assistant", content: data.reply as string }]);
     } catch (err) {
-      setError(getErrorMessage(err, "تعذّر الوصول للمساعد، حاول مجدداً"));
+      let message = "تعذّر الوصول للمساعد، حاول مجدداً";
+      if (err instanceof FunctionsHttpError) {
+        const body = await err.context.json().catch(() => null);
+        if (typeof body?.error === "string") message = body.error;
+      } else if (err instanceof Error && /[\u0600-\u06ff]/.test(err.message)) message = err.message;
+      setError(message);
+      setMessages(messages);
+      setInput(text);
     } finally {
       setSending(false);
     }
@@ -79,6 +88,8 @@ export function SupportChatWidget() {
 
           <div className="flex items-center gap-2 p-3 border-t border-line/60 shrink-0">
             <input
+              maxLength={4000}
+              aria-label="سؤالك لمساعد الدعم"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}

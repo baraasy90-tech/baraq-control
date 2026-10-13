@@ -1,0 +1,12 @@
+project_id = "baraq-control"
+
+# The functions authenticate requests themselves using Auth.getUser / the server credential.
+# The legacy gateway JWT check is incompatible with asymmetric signing-key rotation.
+[functions.send-invite-email]
+verify_jwt = false
+
+[functions.support-chat]
+verify_jwt = false
+
+[functions.storage-cleanup]
+verify_jwt = false

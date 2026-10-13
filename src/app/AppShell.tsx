@@ -156,7 +156,7 @@ function OfflineBanner() {
   if (online) return null;
   return (
     <div className="bg-ink text-white px-4 py-2 text-xs font-semibold text-center flex items-center justify-center gap-2">
-      <WifiOff size={14} /> لا يوجد اتصال بالإنترنت — سيتم استئناف أي إجراء تلقائياً بمجرد عودة الاتصال
+      <WifiOff size={14} /> لا يوجد اتصال بالإنترنت — احتفظ بالصفحة مفتوحة وأعد الحفظ بعد عودة الاتصال
     </div>
   );
 }

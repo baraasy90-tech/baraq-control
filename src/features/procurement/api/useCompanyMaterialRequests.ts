@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
+import { fetchAllRows, fetchRowsByIds } from "@/lib/supabase/fetchAllRows";
 import { mapMaterialRequest } from "@/features/procurement/api/mapMaterialRequest";
 import type { MaterialRequest, MaterialRequestStatus } from "@/types/domain";
 
@@ -31,28 +32,22 @@ export function useCompanyMaterialRequests(companyId: string | undefined) {
     queryKey: ["company-material-requests", companyId],
     enabled: !!companyId,
     queryFn: async (): Promise<MaterialApprovalItem[]> => {
-      const { data: projectRows, error: projectsError } = await supabase
+      const projectRows = await fetchAllRows((from, to) => supabase
         .from("projects")
         .select("id, name")
-        .eq("company_id", companyId!);
-      if (projectsError) throw projectsError;
+        .eq("company_id", companyId!).order("id").range(from, to));
       const projectIds = projectRows.map((p) => p.id);
       const projectNameById = new Map(projectRows.map((p) => [p.id, p.name]));
       if (projectIds.length === 0) return [];
 
-      const { data: rows, error } = await supabase.from("material_requests").select("*").in("project_id", projectIds);
-      if (error) throw error;
+      const rows = await fetchRowsByIds(projectIds, (ids, from, to) => supabase.from("material_requests").select("*").in("project_id", ids).order("id").range(from, to));
       if (rows.length === 0) return [];
 
-      const { data: chainRows, error: chainsError } = await supabase
+      const chainRows = await fetchRowsByIds(rows.map(row => row.id), (ids, from, to) => supabase
         .from("approval_chains")
         .select("material_request_id, status, created_at")
-        .in(
-          "material_request_id",
-          rows.map((r) => r.id)
-        )
-        .eq("status", "pending");
-      if (chainsError) throw chainsError;
+        .in("material_request_id", ids)
+        .eq("status", "pending").order("created_at").order("id").range(from, to));
       const chainStartByRequest = new Map(chainRows.map((c) => [c.material_request_id, c.created_at]));
 
       const now = new Date().toISOString();

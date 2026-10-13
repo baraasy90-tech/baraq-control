@@ -27,6 +27,7 @@ export function ChecklistEditor({
         {items.map((item, index) => (
           <div key={index} className="flex items-start gap-2">
             <TextInput
+              aria-label={`نص بند الاستلام ${index + 1}`}
               value={item.text}
               onChange={(e) => updateItem(index, { text: e.target.value })}
               placeholder="نص البند"

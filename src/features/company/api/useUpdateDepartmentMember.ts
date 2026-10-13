@@ -18,7 +18,7 @@ export function useUpdateDepartmentMember() {
       if (input.departmentId) patch.department_id = input.departmentId;
       if (input.role) patch.role = input.role;
       if (input.title !== undefined) patch.title = input.title;
-      const { error } = await supabase.from("department_members").update(patch).eq("id", input.id);
+      const { error } = await supabase.from("department_members").update(patch).eq("id", input.id).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {

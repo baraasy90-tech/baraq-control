@@ -20,7 +20,7 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
 
   // فقط GET، فقط نفس الأصل (لا نلمس Supabase أو أي مصدر خارجي إطلاقاً)
-  if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) {
+  if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin || new URL(request.url).pathname === "/version.json") {
     return;
   }
 

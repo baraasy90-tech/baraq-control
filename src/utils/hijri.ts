@@ -1,3 +1,4 @@
+import { todayISO as localTodayISO } from "@/utils/dates";
 /**
  * تحويل تقويم هجري ↔ ميلادي بالحساب الفلكي التقريبي (خوارزمية شائعة قائمة على
  * يوم جوليان). دقتها عادة يوم واحد مقارنة بإعلانات رؤية الهلال الرسمية (كالتقويم
@@ -85,7 +86,7 @@ function occasionsForCountry(countryCode: string | undefined): IslamicOccasion[]
 
 /** يحسب كل المناسبات الإسلامية الواقعة بين اليوم وحتى windowDays يوماً قادمة. */
 export function getUpcomingIslamicHolidays(windowDays = 60, countryCode?: string): UpcomingIslamicHoliday[] {
-  const todayISO = new Date().toISOString().slice(0, 10);
+  const todayISO = localTodayISO();
   const currentHijriYear = gregorianToHijriYear(todayISO);
   const results: UpcomingIslamicHoliday[] = [];
   const todayMs = new Date(todayISO).getTime();

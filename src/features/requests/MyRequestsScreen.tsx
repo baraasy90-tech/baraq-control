@@ -14,7 +14,7 @@ import { ChainStepsSection } from "@/features/requests/ChainStepsSection";
 import { RequestAttachmentsSection } from "@/features/requests/RequestAttachmentsSection";
 import { RecordAuditTimeline } from "@/features/company/RecordAuditTimeline";
 import { fmt } from "@/utils/dates";
-import { getErrorMessage } from "@/utils/errors";
+import { getUserErrorMessage as getErrorMessage } from "@/utils/errors";
 import type { ApprovalChainStepInput, ApprovalChainType, InternalRequestType } from "@/types/domain";
 
 const TYPE_LABEL: Record<InternalRequestType, string> = {

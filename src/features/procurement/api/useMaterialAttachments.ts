@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
 import { uploadFile, uniqueFileName, getFileUrls } from "@/lib/supabase/storage";
 import type { MaterialRequestAttachment } from "@/types/domain";
+import { isDefinitiveDatabaseRejection } from "@/lib/supabase/writeErrors";
 
 function mapAttachment(row: {
   id: string;
@@ -64,7 +65,7 @@ export function useUploadMaterialAttachment(requestId: string | undefined) {
       optionId: string | null;
       phase?: "sample" | "purchase";
     }) => {
-      if (!user || !requestId) throw new Error("not authenticated");
+      if (!user || !requestId) throw new Error("يلزم تسجيل الدخول واختيار طلب");
       const fileUrl = await uploadFile("documents", `${user.id}/${uniqueFileName(file.name)}`, file);
       const { error } = await supabase.from("material_request_attachments").insert({
         material_request_id: requestId,
@@ -74,7 +75,10 @@ export function useUploadMaterialAttachment(requestId: string | undefined) {
         file_name: file.name,
         uploaded_by: user.id,
       });
-      if (error) throw error;
+      if (error) {
+        if (isDefinitiveDatabaseRejection(error.code)) await supabase.storage.from("documents").remove([fileUrl]);
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["material_request_attachments", requestId] });
@@ -87,7 +91,7 @@ export function useDeleteMaterialAttachment(requestId: string | undefined) {
 
   return useMutation({
     mutationFn: async (attachmentId: string) => {
-      const { error } = await supabase.from("material_request_attachments").delete().eq("id", attachmentId);
+      const { error } = await supabase.from("material_request_attachments").delete().eq("id", attachmentId).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {

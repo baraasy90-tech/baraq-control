@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
+import { fetchAllRows, fetchRowsByIds } from "@/lib/supabase/fetchAllRows";
 import { mapTask } from "@/features/tasks/api/mapTask";
 import type { Task } from "@/types/domain";
 
@@ -14,30 +15,28 @@ export function useCompanyTasks(companyId: string | undefined) {
     queryKey: ["tasks", companyId],
     enabled: !!companyId,
     queryFn: async (): Promise<TaskWithContext[]> => {
-      const { data: projects, error: projectsError } = await supabase
+      const projects = await fetchAllRows((from, to) => supabase
         .from("projects")
         .select("id, name, theme_color")
-        .eq("company_id", companyId!);
-      if (projectsError) throw projectsError;
+        .eq("company_id", companyId!).order("id").range(from, to));
       if (projects.length === 0) return [];
 
       const projectIds = projects.map((p) => p.id);
-      const { data: taskRows, error: tasksError } = await supabase
+      const taskRows = await fetchRowsByIds(projectIds, (ids, from, to) => supabase
         .from("tasks")
         .select("*")
-        .in("project_id", projectIds)
-        .order("created_at", { ascending: false });
-      if (tasksError) throw tasksError;
+        .in("project_id", ids)
+        .order("created_at", { ascending: false }).order("id").range(from, to));
+      taskRows.sort((a,b)=>b.created_at.localeCompare(a.created_at)||a.id.localeCompare(b.id));
       if (taskRows.length === 0) return [];
 
       const assigneeIds = [...new Set(taskRows.map((t) => t.assigned_to).filter((id): id is string => !!id))];
       let nameById = new Map<string, string>();
       if (assigneeIds.length > 0) {
-        const { data: profiles, error: profilesError } = await supabase
+        const profiles = await fetchRowsByIds(assigneeIds, (ids, from, to) => supabase
           .from("profiles")
           .select("id, full_name")
-          .in("id", assigneeIds);
-        if (profilesError) throw profilesError;
+          .in("id", ids).order("id").range(from, to));
         nameById = new Map(profiles.map((p) => [p.id, p.full_name]));
       }
 

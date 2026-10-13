@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PrimaryButton, SecondaryButton, ErrorText, FieldLabel, TextInput, Modal } from "@/components/ui";
 import { useSaveEmployee } from "@/features/company/api/useEmployees";
-import { getErrorMessage } from "@/utils/errors";
+import { getUserErrorMessage as getErrorMessage } from "@/utils/errors";
 import type { Employee, Department, OrganizationalLevel, OrganizationalClassification, JobTitle } from "@/types/domain";
 
 export function EmployeeFormModal({

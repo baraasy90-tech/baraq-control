@@ -31,7 +31,7 @@ export function useSaveJobTitle() {
     mutationFn: async (input: SaveJobTitleInput) => {
       const row = { company_id: input.companyId, name: input.name };
       const { error } = input.id
-        ? await supabase.from("job_titles").update(row).eq("id", input.id)
+        ? await supabase.from("job_titles").update(row).eq("id", input.id).select("id").single()
         : await supabase.from("job_titles").insert(row);
       if (error) throw error;
     },
@@ -46,7 +46,7 @@ export function useDeleteJobTitle(companyId: string | undefined) {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("job_titles").delete().eq("id", id);
+      const { error } = await supabase.from("job_titles").delete().eq("id", id).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {
@@ -54,3 +54,4 @@ export function useDeleteJobTitle(companyId: string | undefined) {
     },
   });
 }
+

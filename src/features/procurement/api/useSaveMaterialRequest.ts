@@ -39,7 +39,7 @@ export function useDeleteMaterialRequest(projectId: string | undefined) {
 
   return useMutation({
     mutationFn: async (requestId: string) => {
-      const { error } = await supabase.from("material_requests").delete().eq("id", requestId);
+      const { error } = await supabase.from("material_requests").delete().eq("id", requestId).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {
@@ -72,7 +72,7 @@ export function useSaveSourcingDetails() {
           target_unit_price: input.targetUnitPrice,
           needed_by: input.neededBy,
         })
-        .eq("id", input.requestId);
+        .eq("id", input.requestId).select("id").single();
       if (error) throw error;
     },
     onSuccess: (_data, input) => {
@@ -102,7 +102,7 @@ export function useSavePurchaseDetails() {
           quote_received_at: input.quoteReceivedAt,
           attachments_note: input.attachmentsNote,
         })
-        .eq("id", input.requestId);
+        .eq("id", input.requestId).select("id").single();
       if (error) throw error;
     },
     onSuccess: (_data, input) => {

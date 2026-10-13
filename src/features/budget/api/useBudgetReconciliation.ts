@@ -104,7 +104,7 @@ export function useReviewReconciliationNote() {
           reviewed_at: new Date().toISOString(),
           review_note: input.reviewNote,
         })
-        .eq("id", input.id);
+        .eq("id", input.id).select("id").single();
       if (error) throw error;
     },
     onSuccess: (_data, input) => {

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { StorageFileLink } from "@/components/StorageFileLink";
 import { Paperclip, History } from "lucide-react";
 import { SecondaryButton, ErrorText } from "@/components/ui";
 import { useAddRequestAttachment, useAddRequestAttachmentRevision, useRequestAttachments } from "@/features/requests/api/useRequestAttachments";
@@ -25,10 +26,10 @@ function RevisionHistory({ revisions }: { revisions: { id: string; revisionNumbe
             .slice(0, -1)
             .reverse()
             .map((r) => (
-              <a key={r.id} href={r.fileUrl} target="_blank" rel="noreferrer" className="text-[10px] text-ink-soft hover:text-primary">
+              <StorageFileLink key={r.id} stored={r.fileUrl} className="text-[10px] text-ink-soft hover:text-primary">
                 نسخة {r.revisionNumber} — {fmt(r.uploadedAt)}
                 {r.note ? ` — ${r.note}` : ""}
-              </a>
+              </StorageFileLink>
             ))}
         </div>
       )}
@@ -95,15 +96,13 @@ export function RequestAttachmentsSection({ requestId, canEdit }: { requestId: s
             return (
               <div key={attachment.id} className="bg-bg rounded-lg px-3 py-2">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <a
-                    href={latest?.fileUrl}
-                    target="_blank"
-                    rel="noreferrer"
+                  <StorageFileLink
+                    stored={latest?.fileUrl}
                     className="text-xs text-primary inline-flex items-center gap-1.5 min-w-0"
                   >
                     <Paperclip size={12} className="shrink-0" />
                     <span className="truncate">{attachment.fileName}</span>
-                  </a>
+                  </StorageFileLink>
                   {canEdit && (
                     <SecondaryButton
                       onClick={() => setRevisionTargetId(attachment.id)}

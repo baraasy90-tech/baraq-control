@@ -9,13 +9,15 @@
 // المُرسِل) من قاعدة البيانات نفسها عبر مفتاح service role — فلا شيء قابل للتحكم من
 // الطالب سوى أي دعوة (token) صالحة يملكها أصلاً.
 
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.112.0";
+import { inviteToken, readBoundedJson } from "../_shared/request-policy.ts";
 
 const APP_ORIGIN = Deno.env.get("APP_BASE_URL") ?? "https://baraq-controll1.pages.dev";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": APP_ORIGIN,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 const ROLE_LABEL: Record<string, string> = { member: "عضو", head: "رئيس قسم" };
@@ -33,32 +35,26 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  if (req.method !== "POST") return new Response(null, {status:405,headers:{...corsHeaders,Allow:"POST, OPTIONS"}});
 
   try {
-    const { token } = await req.json();
-    if (!token || typeof token !== "string") {
-      return new Response(JSON.stringify({ error: "رمز الدعوة مطلوب" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const apiKey = Deno.env.get("RESEND_API_KEY");
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: "لم يتم إعداد مفتاح البريد بعد" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const respond=(status:number,error:string)=>new Response(JSON.stringify({error}),{status,headers:{...corsHeaders,"Content-Type":"application/json"}});
+    const authorization=req.headers.get("Authorization")??"";
+    if (!authorization.startsWith("Bearer ")) return respond(401,"يلزم تسجيل الدخول");
+    const caller=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_ANON_KEY")!,{global:{headers:{Authorization:authorization}},auth:{persistSession:false}});
+    const {data:{user},error:authError}=await caller.auth.getUser();
+    if(authError||!user||user.is_anonymous) return respond(401,"يلزم حساب مسجل صالح");
+    let token:string;
+    try{token=inviteToken(await readBoundedJson(req));}catch(error){return respond(400,error instanceof Error?error.message:"طلب غير صالح");}
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { data: invite, error: inviteError } = await supabaseAdmin
+    const { data: invite, error: inviteError } = await caller
       .from("invites")
-      .select("email, role, status, expires_at, invited_by, companies(name), departments(name)")
+      .select("email, role, status, expires_at, invited_by, department_id, companies(name), departments(name)")
       .eq("token", token)
       .single();
 
@@ -68,12 +64,20 @@ Deno.serve(async (req: Request) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const {data:allowed,error:permissionError}=await caller.rpc("can_manage_department",{p_department_id:invite.department_id});
+    if(permissionError||allowed!==true) return respond(403,"لا تملك صلاحية إرسال دعوات لهذا القسم");
     if (invite.status !== "pending" || new Date(invite.expires_at) < new Date()) {
       return new Response(JSON.stringify({ error: "هذه الدعوة لم تعد صالحة" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const apiKey = Deno.env.get("RESEND_API_KEY");
+    const fromEmail = Deno.env.get("INVITE_FROM_EMAIL")?.trim();
+    if (!apiKey || !fromEmail || !/^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(fromEmail)) return respond(503,"خدمة البريد غير مهيأة بعد");
+    const {data:withinLimit,error:limitError}=await supabaseAdmin.rpc("consume_edge_request",{p_actor_id:user.id,p_operation:"send-invite-email"});
+    if(limitError) return respond(503,"تعذّر التحقق من حد الإرسال؛ حاول لاحقاً");
+    if(withinLimit!==true) return respond(429,"بلغت حد الإرسال؛ انتظر قبل إعادة المحاولة");
 
     const { data: inviterProfile } = await supabaseAdmin
       .from("profiles")
@@ -85,7 +89,7 @@ Deno.serve(async (req: Request) => {
     const departmentName = escapeHtml((invite.departments as { name?: string } | null)?.name ?? "");
     const inviterName = escapeHtml(inviterProfile?.full_name ?? "مسؤول");
     const roleLabel = ROLE_LABEL[invite.role] ?? "عضو";
-    const joinLink = `${APP_ORIGIN}/join/${token}`;
+    const joinLink = `${APP_ORIGIN}/join/${encodeURIComponent(token)}`;
 
     const html = `
     <div dir="rtl" style="font-family: Tahoma, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; color: #1A2332;">
@@ -113,7 +117,7 @@ Deno.serve(async (req: Request) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "BARAQ CONTROL <onboarding@resend.dev>",
+        from: `BARAQ CONTROL <${fromEmail}>`,
         to: [invite.email],
         subject: `دعوة للانضمام إلى ${companyName} على BARAQ CONTROL`,
         html,
@@ -121,8 +125,7 @@ Deno.serve(async (req: Request) => {
     });
 
     if (!res.ok) {
-      const errText = await res.text();
-      return new Response(JSON.stringify({ error: `تعذّر إرسال البريد: ${errText}` }), {
+      return new Response(JSON.stringify({ error: "تعذّر إرسال البريد؛ حاول لاحقاً" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -131,8 +134,8 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ sent: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "حدث خطأ" }), {
+  } catch {
+    return new Response(JSON.stringify({ error: "تعذّر إرسال الدعوة؛ حاول لاحقاً" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

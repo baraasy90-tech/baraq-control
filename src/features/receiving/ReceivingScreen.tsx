@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { QueryFailureScreen } from "@/components/QueryFailureScreen";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Card, SecondaryButton, PrimaryButton, Modal, ErrorText } from "@/components/ui";
@@ -39,6 +40,7 @@ export function ReceivingScreen({ project }: { project: Project }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
   const [error, setError] = useState("");
+  const [draftId, setDraftId] = useState(() => crypto.randomUUID());
 
   const customCalendars = useCustomCalendarMap(company.id);
   const activities = activitiesQuery.data ?? [];
@@ -60,20 +62,17 @@ export function ReceivingScreen({ project }: { project: Project }) {
   const handleSubmit = async (payload: SubmissionPayload) => {
     if (!selected) return;
     setError("");
-    try {
-      if (editingSubmission) {
-        await updateSubmission.mutateAsync({ id: editingSubmission.id, projectId: project.id, ...payload });
-      } else {
-        await createSubmission.mutateAsync({ activityId: selected.id, projectId: project.id, ...payload });
-      }
-      setFormOpen(false);
-      setEditingSubmission(null);
-    } catch {
-      setError("تعذّر حفظ التقديم، حاول مجدداً");
+    if (editingSubmission) {
+      await updateSubmission.mutateAsync({ id: editingSubmission.id, activityId: selected.id, projectId: project.id, ...payload });
+    } else {
+      await createSubmission.mutateAsync({ id: draftId, activityId: selected.id, projectId: project.id, ...payload });
     }
+    setFormOpen(false);
+    setEditingSubmission(null);
   };
 
   const openNewSubmission = () => {
+    setDraftId(crypto.randomUUID());
     setEditingSubmission(null);
     setFormOpen(true);
   };
@@ -82,6 +81,9 @@ export function ReceivingScreen({ project }: { project: Project }) {
     setEditingSubmission(submission);
     setFormOpen(true);
   };
+
+  if (activitiesQuery.isError) return <QueryFailureScreen title="استلام المشروع" retry={() => activitiesQuery.refetch()} />;
+  if (activitiesQuery.isPending) return <p role="status" className="p-6">جارٍ تحميل البيانات...</p>;
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">

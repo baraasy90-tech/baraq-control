@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 import { mapFolder } from "@/features/documents/api/mapDocument";
 
 export function useDocumentFolders(projectId: string | undefined) {
@@ -7,12 +8,11 @@ export function useDocumentFolders(projectId: string | undefined) {
     queryKey: ["document-folders", projectId],
     enabled: !!projectId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from("document_folders")
         .select("*")
         .eq("project_id", projectId!)
-        .order("name", { ascending: true });
-      if (error) throw error;
+        .order("name", { ascending: true }).order("id").range(from, to));
       return data.map(mapFolder);
     },
   });

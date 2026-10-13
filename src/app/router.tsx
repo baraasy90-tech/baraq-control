@@ -1,6 +1,7 @@
 import { lazy } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppRoot } from "@/app/AppRoot";
+import { RouteErrorPage } from "@/app/RouteErrorPage";
 import { JoinScreen } from "@/features/auth/JoinScreen";
 
 const HomePage = lazy(() => import("@/app/HomePage").then((m) => ({ default: m.HomePage })));
@@ -43,10 +44,11 @@ const ProjectMaterialDetailPage = lazy(() =>
 const PlatformAdminPage = lazy(() => import("@/app/PlatformAdminPage").then((m) => ({ default: m.PlatformAdminPage })));
 
 export const router = createBrowserRouter([
-  { path: "/join/:token", element: <JoinScreen /> },
+  { path: "/join/:token", element: <JoinScreen />, errorElement: <RouteErrorPage /> },
   {
     path: "/",
     element: <AppRoot />,
+    errorElement: <RouteErrorPage />,
     children: [
       { index: true, element: <HomePage /> },
       { path: "overview", element: <OverviewPage /> },

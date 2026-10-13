@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Folder, FileText, Trash2 } from "lucide-react";
+import { QueryFailureScreen } from "@/components/QueryFailureScreen";
 import { SecondaryButton, PrimaryButton, IconButton, Modal, ErrorText, TextInput, FieldLabel } from "@/components/ui";
 import { useDocumentFolders } from "@/features/documents/api/useDocumentFolders";
 import { useDocuments } from "@/features/documents/api/useDocuments";
@@ -9,6 +10,7 @@ import { useDeleteFolder } from "@/features/documents/api/useDeleteFolder";
 import { useUploadDocument } from "@/features/documents/api/useUploadDocument";
 import { useDeleteDocument } from "@/features/documents/api/useDeleteDocument";
 import type { DocumentFolder, Project } from "@/types/domain";
+import { getFileUrl } from "@/lib/supabase/storage";
 
 export function DocumentsScreen({ project }: { project: Project }) {
   const navigate = useNavigate();
@@ -26,6 +28,19 @@ export function DocumentsScreen({ project }: { project: Project }) {
   const [confirmDeleteDocId, setConfirmDeleteDocId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [openingId, setOpeningId] = useState<string | null>(null);
+  const handleOpenDocument = async (id: string, stored: string) => {
+    setError("");setOpeningId(id);
+    const tab = window.open("about:blank", "_blank");
+    if (tab) tab.opener = null;
+    try {
+      const url = await getFileUrl("documents", stored);
+      if (!url) throw new Error("تعذّر الوصول للملف");
+      if (tab) tab.location.replace(url);
+      else { setError("اسمح بفتح نافذة المستند في إعدادات المتصفح ثم حاول مجدداً"); }
+    } catch { tab?.close();setError("تعذّر فتح المستند، حاول مجدداً"); }
+    finally { setOpeningId(null); }
+  };
 
   const folders = foldersQuery.data ?? [];
   const documents = documentsQuery.data ?? [];
@@ -58,6 +73,8 @@ export function DocumentsScreen({ project }: { project: Project }) {
     try {
       await deleteFolder.mutateAsync(folder.id);
       if (currentFolderId === folder.id) setCurrentFolderId(folder.parentFolderId);
+    } catch {
+      setError("تعذّر حذف المجلد، ربما حُذف أو تغيّرت صلاحياتك");
     } finally {
       setConfirmDeleteFolder(null);
     }
@@ -71,8 +88,8 @@ export function DocumentsScreen({ project }: { project: Project }) {
     setUploading(true);
     try {
       await uploadDocument.mutateAsync(file);
-    } catch {
-      setError("تعذّر رفع الملف، حاول مجدداً");
+    } catch (err) {
+      setError(err instanceof Error && /[\u0600-\u06ff]/.test(err.message) ? err.message : "تعذّر رفع الملف، حاول مجدداً");
     } finally {
       setUploading(false);
     }
@@ -81,10 +98,17 @@ export function DocumentsScreen({ project }: { project: Project }) {
   const handleDeleteDocument = async (id: string) => {
     try {
       await deleteDocument.mutateAsync(id);
+    } catch {
+      setError("تعذّر حذف المستند، ربما حُذف أو تغيّرت صلاحياتك");
     } finally {
       setConfirmDeleteDocId(null);
     }
   };
+
+  if (foldersQuery.isError || documentsQuery.isError) {
+    return <QueryFailureScreen title="مستندات المشروع" retry={() => Promise.all([foldersQuery.refetch(), ...(currentFolderId ? [documentsQuery.refetch()] : [])])} />;
+  }
+  if (foldersQuery.isPending || (currentFolderId && documentsQuery.isPending)) return <p role="status" className="p-6">جارٍ تحميل البيانات...</p>;
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-4xl mx-auto">
@@ -163,18 +187,17 @@ export function DocumentsScreen({ project }: { project: Project }) {
               key={doc.id}
               className="flex items-center justify-between gap-2 bg-panel border border-line/60 shadow-sm rounded-lg px-4 py-3"
             >
-              <a
-                href={doc.fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 min-w-0 flex items-center gap-2 text-ink no-underline"
+              <button
+                type="button" disabled={openingId !== null}
+                onClick={() => handleOpenDocument(doc.id, doc.fileUrl)}
+                className="flex-1 min-w-0 flex items-center gap-2 text-ink text-right bg-transparent border-none cursor-pointer disabled:opacity-50"
               >
                 <FileText size={18} className="text-ink-soft shrink-0" strokeWidth={2} />
                 <span className="text-sm font-medium truncate">{doc.name}</span>
                 <span className="text-xs text-ink-soft shrink-0">
                   {new Date(doc.uploadedAt).toLocaleDateString("ar-SA")}
                 </span>
-              </a>
+              </button>
               <IconButton icon={Trash2} label="حذف" tone="critical" onClick={() => setConfirmDeleteDocId(doc.id)} />
             </div>
           ))}

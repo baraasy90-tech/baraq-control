@@ -7,9 +7,11 @@ export function useProject(projectId: string | undefined) {
   return useQuery({
     queryKey: ["project", projectId],
     enabled: !!projectId,
+    refetchInterval: 8 * 60 * 1000,
     queryFn: async () => {
-      const { data, error } = await supabase.from("projects").select("*").eq("id", projectId!).single();
+      const { data, error } = await supabase.from("projects").select("*").eq("id", projectId!).maybeSingle();
       if (error) throw error;
+      if (!data) return null;
       const project = mapProject(data);
       project.managerSignatureUrl = await getFileUrl("signatures", data.manager_signature_url);
       return project;

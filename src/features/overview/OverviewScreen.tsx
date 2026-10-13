@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { QueryFailureScreen } from "@/components/QueryFailureScreen";
 import { useNavigate } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { FileSpreadsheet, FileText } from "lucide-react";
@@ -157,12 +158,17 @@ export function OverviewScreen() {
       latePhases: data.latePhases.map((lp) => ({ project: lp.projectName, detail: `${lp.activityName} — كان يفترض ينتهي ${fmt(lp.end)}` })),
       criticalItems: data.upcomingCritical.map((uc) => ({
         project: uc.projectName,
-        detail: `${uc.activityName} — يبدأ خلال ${uc.daysToStart} يوم`,
+        detail: `${uc.activityName} — ${uc.daysToStart < 0 ? `بدأ منذ ${Math.abs(uc.daysToStart)} يوم` : uc.daysToStart === 0 ? "يبدأ اليوم" : `يبدأ خلال ${uc.daysToStart} يوم`}`,
       })),
       overdueApprovals: overdueApprovals.map((a) => ({ project: a.projectName, detail: `${a.title} — منذ ${a.daysAtCurrentStage} يوم` })),
       print: company.print,
     });
   };
+
+  if (overviewQuery.isError || approvalsQuery.isError) {
+    return <QueryFailureScreen title="اللوحة التنفيذية" retry={() => Promise.all([overviewQuery.refetch(), approvalsQuery.refetch()])} />;
+  }
+  if (overviewQuery.isPending || approvalsQuery.isPending) return <p role="status" className="p-6">جارٍ تحميل البيانات...</p>;
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">
@@ -290,7 +296,7 @@ export function OverviewScreen() {
                     >
                       <div className="text-sm font-semibold text-ink">{uc.activityName}</div>
                       <div className="text-xs text-ink-soft">
-                        {uc.projectName} · يبدأ خلال {uc.daysToStart} يوم
+                        {uc.projectName} · {uc.daysToStart < 0 ? `بدأ منذ ${Math.abs(uc.daysToStart)} يوم` : uc.daysToStart === 0 ? "يبدأ اليوم" : `يبدأ خلال ${uc.daysToStart} يوم`}
                       </div>
                     </button>
                   ))}

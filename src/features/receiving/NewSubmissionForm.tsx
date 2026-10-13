@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { createFileUploadCache } from "@/lib/supabase/fileUploadCache";
+import { getErrorMessage } from "@/utils/errors";
 import { useNavigate } from "react-router-dom";
 import { FieldLabel, TextInput, PrimaryButton, SecondaryButton, ErrorText } from "@/components/ui";
 import { ChecklistConfirmRow, type ChecklistRowState } from "@/features/receiving/ChecklistConfirmRow";
@@ -41,6 +43,10 @@ export function NewSubmissionForm({
   submitting?: boolean;
 }) {
   const { user } = useAuth();
+  const [uploadPhoto] = useState(() => createFileUploadCache<File>(file => {
+    if (!user) return Promise.reject(new Error("يلزم تسجيل الدخول"));
+    return uploadFile("checklist-photos", `${user.id}/${uniqueFileName(file.name)}`, file);
+  }));
   const navigate = useNavigate();
   const isEditing = !!initial;
   const managerSignatureUrl = initial?.managerSignatureUrl ?? defaultSignatureUrl;
@@ -108,7 +114,7 @@ export function NewSubmissionForm({
         activity.checklist.map(async (item) => {
           const state = checklistState[item.id];
           const imageUrl = state.file
-            ? await uploadFile("checklist-photos", `${user.id}/${uniqueFileName(state.file.name)}`, state.file)
+            ? await uploadPhoto(state.file)
             : state.imagePreview;
           return { checklistItemId: item.id, checked: state.checked, imageUrl };
         })
@@ -116,7 +122,7 @@ export function NewSubmissionForm({
 
       const images = await Promise.all(
         generalImages.map((g) =>
-          g.file ? uploadFile("checklist-photos", `${user.id}/${uniqueFileName(g.file.name)}`, g.file) : g.preview
+          g.file ? uploadPhoto(g.file) : g.preview
         )
       );
 
@@ -128,8 +134,10 @@ export function NewSubmissionForm({
         checklistResults,
         images,
       });
-    } catch {
-      setError("تعذّر إرسال التقديم — تحقق من الاتصال وحاول مجدداً");
+    } catch (cause) {
+      const message = getErrorMessage(cause, "تعذّر إرسال التقديم — تحقق من الاتصال وحاول مجدداً");
+      if (message.includes("الملف غير موجود")) uploadPhoto.clear();
+      setError(/[\u0600-\u06ff]/.test(message) ? message : "تعذّر إرسال التقديم — تحقق من الاتصال وحاول مجدداً");
     } finally {
       setUploading(false);
     }

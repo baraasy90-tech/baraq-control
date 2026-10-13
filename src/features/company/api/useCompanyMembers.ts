@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 
 export interface CompanyMember {
   id: string;
@@ -11,12 +12,11 @@ export function useCompanyMembers(companyId: string | undefined) {
     queryKey: ["company_members", companyId],
     enabled: !!companyId,
     queryFn: async (): Promise<CompanyMember[]> => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from("profiles")
         .select("id, full_name")
         .eq("company_id", companyId!)
-        .order("full_name");
-      if (error) throw error;
+        .order("full_name").order("id").range(from, to));
       return data.map((p) => ({ id: p.id, fullName: p.full_name || "بدون اسم" }));
     },
   });

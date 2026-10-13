@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
+import { fetchRowsByIds } from "@/lib/supabase/fetchAllRows";
 import type { DepartmentMember } from "@/types/domain";
 
 export function useDepartmentMembers(departmentIds: string[]) {
@@ -9,21 +10,19 @@ export function useDepartmentMembers(departmentIds: string[]) {
     queryKey: ["department_members", key],
     enabled: departmentIds.length > 0,
     queryFn: async (): Promise<DepartmentMember[]> => {
-      const { data: members, error } = await supabase
+      const members = await fetchRowsByIds(departmentIds, (ids, from, to) => supabase
         .from("department_members")
         .select(
           "id, department_id, user_id, role, title, organizational_level_id, organizational_classification_id, job_title_id, employee_id"
         )
-        .in("department_id", departmentIds);
-      if (error) throw error;
+        .in("department_id", ids).order("id").range(from, to));
       if (members.length === 0) return [];
 
       const userIds = [...new Set(members.map((m) => m.user_id))];
-      const { data: profiles, error: profilesError } = await supabase
+      const profiles = await fetchRowsByIds(userIds, (ids, from, to) => supabase
         .from("profiles")
         .select("id, full_name")
-        .in("id", userIds);
-      if (profilesError) throw profilesError;
+        .in("id", ids).order("id").range(from, to));
 
       const nameById = new Map(profiles.map((p) => [p.id, p.full_name]));
       return members.map((m) => ({

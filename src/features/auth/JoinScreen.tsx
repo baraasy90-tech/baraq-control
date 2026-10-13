@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AuthCard, FieldLabel, TextInput, PrimaryButton, SecondaryButton, ErrorText } from "@/components/ui";
-import { supabase } from "@/lib/supabase/client";
+import { supabase, logoutCurrentTab } from "@/lib/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
 import { getErrorMessage } from "@/utils/errors";
 
@@ -118,7 +118,7 @@ export function JoinScreen() {
             disabled={submitting}
             onClick={async () => {
               setError("");
-              await supabase.auth.signOut();
+              logoutCurrentTab();
             }}
             className="w-full"
           >

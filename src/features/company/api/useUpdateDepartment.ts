@@ -31,7 +31,7 @@ export function useUpdateDepartment() {
       if (input.parentDepartmentId !== undefined) patch.parent_department_id = input.parentDepartmentId;
       if (input.positionX !== undefined) patch.position_x = input.positionX;
       if (input.positionY !== undefined) patch.position_y = input.positionY;
-      const { error } = await supabase.from("departments").update(patch).eq("id", input.id);
+      const { error } = await supabase.from("departments").update(patch).eq("id", input.id).select("id").single();
       if (error) throw error;
     },
     onSuccess: (_data, input) => {

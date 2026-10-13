@@ -1,3 +1,4 @@
+import { todayISO } from "@/utils/dates";
 import type { Activity, ActiveScope, Schedule } from "@/types/domain";
 
 export const SCOPE_LABEL: Record<string, string> = {
@@ -77,7 +78,7 @@ export type ReceivingGate =
  * هل استلام هذا البند مفعّل؟ يعتمد على: وصول تاريخ البداية + اعتماد المرحلة السابقة (بالصور) إن وُجدت
  */
 export function getReceivingGate(node: Activity, activities: Activity[], schedule: Schedule): ReceivingGate {
-  const t = new Date().toISOString().slice(0, 10);
+  const t = todayISO();
   const sc = schedule[node.id];
   if (!sc || sc.start > t) {
     return { unlocked: false, reason: "date", date: sc ? sc.start : null };

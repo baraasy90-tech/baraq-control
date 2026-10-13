@@ -7,122 +7,116 @@ import { computeVat } from "@/features/contracts/lib/vat";
 import { getFileUrls } from "@/lib/supabase/storage";
 import type { ContractStatus, Submission } from "@/types/domain";
 
-/**
- * جلب موحّد لكل بيانات أنشطة المشروع: الشجرة + الاستلامات الفرعية + تقديمات الاستلام
- * (بنتائجها وصورها) + الدفعات الفعلية للميزانية — مصدر بيانات واحد تستخدمه كل
- * الشاشات (الإدارة، الرئيسية، الاستلام، الميزانية) بدل تكرار نفس الاستعلامات.
- */
+import { fetchRowsByIds } from "@/lib/supabase/fetchAllRows";
+
+/** Same activity, contract and receiving semantics for project and company totals. */
+export async function loadActivities(projectIds: string[], includeDetails = true) {
+  if (projectIds.length === 0) return [];
+  const activityRows = await fetchRowsByIds(projectIds, (ids, from, to) => supabase
+    .from("activities")
+    .select("*")
+    .in("project_id", ids)
+    .order("order", { ascending: true }).order("id").range(from, to));
+  activityRows.sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id));
+  const activityIds = activityRows.map((a) => a.id);
+
+  if (activityIds.length === 0) return [];
+
+  const [checklistRows, submissionRows, budgetRows] = await Promise.all([
+    includeDetails ? fetchRowsByIds(activityIds, (ids, from, to) => supabase.from("checklist_items").select("*").in("activity_id", ids).order("order").order("id").range(from, to)) : [],
+    fetchRowsByIds(activityIds, (ids, from, to) => supabase.from("submissions").select("*").in("activity_id", ids).order("created_at").order("id").range(from, to)),
+    fetchRowsByIds(activityIds, (ids, from, to) => supabase.from("budget_actual_entries").select("*").in("activity_id", ids).order("date", { ascending: false }).order("id").range(from, to)),
+  ]);
+  const submissionIds = submissionRows.map((s) => s.id);
+
+  const linkedContractIds = [...new Set(activityRows.map((a) => a.linked_contract_id).filter((id): id is string => !!id))];
+  const linkedContracts = linkedContractIds.length > 0
+    ? await fetchRowsByIds(linkedContractIds, (ids, from, to) => supabase.from("contracts")
+        .select("id, contract_name, status, total_value, vat_inclusive, vat_rate")
+        .in("id", ids).order("id").range(from, to)) : [];
+  const linkedContractById = new Map(linkedContracts.map((c) => [c.id, c]));
+
+  const [resultRows, imageRows] = includeDetails && submissionIds.length > 0
+    ? await Promise.all([
+        fetchRowsByIds(submissionIds, (ids, from, to) => supabase.from("checklist_results").select("*").in("submission_id", ids).order("id").range(from, to)),
+        fetchRowsByIds(submissionIds, (ids, from, to) => supabase.from("submission_images").select("*").in("submission_id", ids).order("id").range(from, to)),
+      ]) : [[], []];
+  const signatureUrlByStored = includeDetails
+    ? await getFileUrls("signatures", submissionRows.map((s) => s.manager_signature_url))
+    : new Map<string, string>();
+  const photoUrlByStored = includeDetails
+    ? await getFileUrls("checklist-photos", [...resultRows.map(row => row.image_url), ...imageRows.map(row => row.image_url)])
+    : new Map<string, string>();
+  const checklistByActivity = new Map<string, ReturnType<typeof mapChecklistItem>[]>();
+  for (const row of checklistRows) {
+    const item = mapChecklistItem(row);
+    const list = checklistByActivity.get(item.activityId) ?? [];
+    list.push(item);
+    checklistByActivity.set(item.activityId, list);
+  }
+
+  const resultsBySubmission = new Map<string, ReturnType<typeof mapChecklistResult>[]>();
+  for (const row of resultRows) {
+    const item = mapChecklistResult(row);
+    item.imageUrl = row.image_url ? photoUrlByStored.get(row.image_url) ?? null : null;
+    const list = resultsBySubmission.get(item.submissionId) ?? [];
+    list.push(item);
+    resultsBySubmission.set(item.submissionId, list);
+  }
+
+  const imagesBySubmission = new Map<string, typeof imageRows>();
+  for (const row of imageRows) {
+    const list = imagesBySubmission.get(row.submission_id) ?? [];
+    list.push(row);
+    imagesBySubmission.set(row.submission_id, list);
+  }
+
+  const submissionsByActivity = new Map<string, Submission[]>();
+  for (const row of submissionRows) {
+    const submission = mapSubmission(
+      row,
+      resultsBySubmission.get(row.id) ?? [],
+      imagesBySubmission.get(row.id) ?? []
+    );
+    submission.managerSignatureUrl = row.manager_signature_url
+      ? signatureUrlByStored.get(row.manager_signature_url) ?? null
+      : null;
+    submission.images = (imagesBySubmission.get(row.id) ?? []).map(image => photoUrlByStored.get(image.image_url)).filter((url): url is string => !!url);
+    const list = submissionsByActivity.get(submission.activityId) ?? [];
+    list.push(submission);
+    submissionsByActivity.set(submission.activityId, list);
+  }
+
+  const budgetByActivity = new Map<string, ReturnType<typeof mapBudgetEntry>[]>();
+  for (const row of budgetRows) {
+    const entry = mapBudgetEntry(row);
+    const list = budgetByActivity.get(entry.activityId) ?? [];
+    list.push(entry);
+    budgetByActivity.set(entry.activityId, list);
+  }
+
+  return activityRows.map((row) => {
+    const activity = mapActivity(row, checklistByActivity.get(row.id) ?? []);
+    activity.submissions = submissionsByActivity.get(row.id) ?? [];
+    activity.actualEntries = budgetByActivity.get(row.id) ?? [];
+    const contract = row.linked_contract_id ? linkedContractById.get(row.linked_contract_id) : undefined;
+    if (contract) {
+      activity.linkedContractName = contract.contract_name;
+      activity.linkedContractStatus = contract.status as ContractStatus;
+      activity.linkedContractValue =
+        contract.total_value != null
+          ? contract.vat_rate != null
+            ? computeVat(contract.total_value, contract.vat_inclusive, contract.vat_rate).valueIncludingVat
+            : contract.total_value
+          : null;
+    }
+    return activity;
+  });
+}
 export function useActivities(projectId: string | undefined) {
   return useQuery({
-    queryKey: ["activities", projectId],
-    enabled: !!projectId,
-    queryFn: async () => {
-      const activitiesRes = await supabase
-        .from("activities")
-        .select("*")
-        .eq("project_id", projectId!)
-        .order("order", { ascending: true });
-      if (activitiesRes.error) throw activitiesRes.error;
-      const activityIds = activitiesRes.data.map((a) => a.id);
-
-      if (activityIds.length === 0) return [];
-
-      const [checklistRes, submissionsRes, budgetRes] = await Promise.all([
-        supabase.from("checklist_items").select("*").in("activity_id", activityIds).order("order", { ascending: true }),
-        supabase.from("submissions").select("*").in("activity_id", activityIds).order("created_at", { ascending: true }),
-        supabase.from("budget_actual_entries").select("*").in("activity_id", activityIds).order("date", { ascending: false }),
-      ]);
-      if (checklistRes.error) throw checklistRes.error;
-      if (submissionsRes.error) throw submissionsRes.error;
-      if (budgetRes.error) throw budgetRes.error;
-      const submissionIds = submissionsRes.data.map((s) => s.id);
-
-      const linkedContractIds = [...new Set(activitiesRes.data.map((a) => a.linked_contract_id).filter((id): id is string => !!id))];
-      const linkedContractsRes =
-        linkedContractIds.length > 0
-          ? await supabase
-              .from("contracts")
-              .select("id, contract_name, status, total_value, vat_inclusive, vat_rate")
-              .in("id", linkedContractIds)
-          : { data: [], error: null };
-      if (linkedContractsRes.error) throw linkedContractsRes.error;
-      const linkedContractById = new Map(linkedContractsRes.data.map((c) => [c.id, c]));
-
-      const [resultsRes, imagesRes] = await Promise.all([
-        supabase.from("checklist_results").select("*").in("submission_id", submissionIds),
-        supabase.from("submission_images").select("*").in("submission_id", submissionIds),
-      ]);
-      if (resultsRes.error) throw resultsRes.error;
-      if (imagesRes.error) throw imagesRes.error;
-
-      const signatureUrlByStored = await getFileUrls(
-        "signatures",
-        submissionsRes.data.map((s) => s.manager_signature_url)
-      );
-
-      const checklistByActivity = new Map<string, ReturnType<typeof mapChecklistItem>[]>();
-      for (const row of checklistRes.data) {
-        const item = mapChecklistItem(row);
-        const list = checklistByActivity.get(item.activityId) ?? [];
-        list.push(item);
-        checklistByActivity.set(item.activityId, list);
-      }
-
-      const resultsBySubmission = new Map<string, ReturnType<typeof mapChecklistResult>[]>();
-      for (const row of resultsRes.data) {
-        const item = mapChecklistResult(row);
-        const list = resultsBySubmission.get(item.submissionId) ?? [];
-        list.push(item);
-        resultsBySubmission.set(item.submissionId, list);
-      }
-
-      const imagesBySubmission = new Map<string, typeof imagesRes.data>();
-      for (const row of imagesRes.data) {
-        const list = imagesBySubmission.get(row.submission_id) ?? [];
-        list.push(row);
-        imagesBySubmission.set(row.submission_id, list);
-      }
-
-      const submissionsByActivity = new Map<string, Submission[]>();
-      for (const row of submissionsRes.data) {
-        const submission = mapSubmission(
-          row,
-          resultsBySubmission.get(row.id) ?? [],
-          imagesBySubmission.get(row.id) ?? []
-        );
-        submission.managerSignatureUrl = row.manager_signature_url
-          ? signatureUrlByStored.get(row.manager_signature_url) ?? null
-          : null;
-        const list = submissionsByActivity.get(submission.activityId) ?? [];
-        list.push(submission);
-        submissionsByActivity.set(submission.activityId, list);
-      }
-
-      const budgetByActivity = new Map<string, ReturnType<typeof mapBudgetEntry>[]>();
-      for (const row of budgetRes.data) {
-        const entry = mapBudgetEntry(row);
-        const list = budgetByActivity.get(entry.activityId) ?? [];
-        list.push(entry);
-        budgetByActivity.set(entry.activityId, list);
-      }
-
-      return activitiesRes.data.map((row) => {
-        const activity = mapActivity(row, checklistByActivity.get(row.id) ?? []);
-        activity.submissions = submissionsByActivity.get(row.id) ?? [];
-        activity.actualEntries = budgetByActivity.get(row.id) ?? [];
-        const contract = row.linked_contract_id ? linkedContractById.get(row.linked_contract_id) : undefined;
-        if (contract) {
-          activity.linkedContractName = contract.contract_name;
-          activity.linkedContractStatus = contract.status as ContractStatus;
-          activity.linkedContractValue =
-            contract.total_value != null
-              ? contract.vat_rate != null
-                ? computeVat(contract.total_value, contract.vat_inclusive, contract.vat_rate).valueIncludingVat
-                : contract.total_value
-              : null;
-        }
-        return activity;
-      });
-    },
+    queryKey: ["activities", projectId], enabled: !!projectId,
+    refetchInterval: 8 * 60 * 1000,
+    queryFn: () => loadActivities([projectId!]),
   });
 }

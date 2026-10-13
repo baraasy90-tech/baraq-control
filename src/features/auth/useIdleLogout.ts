@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { supabase } from "@/lib/supabase/client";
+import { logoutCurrentTab } from "@/lib/supabase/client";
 import { IDLE_TIMEOUT_MS, isIdleExpired, recordActivity } from "@/features/auth/idleTracker";
 
 const ACTIVITY_EVENTS = ["mousedown", "mousemove", "keydown", "touchstart", "scroll", "wheel"] as const;
@@ -14,7 +14,7 @@ export function useIdleLogout(active: boolean) {
     const restartTimeout = () => {
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
-        supabase.auth.signOut();
+        logoutCurrentTab();
       }, IDLE_TIMEOUT_MS);
     };
 
@@ -22,7 +22,7 @@ export function useIdleLogout(active: boolean) {
     // لساعات ثم عاد، لا نثق بأي حدث نشاط جديد قبل التأكد أن الجلسة لم تنتهِ صلاحيتها أصلاً.
     const checkAndMaybeSignOut = (): boolean => {
       if (isIdleExpired()) {
-        supabase.auth.signOut();
+        logoutCurrentTab();
         return true;
       }
       return false;

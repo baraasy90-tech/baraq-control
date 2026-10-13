@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { StorageFileLink } from "@/components/StorageFileLink";
 import { useNavigate, useParams } from "react-router-dom";
 import { FileText, Trash2, Upload } from "lucide-react";
 import { Card, StatCard, SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText, Modal } from "@/components/ui";
@@ -21,7 +22,7 @@ import { useProject } from "@/features/projects/api/useProject";
 import { useActivities } from "@/features/schedule/api/useActivities";
 import { useCreateActivity } from "@/features/schedule/api/useCreateActivity";
 import { fmtMoney } from "@/utils/money";
-import { fmt } from "@/utils/dates";
+import { fmt, todayISO } from "@/utils/dates";
 import { STATUS_LABEL, STATUS_TONE, PAYMENT_STATUS_LABEL, PAYMENT_STATUS_TONE } from "@/features/contracts/statusLabels";
 import { printRetentionCertificate } from "@/features/contracts/lib/printRetentionCertificate";
 import { ExtraWorksSection } from "@/features/contracts/ExtraWorksSection";
@@ -32,7 +33,7 @@ import { ApproverBadge } from "@/features/contracts/ApproverBadge";
 import { SettlementSection } from "@/features/contracts/SettlementSection";
 import { computeVat } from "@/features/contracts/lib/vat";
 import { RecordAuditTimeline } from "@/features/company/RecordAuditTimeline";
-import { getErrorMessage } from "@/utils/errors";
+import { getUserErrorMessage as getErrorMessage } from "@/utils/errors";
 
 function numOrNull(v: string): number | null {
   const n = Number(v);
@@ -116,7 +117,7 @@ export function ContractScreen() {
   const [violationName, setViolationName] = useState("");
   const [violationAmount, setViolationAmount] = useState("");
   const [violationDesc, setViolationDesc] = useState("");
-  const [violationDate, setViolationDate] = useState(new Date().toISOString().slice(0, 10));
+  const [violationDate, setViolationDate] = useState(todayISO());
 
   const addLineItem = useAddLineItem(contractId);
   const deleteLineItem = useDeleteLineItem(contractId);
@@ -514,14 +515,12 @@ export function ContractScreen() {
           </div>
 
               {contract.pdfUrl && (
-                <a
-                  href={contract.pdfUrl}
-                  target="_blank"
-                  rel="noreferrer"
+                <StorageFileLink
+                  stored={contract.pdfUrl}
                   className="inline-flex items-center gap-1.5 text-sm text-primary bg-primary-bg rounded-lg px-3 py-2 mb-4"
                 >
                   <FileText size={16} /> عرض نسخة العقد (PDF)
-                </a>
+                </StorageFileLink>
               )}
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">

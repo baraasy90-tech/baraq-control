@@ -37,7 +37,7 @@ export function useSaveOrganizationalClassification() {
     mutationFn: async (input: SaveOrganizationalClassificationInput) => {
       const row = { company_id: input.companyId, name: input.name, description: input.description };
       const { error } = input.id
-        ? await supabase.from("organizational_classifications").update(row).eq("id", input.id)
+        ? await supabase.from("organizational_classifications").update(row).eq("id", input.id).select("id").single()
         : await supabase.from("organizational_classifications").insert(row);
       if (error) throw error;
     },
@@ -52,7 +52,7 @@ export function useDeleteOrganizationalClassification(companyId: string | undefi
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("organizational_classifications").delete().eq("id", id);
+      const { error } = await supabase.from("organizational_classifications").delete().eq("id", id).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {
@@ -60,3 +60,4 @@ export function useDeleteOrganizationalClassification(companyId: string | undefi
     },
   });
 }
+

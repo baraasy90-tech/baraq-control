@@ -1,7 +1,12 @@
-import { useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import clsx from "clsx";
 import { Download } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+
+const openDialogs = new Set<HTMLDivElement>();
+let backgroundWasInert = false;
+let firstDialogOpener: HTMLElement | null = null;
 
 export function AuthCard({ children, title, eyebrow }: { children: ReactNode; title: string; eyebrow: string }) {
   return (
@@ -19,8 +24,21 @@ export function AuthCard({ children, title, eyebrow }: { children: ReactNode; ti
   );
 }
 
-export function FieldLabel({ children }: { children: ReactNode }) {
-  return <label className="block text-sm font-semibold text-ink-soft mb-1.5">{children}</label>;
+export function FieldLabel({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) {
+  const label = useRef<HTMLLabelElement>(null);
+  const id = useId();
+  useEffect(() => {
+    if (htmlFor) return;
+    const sibling = label.current?.nextElementSibling;
+    const selector = "input:not([type=hidden]), select, textarea";
+    const controls = sibling?.matches(selector) ? [sibling] : Array.from(sibling?.querySelectorAll(selector) ?? []);
+    const control = controls.length === 1 ? controls[0] : null;
+    if (control && label.current) {
+      if (!control.id) control.id = `field-${id}`;
+      label.current.htmlFor = control.id;
+    } else label.current?.removeAttribute("for");
+  });
+  return <label ref={label} htmlFor={htmlFor} className="block text-sm font-semibold text-ink-soft mb-1.5">{children}</label>;
 }
 
 export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
@@ -181,13 +199,57 @@ export function StatCard({
 }
 
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
-  return (
+  const panel = useRef<HTMLDivElement>(null);
+  // Capture before portal children with autoFocus mount and replace the active element.
+  const opener = useRef(document.activeElement instanceof HTMLElement ? document.activeElement : null);
+  const titleId = useId();
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    const previousFocus = opener.current;
+    const root = document.getElementById("root");
+    const currentPanel = panel.current;
+    if (openDialogs.size === 0) {
+      backgroundWasInert = root?.inert ?? false;
+      firstDialogOpener = previousFocus;
+    }
+    if (currentPanel) openDialogs.add(currentPanel);
+    if (root) root.inert = true;
+    const focusable = () => Array.from(panel.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+    ) ?? []).filter(element => element.getClientRects().length > 0);
+    (panel.current?.querySelector<HTMLElement>("input:not([disabled]), textarea:not([disabled]), select:not([disabled])") ?? focusable()[0] ?? panel.current)?.focus();
+    const handleKey = (event: KeyboardEvent) => {
+      const dialogs = document.querySelectorAll('[aria-modal="true"]');
+      if (dialogs[dialogs.length - 1] !== panel.current) return;
+      if (event.key === "Escape") {
+        event.preventDefault();event.stopPropagation();close.current();
+      } else if (event.key === "Tab") {
+        const elements = focusable();
+        const first = elements[0], last = elements[elements.length - 1];
+        if (!first) { event.preventDefault();panel.current?.focus(); }
+        else if (event.shiftKey && (document.activeElement === first || !panel.current?.contains(document.activeElement))) { event.preventDefault();last.focus(); }
+        else if (!event.shiftKey && (document.activeElement === last || !panel.current?.contains(document.activeElement))) { event.preventDefault();first.focus(); }
+      }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      if (currentPanel) openDialogs.delete(currentPanel);
+      if (root) root.inert = openDialogs.size > 0 || backgroundWasInert;
+      const restore = openDialogs.size === 0 ? firstDialogOpener : previousFocus;
+      if (restore?.isConnected) restore.focus();
+      if (openDialogs.size === 0) firstDialogOpener = null;
+    };
+  }, []);
+  return createPortal(
     <div className="fixed inset-0 bg-navy/50 backdrop-blur-[2px] z-50 flex items-center justify-center p-3 sm:p-5">
       <div
+        ref={panel} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}
         className="bg-panel border border-line/60 shadow-xl rounded-2xl w-full max-w-lg max-h-[calc(100vh-24px)] sm:max-h-[calc(100vh-40px)] flex flex-col"
       >
         <div className="flex items-center justify-between px-5 pt-5 sm:px-6 sm:pt-6 pb-4 shrink-0">
-          <h2 className="text-lg font-bold text-ink">{title}</h2>
+          <h2 id={titleId} className="text-lg font-bold text-ink">{title}</h2>
           <button
             onClick={onClose}
             className="text-ink-soft hover:text-ink cursor-pointer bg-transparent border-none text-xl leading-none"
@@ -199,5 +261,5 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
         <div className="overflow-y-auto px-5 pb-5 sm:px-6 sm:pb-6">{children}</div>
       </div>
     </div>
-  );
+  , document.body);
 }

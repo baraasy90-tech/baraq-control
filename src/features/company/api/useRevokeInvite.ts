@@ -6,7 +6,7 @@ export function useRevokeInvite(companyId: string) {
 
   return useMutation({
     mutationFn: async (inviteId: string) => {
-      const { error } = await supabase.from("invites").update({ status: "revoked" }).eq("id", inviteId);
+      const { error } = await supabase.from("invites").update({ status: "revoked" }).eq("id", inviteId).select("id").single();
       if (error) throw error;
     },
     onSuccess: () => {
