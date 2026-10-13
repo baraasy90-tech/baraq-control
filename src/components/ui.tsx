@@ -30,12 +30,13 @@ export function FieldLabel({ children, htmlFor }: { children: ReactNode; htmlFor
   useEffect(() => {
     if (htmlFor) return;
     const sibling = label.current?.nextElementSibling;
-    const control = sibling?.matches("input:not([type=hidden]), select, textarea")
-      ? sibling : sibling?.querySelector("input:not([type=hidden]), select, textarea");
+    const selector = "input:not([type=hidden]), select, textarea";
+    const controls = sibling?.matches(selector) ? [sibling] : Array.from(sibling?.querySelectorAll(selector) ?? []);
+    const control = controls.length === 1 ? controls[0] : null;
     if (control && label.current) {
       if (!control.id) control.id = `field-${id}`;
       label.current.htmlFor = control.id;
-    }
+    } else label.current?.removeAttribute("for");
   });
   return <label ref={label} htmlFor={htmlFor} className="block text-sm font-semibold text-ink-soft mb-1.5">{children}</label>;
 }

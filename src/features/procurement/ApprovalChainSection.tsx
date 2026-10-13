@@ -15,7 +15,7 @@ import {
 import type { MiniProfile } from "@/features/company/api/useProfilesByIds";
 import type { CompanyMember } from "@/features/company/api/useCompanyMembers";
 import { fmt } from "@/utils/dates";
-import { getErrorMessage } from "@/utils/errors";
+import { getUserErrorMessage as getErrorMessage } from "@/utils/errors";
 
 function personName(userId: string | null, profilesById: Map<string, MiniProfile>): string {
   if (!userId) return "—";

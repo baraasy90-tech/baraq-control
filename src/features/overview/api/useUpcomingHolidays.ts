@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase/client";
 import { getUpcomingIslamicHolidays } from "@/utils/hijri";
 import { getFixedHolidaysInRange } from "@/utils/nationalHolidays";
 import { getCompanyHolidaysInRange } from "@/features/company/api/useCompanyHolidays";
+import { todayISO as localTodayISO } from "@/utils/dates";
 import type { CompanyHoliday } from "@/types/domain";
 
 export interface UpcomingHoliday {
@@ -36,7 +37,7 @@ export function useUpcomingHolidays(companyId: string | undefined, countryCode: 
     enabled: !!companyId && !!countryCode,
     staleTime: 1000 * 60 * 60 * 12,
     queryFn: async (): Promise<UpcomingHoliday[]> => {
-      const todayISO = new Date().toISOString().slice(0, 10);
+      const todayISO = localTodayISO();
       const todayMs = new Date(todayISO).getTime();
       const horizonISO = new Date(todayMs + WINDOW_DAYS * 86400000).toISOString().slice(0, 10);
       const thisYear = new Date().getFullYear();

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
+import { fetchAllRows, fetchRowsByIds } from "@/lib/supabase/fetchAllRows";
 import { mapBudgetEntry } from "@/features/budget/api/mapBudgetEntry";
 import type { BudgetActualEntry } from "@/types/domain";
 
@@ -23,30 +24,27 @@ export function useCompanyBudgetEntryApprovals(companyId: string | undefined) {
     queryKey: ["company-budget-entry-approvals", companyId],
     enabled: !!companyId,
     queryFn: async (): Promise<BudgetEntryApprovalItem[]> => {
-      const { data: projectRows, error: projectsError } = await supabase
+      const projectRows = await fetchAllRows((from, to) => supabase
         .from("projects")
         .select("id, name")
-        .eq("company_id", companyId!);
-      if (projectsError) throw projectsError;
+        .eq("company_id", companyId!).order("id").range(from, to));
       const projectIds = projectRows.map((p) => p.id);
       const projectNameById = new Map(projectRows.map((p) => [p.id, p.name]));
       if (projectIds.length === 0) return [];
 
-      const { data: activityRows, error: activitiesError } = await supabase
+      const activityRows = await fetchRowsByIds(projectIds, (ids, from, to) => supabase
         .from("activities")
         .select("id, project_id, name")
-        .in("project_id", projectIds);
-      if (activitiesError) throw activitiesError;
+        .in("project_id", ids).order("id").range(from, to));
       const activityIds = activityRows.map((a) => a.id);
       const activityById = new Map(activityRows.map((a) => [a.id, a]));
       if (activityIds.length === 0) return [];
 
-      const { data: entryRows, error: entriesError } = await supabase
+      const entryRows = await fetchRowsByIds(activityIds, (ids, from, to) => supabase
         .from("budget_actual_entries")
         .select("*")
-        .in("activity_id", activityIds)
-        .neq("status", "draft");
-      if (entriesError) throw entriesError;
+        .in("activity_id", ids)
+        .neq("status", "draft").order("id").range(from, to));
 
       const now = new Date().toISOString();
       return entryRows

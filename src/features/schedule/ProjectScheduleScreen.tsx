@@ -18,7 +18,7 @@ import { suggestActivityCode } from "@/features/schedule/lib/activityCode";
 import { useScheduleHolidays } from "@/features/schedule/api/useScheduleHolidays";
 import { useCompany } from "@/features/company/useCompany";
 import { fmt, todayISO } from "@/utils/dates";
-import { getErrorMessage } from "@/utils/errors";
+import { getUserErrorMessage as getErrorMessage } from "@/utils/errors";
 import type { Activity, Project, Schedule } from "@/types/domain";
 
 export type ScheduleTab = "create" | "preview";
@@ -513,14 +513,14 @@ function PreviewTab({ activities, schedule }: { activities: Activity[]; schedule
   const months: { iso: string; leftPct: number }[] = [];
   {
     const cursor = new Date(rangeStart);
-    cursor.setDate(1);
+    cursor.setUTCDate(1);
     while (cursor.toISOString().slice(0, 10) <= rangeEnd) {
       const iso = cursor.toISOString().slice(0, 10);
       if (iso >= rangeStart || months.length === 0) {
         const offset = Math.max(0, daysBetween(rangeStart, iso));
         months.push({ iso, leftPct: (offset / totalDays) * 100 });
       }
-      cursor.setMonth(cursor.getMonth() + 1);
+      cursor.setUTCMonth(cursor.getUTCMonth() + 1);
     }
   }
 

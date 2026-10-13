@@ -1,4 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
+import { ProjectQueryState } from "@/components/ProjectQueryState";
+import { QueryFailureScreen } from "@/components/QueryFailureScreen";
 import type { ComponentType } from "react";
 import {
   CalendarClock,
@@ -35,17 +37,8 @@ export function ProjectPage() {
   const customCalendars = useCustomCalendarMap(company.id);
   const navigate = useNavigate();
 
-  if (projectQuery.isLoading) {
-    return <div className="min-h-screen flex items-center justify-center text-sm text-ink-soft">جارٍ التحميل...</div>;
-  }
-  if (projectQuery.isError || !projectQuery.data) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-sm text-ink-soft">
-        <p>تعذّر العثور على المشروع</p>
-        <SecondaryButton onClick={() => navigate("/")}>رجوع للمشاريع</SecondaryButton>
-      </div>
-    );
-  }
+  if (projectQuery.isError || projectQuery.isPending || !projectQuery.data) return <ProjectQueryState query={projectQuery} />;
+  if (activitiesQuery.isError) return <QueryFailureScreen title="بيانات المشروع" retry={() => activitiesQuery.refetch()} />;
 
   const project = projectQuery.data;
 

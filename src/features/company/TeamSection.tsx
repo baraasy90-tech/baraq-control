@@ -131,6 +131,8 @@ export function TeamSection({ companyId }: { companyId: string }) {
   const [error, setError] = useState("");
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [emailSent, setEmailSent] = useState(false);
+  const [emailAttempted, setEmailAttempted] = useState(false);
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
   const [newDeptName, setNewDeptName] = useState("");
   const [newDeptType, setNewDeptType] = useState<DepartmentType>("custom");
@@ -204,6 +206,7 @@ export function TeamSection({ companyId }: { companyId: string }) {
     if (!email.trim() || !effectiveDepartmentId) return;
     setError("");
     setGeneratedLink(null);
+    setCopiedLink(null);
     try {
       const dept = departments.find((d) => d.id === effectiveDepartmentId);
       const result = await createInvite.mutateAsync({
@@ -217,14 +220,21 @@ export function TeamSection({ companyId }: { companyId: string }) {
       });
       setGeneratedLink(`${window.location.origin}/join/${result.token}`);
       setEmailSent(result.emailSent);
+      setEmailAttempted(result.emailAttempted);
       setEmail("");
     } catch {
       setError("تعذّر إرسال الدعوة، حاول مجدداً");
     }
   };
 
-  const copyLink = (link: string) => {
-    navigator.clipboard.writeText(link).catch(() => {});
+  const copyLink = async (link: string) => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiedLink(link);
+      setError("");
+    } catch {
+      setError("تعذّر نسخ الرابط تلقائياً. حدّد الرابط وانسخه يدوياً.");
+    }
   };
 
   const effectiveNewDeptName = newDeptType === "custom" ? newDeptName.trim() : DEPARTMENT_TYPE_LABEL[newDeptType];
@@ -595,15 +605,18 @@ export function TeamSection({ companyId }: { companyId: string }) {
 
             {generatedLink && (
               <>
-                <p className={`text-xs mt-3 ${emailSent ? "text-primary" : "text-warn"}`}>
-                  {emailSent
+                <p className={`text-xs mt-3 ${emailSent || !emailAttempted ? "text-primary" : "text-warn"}`}>
+                  {!emailAttempted
+                    ? "تم إنشاء رابط الدعوة. انسخه وشاركه مع الشخص المدعو."
+                    : emailSent
                     ? "✅ تم إرسال الدعوة بالبريد الإلكتروني تلقائياً."
                     : "⚠️ تعذّر إرسال البريد تلقائياً (تحقق من إعداد خدمة البريد) — انسخ الرابط وأرسله يدوياً."}
                 </p>
                 <div className="mt-2 flex items-center gap-2 bg-primary-bg text-primary text-xs rounded-lg px-3 py-2.5">
-                  <span className="flex-1 truncate font-mono">{generatedLink}</span>
+                  <input readOnly aria-label="رابط الدعوة الجديد" value={generatedLink} onFocus={event => event.currentTarget.select()} className="flex-1 min-w-0 bg-transparent border-none font-mono text-xs" />
                   <IconButton icon={Copy} label="نسخ الرابط" onClick={() => copyLink(generatedLink)} />
                 </div>
+                {copiedLink === generatedLink && <p role="status" className="text-xs text-primary mt-1">تم نسخ رابط الدعوة.</p>}
               </>
             )}
           </>

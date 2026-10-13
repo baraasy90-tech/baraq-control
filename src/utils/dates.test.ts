@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { addDays, addByCalendar, startOfWeek, todayISO } from "./dates";
+import { addDays, addByCalendar, startOfWeek, todayISO, fmt } from "./dates";
 afterEach(() => vi.useRealTimers());
 describe("calendar dates", () => {
+  it("formats date-only values without moving them to the previous calendar day", () => {
+    const date = "2026-03-08";
+    expect(fmt(date)).toBe(new Date(date).toLocaleDateString("ar-SA", { day: "2-digit", month: "short", timeZone: "UTC" }));
+    expect(fmt(null)).toBe("—");
+  });
   it("uses the user's local calendar day after midnight", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 9, 11, 0, 15));

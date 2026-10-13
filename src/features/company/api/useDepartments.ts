@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 import type { Department } from "@/types/domain";
 
 /** يستخرج الرقم من بداية اسم القسم إن وُجد (مثال: "1 - المالية" ← 1) — يُستخدم
@@ -27,11 +28,10 @@ export function useDepartments(companyId: string | undefined) {
     queryKey: ["departments", companyId],
     enabled: !!companyId,
     queryFn: async (): Promise<Department[]> => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from("departments")
         .select("id, company_id, name, type, head_label, member_label, parent_department_id, position_x, position_y")
-        .eq("company_id", companyId!);
-      if (error) throw error;
+        .eq("company_id", companyId!).order("id").range(from, to));
       const departments = data.map((d) => ({
         id: d.id,
         companyId: d.company_id,

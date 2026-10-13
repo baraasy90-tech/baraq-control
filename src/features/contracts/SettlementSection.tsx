@@ -6,7 +6,7 @@ import { approverTitle } from "@/features/company/lib/approverTitle";
 import { ApproverBadge } from "@/features/contracts/ApproverBadge";
 import { printSettlementCertificate } from "@/features/contracts/lib/printSettlementCertificate";
 import { fmtMoney } from "@/utils/money";
-import { getErrorMessage } from "@/utils/errors";
+import { getUserErrorMessage as getErrorMessage } from "@/utils/errors";
 import type { Contract, Company, Department, DepartmentMember } from "@/types/domain";
 
 const SETTLEMENT_LABEL: Record<string, string> = {

@@ -42,7 +42,7 @@ import { computeSchedule } from "@/features/schedule/lib/schedule";
 import { fmtMoney } from "@/utils/money";
 import { fmt, todayISO } from "@/utils/dates";
 import { exportToExcel } from "@/utils/exportExcel";
-import { getErrorMessage } from "@/utils/errors";
+import { getUserErrorMessage as getErrorMessage } from "@/utils/errors";
 import type { Project, BudgetType } from "@/types/domain";
 
 const SOURCE_LABEL: Record<string, string> = { contract: "عقد مقاول", purchase: "شراء مباشر", other: "أخرى" };

@@ -16,6 +16,7 @@ export interface CreateInviteInput {
 export interface CreateInviteResult {
   token: string;
   emailSent: boolean;
+  emailAttempted: boolean;
 }
 
 export function useCreateInvite() {
@@ -39,7 +40,8 @@ export function useCreateInvite() {
       if (error) throw error;
 
       let emailSent = false;
-      try {
+      const emailAttempted = import.meta.env.VITE_INVITE_EMAIL_ENABLED === "true";
+      if (emailAttempted) try {
         const { data: fnData, error: fnError } = await supabase.functions.invoke("send-invite-email", {
           body: { token: data.token },
         });
@@ -48,7 +50,7 @@ export function useCreateInvite() {
         emailSent = false;
       }
 
-      return { token: data.token, emailSent };
+      return { token: data.token, emailSent, emailAttempted };
     },
     onSuccess: (_result, input) => {
       queryClient.invalidateQueries({ queryKey: ["invites", input.companyId] });

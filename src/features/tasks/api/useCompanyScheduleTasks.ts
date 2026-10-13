@@ -1,6 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
-import { mapActivity } from "@/features/schedule/api/mapActivity";
+import { loadActivities } from "@/features/schedule/api/useActivities";
+import { fetchAllRows, fetchRowsByIds } from "@/lib/supabase/fetchAllRows";
+import { todayISO } from "@/utils/dates";
+import type { Activity } from "@/types/domain";
 import { mapProject } from "@/features/projects/api/mapProject";
 import { computeSchedule } from "@/features/schedule/lib/schedule";
 import { withComputedDone, getCompletionDates } from "@/features/schedule/lib/completion";
@@ -32,32 +35,23 @@ export function useCompanyScheduleTasks(companyId: string | undefined) {
       if (calendarsError) throw calendarsError;
       const customCalendars = new Map(calendarRows.map((c) => [c.id, c.working_weekdays]));
 
-      const { data: projectRows, error: projectsError } = await supabase
+      const projectRows = await fetchAllRows((from, to) => supabase
         .from("projects")
         .select("*")
-        .eq("company_id", companyId!);
-      if (projectsError) throw projectsError;
+        .eq("company_id", companyId!).order("id").range(from, to));
       const projects = projectRows.map(mapProject);
       const projectIds = projects.map((p) => p.id);
       const projectById = new Map(projects.map((p) => [p.id, p]));
       if (projectIds.length === 0) return [];
 
-      const { data: activityRows, error: activitiesError } = await supabase
-        .from("activities")
-        .select("*")
-        .in("project_id", projectIds)
-        .order("order", { ascending: true });
-      if (activitiesError) throw activitiesError;
-
-      const activitiesByProject = new Map<string, ReturnType<typeof mapActivity>[]>();
-      for (const row of activityRows) {
-        const activity = mapActivity(row);
+      const activitiesByProject = new Map<string, Activity[]>();
+      for (const activity of await loadActivities(projectIds, false)) {
         const list = activitiesByProject.get(activity.projectId) ?? [];
         list.push(activity);
         activitiesByProject.set(activity.projectId, list);
       }
 
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayISO();
       const items: ScheduleTaskItem[] = [];
 
       for (const [projectId, rawActivities] of activitiesByProject) {
@@ -89,11 +83,10 @@ export function useCompanyScheduleTasks(companyId: string | undefined) {
 
       const assigneeIds = [...new Set(items.map((i) => i.assignedTo).filter((id): id is string => !!id))];
       if (assigneeIds.length > 0) {
-        const { data: profiles, error: profilesError } = await supabase
+        const profiles = await fetchRowsByIds(assigneeIds, (ids, from, to) => supabase
           .from("profiles")
           .select("id, full_name")
-          .in("id", assigneeIds);
-        if (profilesError) throw profilesError;
+          .in("id", ids).order("id").range(from, to));
         const nameById = new Map(profiles.map((p) => [p.id, p.full_name]));
         for (const item of items) {
           item.assigneeName = item.assignedTo ? (nameById.get(item.assignedTo) ?? "بدون اسم") : null;

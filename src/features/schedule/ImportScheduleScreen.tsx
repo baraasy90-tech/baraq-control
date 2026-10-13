@@ -10,7 +10,7 @@ import {
   readTextSmart,
   type ParsedScheduleRow,
 } from "@/features/schedule/lib/importParsers";
-import { getErrorMessage } from "@/utils/errors";
+import { getUserErrorMessage as getErrorMessage } from "@/utils/errors";
 
 const SUPPORTED_EXTENSIONS = ["xlsx", "xls", "csv", "xer", "xml"];
 

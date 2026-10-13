@@ -12,7 +12,7 @@ import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
 import { STATUS_LABEL, STATUS_TONE } from "@/features/contracts/statusLabels";
 import { useCompany } from "@/features/company/useCompany";
-import { getErrorMessage } from "@/utils/errors";
+import { getUserErrorMessage as getErrorMessage } from "@/utils/errors";
 import type { Contract } from "@/types/domain";
 
 export function ContractsListScreen() {

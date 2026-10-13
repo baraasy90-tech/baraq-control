@@ -13,7 +13,11 @@ export const addDays = (iso: string, d: number): string => {
 };
 
 export const fmt = (iso: string | null | undefined): string =>
-  iso ? new Date(iso).toLocaleDateString("ar-SA", { day: "2-digit", month: "short" }) : "—";
+  iso ? new Date(iso).toLocaleDateString("ar-SA", {
+    day: "2-digit", month: "short",
+    // A date-only value is a calendar day, whereas a timestamp follows the user's timezone.
+    ...(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? { timeZone: "UTC" } : {}),
+  }) : "—";
 
 /** بداية الأسبوع (الأحد) للتاريخ المُعطى، كـ ISO date. */
 export function startOfWeek(iso: string): string {

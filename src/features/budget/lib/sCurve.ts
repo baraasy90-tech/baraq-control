@@ -1,5 +1,6 @@
 import type { Activity, Schedule } from "@/types/domain";
 import { getPlannedAmount } from "@/features/budget/lib/budget";
+import { addDays } from "@/utils/dates";
 
 export interface SCurvePoint {
   date: string;
@@ -12,12 +13,6 @@ interface PlannedWindow {
   start: string;
   end: string;
   amount: number;
-}
-
-function addDays(iso: string, days: number): string {
-  const d = new Date(iso);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
 }
 
 function daysBetween(a: string, b: string): number {

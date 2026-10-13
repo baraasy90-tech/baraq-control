@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
-import { mapActivity } from "@/features/schedule/api/mapActivity";
+import { loadActivities } from "@/features/schedule/api/useActivities";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
+import type { Activity } from "@/types/domain";
 import { mapProject } from "@/features/projects/api/mapProject";
 import { computeSchedule } from "@/features/schedule/lib/schedule";
 import { withComputedDone } from "@/features/schedule/lib/completion";
@@ -30,31 +32,17 @@ export function useCompanyCriticalItems(companyId: string | undefined) {
       if (calendarsError) throw calendarsError;
       const customCalendars = new Map(calendarRows.map((c) => [c.id, c.working_weekdays]));
 
-      const { data: projectRows, error: projectsError } = await supabase
+      const projectRows = await fetchAllRows((from, to) => supabase
         .from("projects")
         .select("*")
-        .eq("company_id", companyId!);
-      if (projectsError) throw projectsError;
+        .eq("company_id", companyId!).order("id").range(from, to));
       const projects = projectRows.map(mapProject);
       const projectIds = projects.map((p) => p.id);
       const projectById = new Map(projects.map((p) => [p.id, p]));
       if (projectIds.length === 0) return [];
 
-      const { data: activityRows, error: activitiesError } = await supabase
-        .from("activities")
-        .select("*")
-        .in("project_id", projectIds)
-        .eq("critical", true)
-        .eq("done", false);
-      if (activitiesError) throw activitiesError;
-      if (activityRows.length === 0) return [];
-
-      const allActivityRows = await supabase.from("activities").select("*").in("project_id", projectIds);
-      if (allActivityRows.error) throw allActivityRows.error;
-
-      const activitiesByProject = new Map<string, ReturnType<typeof mapActivity>[]>();
-      for (const row of allActivityRows.data) {
-        const activity = mapActivity(row);
+      const activitiesByProject = new Map<string, Activity[]>();
+      for (const activity of await loadActivities(projectIds, false)) {
         const list = activitiesByProject.get(activity.projectId) ?? [];
         list.push(activity);
         activitiesByProject.set(activity.projectId, list);
@@ -63,17 +51,15 @@ export function useCompanyCriticalItems(companyId: string | undefined) {
       const today = todayISO();
       const items: CriticalItem[] = [];
 
-      for (const row of activityRows) {
-        const project = projectById.get(row.project_id);
+      for (const [projectId, rawActivities] of activitiesByProject) {
+        const project = projectById.get(projectId);
         if (!project) continue;
-        const rawActivities = activitiesByProject.get(row.project_id) ?? [];
         const activities = withComputedDone(rawActivities);
         const schedule = computeSchedule(activities, customCalendars);
-        const sc = schedule[row.id];
-        const activity = activities.find((a) => a.id === row.id);
-        if (!sc || !activity || activity.done) continue;
-
-        items.push({
+        for (const activity of activities) {
+          const sc = schedule[activity.id];
+          if (!sc || !activity.critical || activity.done) continue;
+          items.push({
           id: activity.id,
           projectId: project.id,
           projectName: project.name,
@@ -81,7 +67,8 @@ export function useCompanyCriticalItems(companyId: string | undefined) {
           startDate: sc.start,
           daysToStart: Math.round((new Date(sc.start).getTime() - new Date(today).getTime()) / 86400000),
           leadDays: activity.alertLeadDays ?? 7,
-        });
+          });
+        }
       }
 
       return items.sort((a, b) => a.daysToStart - b.daysToStart);

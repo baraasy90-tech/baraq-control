@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AuthCard, FieldLabel, TextInput, PrimaryButton, SecondaryButton, ErrorText } from "@/components/ui";
-import { supabase } from "@/lib/supabase/client";
+import { supabase, logoutCurrentTab } from "@/lib/supabase/client";
 import { getErrorMessage } from "@/utils/errors";
 
 function isAlreadyRegisteredError(message: string): boolean {
@@ -43,7 +43,7 @@ export function SecureAccountScreen() {
 
   const handleUseExistingAccount = async () => {
     setSigningOut(true);
-    await supabase.auth.signOut();
+    logoutCurrentTab();
   };
 
   if (emailTaken) {

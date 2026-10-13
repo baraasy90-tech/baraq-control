@@ -23,5 +23,15 @@ await test('support rejects injected system history',()=>request('support-chat',
 await test('support rejects oversized message',()=>request('support-chat',{message:'x'.repeat(4001)},'member'),400);
 await test('support bounds raw body',()=>request('support-chat',{message:'x'.repeat(40000)},'member'),400);
 await test('support provider configuration failure is actionable',()=>request('support-chat',{message:'كيف أستخدم التطبيق؟'},'member'),503);
+const isolatedEmail='synthetic-unjoined-'+Date.now()+'@example.invalid';
+const isolatedPassword=crypto.randomUUID()+'aA1!';
+const isolatedAccount=await admin.auth.admin.createUser({email:isolatedEmail,password:isolatedPassword,email_confirm:true});
+if(isolatedAccount.error)throw isolatedAccount.error;
+const isolatedClient=createClient(config.API_URL,config.ANON_KEY,{auth:{persistSession:false}});
+const isolatedLogin=await isolatedClient.auth.signInWithPassword({email:isolatedEmail,password:isolatedPassword});
+if(isolatedLogin.error)throw isolatedLogin.error;
+tokens.unjoined=isolatedLogin.data.session.access_token;
+await test('signed-in account without a company cannot consume support',()=>request('support-chat',{message:'help'},'unjoined'),403);
+await isolatedClient.auth.signOut();
 fs.writeFileSync('verification-results/edge-real-local.json',JSON.stringify({checks,providerCallsEnabled:false,productionTouched:false},null,2));
 console.log('PASS local Edge runtime: '+checks.length+' authentication, authorization, method and payload checks; no external provider calls');

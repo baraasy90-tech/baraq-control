@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase/client";
+import { supabase, logoutCurrentTab } from "@/lib/supabase/client";
 import { isIdleExpired, recordActivity } from "@/features/auth/idleTracker";
 
 interface AuthContextValue {
@@ -27,9 +27,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data } = await supabase.auth.getSession();
         if (cancelled) return;
         if (data.session && isIdleExpired()) {
-          await supabase.auth.signOut();
-          if (cancelled) return;
-          setSession(null);
+          logoutCurrentTab(data.session.access_token);
+          return;
         } else {
           if (data.session) recordActivity();
           setSession(data.session);

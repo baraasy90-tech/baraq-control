@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { loadActivities } from "@/features/schedule/api/useActivities";
 import { withComputedDone } from "@/features/schedule/lib/completion";
-import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
+import { fetchAllRows, fetchRowsByIds } from "@/lib/supabase/fetchAllRows";
 import { todayISO } from "@/utils/dates";
 import { mapProject } from "@/features/projects/api/mapProject";
 import { computeSchedule, getLatePhases, getCriticalUpcoming } from "@/features/schedule/lib/schedule";
@@ -105,8 +105,8 @@ export function useCompanyOverview(companyId: string | undefined) {
       const taskStatusCounts: Record<TaskStatus, number> = { todo: 0, in_progress: 0, done: 0 };
       let overdueTaskCount = 0;
       if (projectIds.length > 0) {
-        const taskRows = await fetchAllRows((from, to) => supabase.from("tasks").select("status, due_date")
-          .in("project_id", projectIds).order("id").range(from, to));
+        const taskRows = await fetchRowsByIds(projectIds, (ids, from, to) => supabase.from("tasks").select("status, due_date")
+          .in("project_id", ids).order("id").range(from, to));
         const today = todayISO();
         for (const t of taskRows) {
           taskStatusCounts[t.status]++;

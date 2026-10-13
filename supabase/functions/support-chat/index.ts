@@ -44,10 +44,15 @@ Deno.serve(async (req: Request) => {
     if(authError||!user||user.is_anonymous)return respond(401,"يلزم حساب مسجل صالح");
     let messages:{role:"user"|"assistant";content:string}[];
     try{messages=supportMessages(await readBoundedJson(req));}catch(error){return respond(400,error instanceof Error?error.message:"طلب غير صالح");}
+    const {data:profile,error:profileError}=await caller.from("profiles").select("company_id").eq("id",user.id).maybeSingle();
+    if(profileError||!profile?.company_id)return respond(403,"يلزم الانضمام إلى حساب مشروع لاستخدام الدعم");
+    const {data:company,error:companyError}=await caller.from("companies").select("id").eq("id",profile.company_id).maybeSingle();
+    if(companyError||!company)return respond(403,"لا تملك صلاحية استخدام الدعم لهذا الحساب");
 
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-    const model = Deno.env.get("ANTHROPIC_MODEL")?.trim();
-    if (!apiKey || !model) return respond(503,"خدمة الدعم غير مهيأة بعد؛ تواصل مع مدير الحساب");
+    // Preserve the existing model unless the operator explicitly configures another.
+    const model = Deno.env.get("ANTHROPIC_MODEL")?.trim() || "claude-opus-5";
+    if (!apiKey) return respond(503,"خدمة الدعم غير مهيأة بعد؛ تواصل مع مدير الحساب");
 
     const client = new Anthropic({ apiKey, timeout: 20_000, maxRetries: 0 });
     const admin=createClient(Deno.env.get("SUPABASE_URL")!,Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,{auth:{persistSession:false}});

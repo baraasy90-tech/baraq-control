@@ -1,5 +1,6 @@
-import { Suspense, useEffect, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useProfile } from "@/features/company/useProfile";
 import { LoginScreen } from "@/features/auth/LoginScreen";
@@ -101,6 +102,28 @@ function BrandMark() {
 function AppRootContent() {
   const { session, loading: authLoading, error: authError } = useAuth();
   const profileQuery = useProfile();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const companyScope = profileQuery.data?.profile.companyId;
+  const previousScope = useRef<string | null | undefined>(undefined);
+  const [tenantEpoch, setTenantEpoch] = useState(0);
+  const scopeChanging = companyScope !== undefined && previousScope.current !== undefined && previousScope.current !== companyScope;
+  useLayoutEffect(() => {
+    if (companyScope === undefined) return;
+    if (previousScope.current === undefined) { previousScope.current = companyScope; return; }
+    if (previousScope.current === companyScope) return;
+    let active = true;
+    const predicate = (query: { queryKey: readonly unknown[] }) => query.queryKey[0] !== "profile";
+    void queryClient.cancelQueries({ predicate }).then(() => {
+      if (!active) return;
+      queryClient.removeQueries({ predicate });
+      queryClient.getMutationCache().clear();
+      previousScope.current = companyScope;
+      setTenantEpoch(value => value + 1);
+      navigate("/", { replace: true });
+    });
+    return () => { active = false; };
+  }, [companyScope, queryClient, navigate]);
   useIdleLogout(!!session);
 
   if (authLoading) return <CenteredMessage>جارٍ التحميل...</CenteredMessage>;
@@ -109,6 +132,7 @@ function AppRootContent() {
   if (session.user.is_anonymous) return <SecureAccountScreen />;
   if (profileQuery.isError) return <CenteredMessage>تعذّر تحميل البيانات، حدّث الصفحة وحاول مجدداً</CenteredMessage>;
   if (!profileQuery.data) return <CenteredMessage>جارٍ التحميل...</CenteredMessage>;
+  if (scopeChanging) return <CenteredMessage>جارٍ تحديث بيانات الحساب...</CenteredMessage>;
 
   const { profile, company } = profileQuery.data;
 
@@ -116,14 +140,14 @@ function AppRootContent() {
   if (!company) return <PendingJoinOrOnboarding fullName={profile.fullName} />;
 
   return (
-    <>
+    <div key={`${company.id}:${tenantEpoch}`}>
       <AppShell>
         <Suspense fallback={<CenteredMessage>جارٍ التحميل...</CenteredMessage>}>
           <Outlet />
         </Suspense>
       </AppShell>
       <SupportChatWidget />
-    </>
+    </div>
   );
 }
 

@@ -6,7 +6,7 @@ import { useMaterialRequests } from "@/features/procurement/api/useMaterialReque
 import { useCreateMaterialRequest, useDeleteMaterialRequest } from "@/features/procurement/api/useSaveMaterialRequest";
 import { fmtMoney } from "@/utils/money";
 import { fmt } from "@/utils/dates";
-import { getErrorMessage } from "@/utils/errors";
+import { getUserErrorMessage as getErrorMessage } from "@/utils/errors";
 import { MATERIAL_STATUS_LABEL, MATERIAL_STATUS_TONE } from "@/features/procurement/statusLabels";
 
 export function MaterialRequestsListScreen() {
