@@ -46,7 +46,10 @@ $$;
 
 create function public.has_platform_admin_access()
 returns boolean language sql stable security definer set search_path = '' as $$
-  select public.is_platform_admin() and coalesce(auth.jwt()->>'aal', '') = 'aal2';
+  select public.is_platform_admin() and coalesce(auth.jwt()->>'aal', '') = 'aal2'
+    and exists(select 1 from auth.sessions s
+      where s.id=nullif(auth.jwt()->>'session_id','')::uuid and s.user_id=auth.uid()
+        and s.aal::text='aal2' and (s.not_after is null or s.not_after > now()));
 $$;
 revoke all on function public.has_platform_admin_access() from public, anon;
 grant execute on function public.has_platform_admin_access() to authenticated;

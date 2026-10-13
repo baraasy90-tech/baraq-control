@@ -2,14 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import type { CompanyBillingRow, SubscriptionStatus } from "@/types/domain";
 import { useAuth } from "@/features/auth/AuthContext";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 
 export function useCompaniesBilling() {
   const { user } = useAuth();
   return useQuery({
     queryKey: ["companies-billing", user?.id],
     queryFn: async (): Promise<CompanyBillingRow[]> => {
-      const { data, error } = await supabase.rpc("list_all_companies_billing");
-      if (error) throw error;
+      const data = await fetchAllRows((from, to) => supabase.rpc("list_all_companies_billing").range(from, to));
       return data.map((row) => ({
         id: row.id,
         name: row.name,

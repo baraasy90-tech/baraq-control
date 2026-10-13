@@ -7,6 +7,8 @@ const sqlId = n => `'${uuid(n)}'`;
 await db.exec(`
 create role anon; create role authenticated;
 create schema auth;
+create table auth.sessions(id uuid primary key,user_id uuid,aal text,not_after timestamptz);
+insert into auth.sessions(id,user_id,aal) values (${sqlId(1001)},${sqlId(1)},'aal2'),(${sqlId(1002)},${sqlId(2)},'aal2');
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
 create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb $$;
 grant usage on schema auth to authenticated;
@@ -29,7 +31,7 @@ let count = 0;
 async function test(name, run) { await run(); console.log("PASS", name); count++; }
 async function actor(n, aal = "aal1", anonymous = false, role = "authenticated") {
   await db.exec(`reset role; set role ${role};`);
-  await db.query("select set_config('request.jwt.claim.sub',$1,false), set_config('request.jwt.claims',$2,false)", [n ? uuid(n) : "", JSON.stringify({aal,is_anonymous:anonymous})]);
+  await db.query("select set_config('request.jwt.claim.sub',$1,false), set_config('request.jwt.claims',$2,false)", [n ? uuid(n) : "", JSON.stringify({aal,is_anonymous:anonymous,session_id:uuid(1000+(n??0))})]);
 }
 const list = () => db.query("select * from public.list_all_companies_billing()");
 const change = (status = "active", id = uuid(101), note = "test") => db.query("select public.set_company_subscription($1,$2,null,$3)", [id,status,note]);
@@ -65,5 +67,12 @@ await test("audit cannot be rewritten directly by admin", () => denied(() => db.
 await test("failed writes create no audit entry", async () => assert.equal((await db.query("select * from public.list_subscription_audit($1)",[uuid(101)])).rows.length,1));
 await test("MFA admin must use audited RPC instead of direct billing writes", () => assert.rejects(() => db.exec("update public.companies set subscription_status='canceled'"), /إدارة المنصة فقط/));
 await test("admin cannot grant another administrator from browser", () => denied(() => db.query("insert into platform_admins(user_id) values($1)",[uuid(2)])));
+await db.exec("reset role");
+await db.query("update auth.sessions set not_after=now()-interval '1 second' where id=$1",[uuid(1001)]);await actor(1,"aal2");
+await test("expired server session cannot use unexpired MFA JWT", () => denied(list));
+await db.exec("reset role");await db.query("update auth.sessions set not_after=null,user_id=$1 where id=$2",[uuid(2),uuid(1001)]);await actor(1,"aal2");
+await test("session identity must match the allowlisted user", () => denied(list));
+await db.exec("reset role");await db.query("delete from auth.sessions where id=$1",[uuid(1001)]);await actor(1,"aal2");
+await test("revoked server session immediately loses administrative RPC access", () => denied(list));
 await db.close();
 console.log(`${count} platform authorization checks passed`);

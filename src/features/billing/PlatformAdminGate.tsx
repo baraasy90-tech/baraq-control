@@ -27,7 +27,9 @@ export function PlatformAdminGate({ children }: { children: ReactNode }) {
       if (assurance.error) throw assurance.error;
       const factors = await supabase.auth.mfa.listFactors();
       if (factors.error) throw factors.error;
-      return { ready: assurance.data.currentLevel === "aal2", factor: factors.data.totp[0]?.id };
+      const granted = await supabase.rpc("has_platform_admin_access");
+      if (granted.error) throw granted.error;
+      return { ready: granted.data === true, revoked: assurance.data.currentLevel === "aal2" && !granted.data, factor: factors.data.totp[0]?.id };
     },
     staleTime: 0,
   });
@@ -61,6 +63,7 @@ export function PlatformAdminGate({ children }: { children: ReactNode }) {
   if (admin.isPending || (admin.data && access.isPending)) return <p className="p-6">جارٍ التحقق من صلاحية الدخول...</p>;
   if (admin.isError || access.isError) return <Card><ErrorText>تعذّر التحقق من صلاحية الدخول.</ErrorText><SecondaryButton onClick={() => { void admin.refetch(); void access.refetch(); }}>إعادة المحاولة</SecondaryButton></Card>;
   if (!admin.data) return <Card><p>هذه النافذة محصورة بمدير المنصة.</p></Card>;
+  if (access.data?.revoked) return <Card><p>صلاحية إدارة المنصة غير متاحة لهذا الحساب حالياً.</p></Card>;
   if (access.data?.ready) return <>{children}</>;
   return <div className="max-w-md mx-auto p-4"><Card>
     <h1 className="font-bold mb-3">حماية إدارة المنصة</h1>
