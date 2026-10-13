@@ -102,5 +102,8 @@ type GeneratedFunctions = Generated['public']['Functions'];
 type FunctionReturns<F extends keyof GeneratedFunctions> = F extends 'list_all_companies_billing' ? Replace<GeneratedFunctions[F]['Returns'][number], {subscription_status: CheckedFields['companies']['subscription_status']}>[] : GeneratedFunctions[F]['Returns'];
 export type Database = Omit<Generated,'public'> & {public: Omit<Generated['public'],'Tables'|'Functions'> & {
  Tables: {[T in keyof Generated['public']['Tables']]: {[P in keyof Generated['public']['Tables'][T]]: P extends 'Row'|'Insert'|'Update' ? Replace<Generated['public']['Tables'][T][P], T extends keyof CheckedFields ? CheckedFields[T] : {}> : Generated['public']['Tables'][T][P]}};
- Functions: {[F in keyof GeneratedFunctions]: Omit<GeneratedFunctions[F],'Args'|'Returns'> & {Args: Args<GeneratedFunctions[F]['Args']>;Returns:FunctionReturns<F>}};
+ Functions: {[F in keyof GeneratedFunctions]: Omit<GeneratedFunctions[F],'Args'|'Returns'> & {Args: Args<GeneratedFunctions[F]['Args']>;Returns:FunctionReturns<F>}} & {
+   has_platform_admin_access: { Args: Record<string, never>; Returns: boolean };
+   list_subscription_audit: { Args: {p_company_id: string}; Returns: {id:number;changed_at:string;previous_status:string;next_status:string;previous_ends_at:string;next_ends_at:string;note:string|null}[] };
+ };
 }};
