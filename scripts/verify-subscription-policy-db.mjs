@@ -1,0 +1,57 @@
+import {PGlite} from '@electric-sql/pglite';
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const db=new PGlite();const id=n=>`00000000-0000-0000-0000-${String(n).padStart(12,'0')}`;
+const map={profiles:['company_id','companies'],projects:['company_id','companies'],activities:['project_id','projects'],departments:['company_id','companies'],department_members:['department_id','departments'],project_members:['project_id','projects'],invites:['company_id','companies'],company_holidays:['company_id','companies'],custom_calendars:['company_id','companies'],employees:['company_id','companies'],job_titles:['company_id','companies'],organizational_levels:['company_id','companies'],organizational_classifications:['company_id','companies'],tasks:['project_id','projects'],document_folders:['project_id','projects'],documents:['folder_id','document_folders'],contracts:['project_id','projects'],contract_line_items:['contract_id','contracts'],contract_payments:['contract_id','contracts'],contract_extra_works:['contract_id','contracts'],contract_deductions:['contract_id','contracts'],budget_actual_entries:['activity_id','activities'],budget_reconciliation_notes:['project_id','projects'],checklist_items:['activity_id','activities'],submissions:['activity_id','activities'],checklist_results:['submission_id','submissions'],submission_images:['submission_id','submissions'],material_requests:['project_id','projects'],material_request_options:['material_request_id','material_requests'],material_request_attachments:['material_request_id','material_requests'],approval_chain_templates:['company_id','companies'],approval_chain_template_steps:['template_id','approval_chain_templates'],approval_chains:['material_request_id','material_requests'],approval_chain_steps:['chain_id','approval_chains'],internal_requests:['company_id','companies'],internal_request_attachments:['request_id','internal_requests'],internal_request_attachment_revisions:['attachment_id','internal_request_attachments'],internal_approval_chains:['internal_request_id','internal_requests'],internal_approval_chain_steps:['chain_id','internal_approval_chains']};
+await db.exec(`create role authenticated;create role anon;create schema auth;create schema storage;create schema platform_private;
+ create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+ create function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb$$;
+ create table companies(id uuid primary key,name text,subscription_status text,trial_ends_at timestamptz,subscription_note text,subscription_updated_by uuid,subscription_updated_at timestamptz);
+ create table platform_private.subscription_audit(company_id uuid,actor_id uuid,previous_status text,next_status text,previous_ends_at timestamptz,next_ends_at timestamptz,note text);
+ create function public.has_platform_admin_access() returns boolean language sql stable as $$select auth.uid()='${id(1)}'::uuid and auth.jwt()->>'aal'='aal2'$$;
+ create table storage.objects(id uuid primary key,owner_id text,owner uuid,name text);
+ grant usage on schema auth,storage to authenticated;
+ insert into companies values('${id(101)}','Tenant A','trial',now()-interval '31 days',null,null,null),('${id(102)}','Tenant B','active',now(),null,null,null);
+`);
+for(const [table,[key]] of Object.entries(map))await db.exec(`create table public.${table}(id uuid primary key,${key} uuid,name text,signature_url text)`);
+const rows={companies:id(101)};let next=200;
+for(const [table,[key,parent]] of Object.entries(map)){rows[table]=id(++next);await db.query(`insert into ${table}(id,${key},name) values($1,$2,'initial')`,[rows[table],rows[parent]]);}
+await db.query('insert into profiles(id,company_id,name) values($1,$2,$3)',[id(1),id(101),'owner']);
+await db.query('insert into profiles(id,company_id,name) values($1,$2,$3)',[id(2),id(102),'customer']);
+await db.exec('grant select,insert,update,delete on all tables in schema public to authenticated;grant select,insert,update,delete on storage.objects to authenticated');
+await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261013153336_subscription_access_policy.sql',import.meta.url),'utf8'));
+const actor=async(n=1,aal='aal1')=>{await db.exec('reset role;set role authenticated');await db.query("select set_config('request.jwt.claim.sub',$1,false),set_config('request.jwt.claims',$2,false)",[id(n),JSON.stringify({aal,is_anonymous:false})]);};
+const root=()=>db.exec("reset role;select set_config('request.jwt.claim.sub','',false)");
+let passed=0;async function test(name,run){await run();passed++;console.log('PASS',name);}
+const state=async()=>(await db.query('select get_company_subscription_policy() as state')).rows[0].state;
+await actor();
+await test('deployment leaves expired tenants writable until explicit activation',async()=>assert.equal((await state()).can_write,true));
+await test('owner without MFA cannot enable policy',()=>assert.rejects(()=>db.query('select set_company_subscription_policy($1,true)',[id(101)]),/التحقق بخطوتين/));
+await actor(2,'aal2');await test('customer cannot read another tenant policy',()=>assert.rejects(()=>db.query('select get_company_subscription_policy($1)',[id(101)]),/صلاحية/));
+await actor(1,'aal2');await db.query('select set_company_subscription_policy($1,true)',[id(101)]);
+await test('expired policy becomes read only and marks exports',async()=>{const s=await state();assert.equal(s.can_write,false);assert.equal(s.stage,'read_only');assert.ok(s.export_notice);});
+await test('frozen company branding cannot be changed',()=>assert.rejects(()=>db.query("update companies set name='blocked' where id=$1",[id(101)]),/القراءة فقط/));
+await test('policy change is audited exactly once, including idempotent retry',async()=>{await db.query('select set_company_subscription_policy($1,true)',[id(101)]);await root();assert.equal((await db.query('select count(*)::int as n from platform_private.subscription_audit')).rows[0].n,1);await actor();});
+for(const [table] of Object.entries(map).filter(([t])=>t!=='profiles')){
+ await test(table+' blocks updates and preserves reads',async()=>{assert.equal((await db.query(`select name from ${table} where id=$1`,[rows[table]])).rows[0].name,'initial');await assert.rejects(()=>db.query(`update ${table} set name='blocked' where id=$1`,[rows[table]]),/القراءة فقط/);});
+}
+await test('SECURITY DEFINER business RPC cannot bypass frozen tenant',async()=>{await root();await db.exec(`create function unsafe_business_write() returns void language sql security definer as $$update activities set name='rpc bypass'$$;`);await actor();await assert.rejects(()=>db.query('select unsafe_business_write()'),/القراءة فقط/);});
+await test('frozen record cannot move to an active company',()=>assert.rejects(()=>db.query('update projects set company_id=$1 where id=$2',[id(102),rows.projects]),/القراءة فقط/));
+await test('deletes cannot bypass policy',()=>assert.rejects(()=>db.query('delete from documents where id=$1',[rows.documents]),/القراءة فقط/));
+await test('new child rows cannot bypass policy',()=>assert.rejects(()=>db.query('insert into tasks(id,project_id) values($1,$2)',[id(999),rows.projects]),/القراءة فقط/));
+await test('storage upload is blocked',()=>assert.rejects(()=>db.query('insert into storage.objects(id,owner_id,name) values($1,$2,$3)',[id(900),id(1),'test-file']),/القراءة فقط/));
+await test('profile name remains editable without moving out of frozen company',async()=>{await db.query("update profiles set name='new name' where id=$1",[id(1)]);await assert.rejects(()=>db.query('update profiles set company_id=$1 where id=$2',[id(102),id(1)]),/القراءة فقط/);});
+await root();await db.query("update companies set trial_ends_at=now()-interval '1 day' where id=$1",[id(101)]);await actor();
+await test('grace permits writes and marks exports',async()=>{const s=await state();assert.equal(s.stage,'grace');assert.equal(s.can_write,true);assert.ok(s.export_notice);await db.query("update activities set name='during grace' where id=$1",[rows.activities]);});
+await root();await db.query("update companies set trial_ends_at=now()+interval '1 day' where id=$1",[id(101)]);await actor();
+await test('trial has no export notice',async()=>assert.equal((await state()).export_notice,null));
+await root();await db.exec('begin');await db.query("update companies set trial_ends_at=now()-interval '720 hours' where id=$1",[id(101)]);await actor();
+await test('30-day SQL boundary is read only at the exact instant',async()=>{assert.equal((await state()).stage,'read_only');assert.equal((await state()).can_write,false);});
+await db.exec('rollback');await actor();
+await root();await db.query("update companies set subscription_status='canceled' where id=$1",[id(101)]);await actor();
+await test('canceled policy is immediately read only',async()=>assert.equal((await state()).can_write,false));
+await root();await db.query("update companies set subscription_status='active' where id=$1",[id(101)]);await actor();
+await test('reactivation restores writes and removes export notice',async()=>{const s=await state();assert.equal(s.can_write,true);assert.equal(s.export_notice,null);});
+await root();await db.query("update companies set subscription_status='canceled' where id=$1",[id(101)]);await actor(1,'aal2');
+await actor(1,'aal2');await db.query('select set_company_subscription_policy($1,false)',[id(101)]);
+await test('MFA admin can disable frozen policy without a deadlock',async()=>{assert.equal((await state()).can_write,true);await db.query("update activities set name='restored' where id=$1",[rows.activities]);});
+await db.close();console.log(`${passed} subscription policy checks passed`);

@@ -6,6 +6,7 @@ import { fmt } from "@/utils/dates";
 import type { CompanyBillingRow, SubscriptionStatus } from "@/types/domain";
 import { POLICY_LABELS, previewSubscriptionPolicy } from "./subscriptionPolicy";
 import { getUserErrorMessage } from "@/utils/errors";
+import { SubscriptionPolicyControl } from "./SubscriptionPolicyControl";
 
 const STATUS_LABEL: Record<SubscriptionStatus, string> = {
   trial: "تجربة مجانية",
@@ -86,8 +87,9 @@ function EditSubscriptionModal({ row, onClose }: { row: CompanyBillingRow; onClo
         <div className="rounded-lg bg-bg p-3 text-xs">
           <p className="font-bold">معاينة السياسة المقترحة: {POLICY_LABELS[preview.stage]}</p>
           {preview.graceEndsAt && <p>نهاية مهلة السماح: {fmt(preview.graceEndsAt)}</p>}
-          <p>هذه معاينة؛ قيود القراءة فقط وعلامات التصدير لم تُفعّل بعد.</p>
+          <p>تطبيق القيود يعتمد على تفعيل السياسة لهذا الحساب أدناه.</p>
         </div>
+        <SubscriptionPolicyControl companyId={row.id} />
         <ErrorText>{error}</ErrorText>
         <div className="flex gap-2">
           <SecondaryButton onClick={onClose} disabled={setSubscription.isPending} className="flex-1">

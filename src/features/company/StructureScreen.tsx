@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Plus, Trash2, FileText, FileSpreadsheet } from "lucide-react";
 import { SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText, Modal, ExportMenu } from "@/components/ui";
 import { exportToExcel } from "@/utils/exportExcel";
+import { printCurrentPage } from "@/utils/printWindow";
+import { getUserErrorMessage } from "@/utils/errors";
 import { useCompany } from "@/features/company/useCompany";
 import { useDepartments } from "@/features/company/api/useDepartments";
 import { useDepartmentMembers } from "@/features/company/api/useDepartmentMembers";
@@ -127,6 +129,7 @@ export function StructureScreen() {
   const [editError, setEditError] = useState("");
   const [confirmDeleteDept, setConfirmDeleteDept] = useState<Department | null>(null);
   const [deleteError, setDeleteError] = useState("");
+  const [exportError,setExportError]=useState("");
 
   const isOwner = company.createdBy === profile.id;
   const isExecutive = members.some(
@@ -227,8 +230,9 @@ export function StructureScreen() {
   /** بدل توليد مستند PDF منفصل مُصمَّم بشكل مختلف عمّا يظهر فعلياً على الشاشة، نطبع
    * المحتوى المعروض حالياً كما هو (أي تبويب مفتوح: الهيكلة، نشاط الأعضاء، المستويات
    * والتصنيفات، أو الموظفون) عبر .print-area في index.css. */
-  const handleExportOrgChart = () => {
-    window.print();
+  const handleExportOrgChart = async () => {
+    setExportError("");
+    try { await printCurrentPage(); } catch(err) { setExportError(getUserErrorMessage(err,"تعذّر تجهيز الطباعة")); }
   };
 
   const handleExportExcel = async () => {
@@ -247,7 +251,9 @@ export function StructureScreen() {
           التصنيف: m.organizationalClassificationId ? classificationById.get(m.organizationalClassificationId)?.name ?? "" : "",
         }))
     );
-    await exportToExcel(`الهيكل التنظيمي - ${company.name}`, [{ name: "الهيكل التنظيمي", rows }]);
+    setExportError("");
+    try { await exportToExcel(`الهيكل التنظيمي - ${company.name}`, [{ name: "الهيكل التنظيمي", rows }]); }
+    catch(err) { setExportError(getUserErrorMessage(err,"تعذّر تصدير الهيكل")); }
   };
 
   return (
@@ -300,6 +306,7 @@ export function StructureScreen() {
         ))}
       </div>
 
+      <ErrorText>{exportError}</ErrorText>
       <div className="print-area">
       {tab === "activity" ? (
         <DepartmentActivityView />

@@ -14,6 +14,7 @@ import { useCustomCalendars, useCustomCalendarMap } from "@/features/schedule/ap
 import { useCompanyMembers } from "@/features/company/api/useCompanyMembers";
 import { withComputedDone, getCompletionDates } from "@/features/schedule/lib/completion";
 import { exportPrimaveraXer, downloadXerFile } from "@/features/schedule/lib/exportXer";
+import { getExportNotice } from "@/features/billing/subscriptionAccess";
 import { suggestActivityCode } from "@/features/schedule/lib/activityCode";
 import { useScheduleHolidays } from "@/features/schedule/api/useScheduleHolidays";
 import { useCompany } from "@/features/company/useCompany";
@@ -330,9 +331,12 @@ function CreateTab({
 
   const candidateDependencies = activities.filter((a) => a.id !== editingActivity?.id);
 
-  const handleExportXer = () => {
-    const xer = exportPrimaveraXer(project, activities, schedule);
-    downloadXerFile(xer, `${project.name.replace(/[^\w؀-ۿ]+/g, "_")}.xer`);
+  const handleExportXer = async () => {
+    try {
+      const notice=await getExportNotice();
+      const xer = exportPrimaveraXer(project, activities, schedule, !!notice);
+      downloadXerFile(xer, `${project.name.replace(/[^\w؀-ۿ]+/g, "_")}.xer`);
+    } catch(err) { setDeleteError(getErrorMessage(err,"تعذّر تصدير الجدول")); }
   };
 
   return (

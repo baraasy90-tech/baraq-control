@@ -1,7 +1,9 @@
 /** يبني ملف Excel حقيقي (.xlsx) عبر SheetJS — الصيغة تخزّن النصوص كـ UTF-8 داخلياً
  * (بخلاف CSV/الصيغ القديمة)، فلا حاجة لأي معالجة ترميز يدوية والعربية تظهر صحيحة
  * تلقائياً. يفعّل اتجاه الورقة من اليمين لليسار ليطابق باقي الواجهة. */
+import { getExportNotice } from "@/features/billing/subscriptionAccess";
 export async function exportToExcel(fileName: string, sheets: { name: string; rows: Record<string, unknown>[] }[]): Promise<void> {
+  const notice = await getExportNotice();
   const XLSX = await import("xlsx");
   const workbook = XLSX.utils.book_new();
   // ملاحظة: اتجاه اليمين-لليسار خاصية على مستوى الملف كاملاً (workbookView) في تنسيق
@@ -10,7 +12,11 @@ export async function exportToExcel(fileName: string, sheets: { name: string; ro
 
   for (const sheet of sheets) {
     const rows = sheet.rows.length > 0 ? sheet.rows : [{ " ": "لا توجد بيانات" }];
-    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const worksheet = XLSX.utils.json_to_sheet(rows, notice ? {origin:"A3"} : {});
+    if (notice) {
+      XLSX.utils.sheet_add_aoa(worksheet, [[notice]], {origin:"A1"});
+      worksheet["!merges"] = [{s:{r:0,c:0},e:{r:0,c:Math.max(0,Object.keys(rows[0]).length-1)}}];
+    }
 
     const colWidths = Object.keys(rows[0]).map((key) => ({
       wch: Math.max(key.length, ...rows.map((r) => String(r[key] ?? "").length)) + 2,

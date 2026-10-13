@@ -104,6 +104,8 @@ export type Database = Omit<Generated,'public'> & {public: Omit<Generated['publi
  Tables: {[T in keyof Generated['public']['Tables']]: {[P in keyof Generated['public']['Tables'][T]]: P extends 'Row'|'Insert'|'Update' ? Replace<Generated['public']['Tables'][T][P], T extends keyof CheckedFields ? CheckedFields[T] : {}> : Generated['public']['Tables'][T][P]}};
  Functions: {[F in keyof GeneratedFunctions]: Omit<GeneratedFunctions[F],'Args'|'Returns'> & {Args: Args<GeneratedFunctions[F]['Args']>;Returns:FunctionReturns<F>}} & {
    has_platform_admin_access: { Args: Record<string, never>; Returns: boolean };
+   get_company_subscription_policy: { Args: {p_company_id?: string}; Returns: import("./database.generated").Json };
+   set_company_subscription_policy: { Args: {p_company_id: string;p_enabled: boolean}; Returns: undefined };
    list_subscription_audit: { Args: {p_company_id: string}; Returns: {id:number;changed_at:string;previous_status:string;next_status:string;previous_ends_at:string;next_ends_at:string;note:string|null}[] };
  };
 }};

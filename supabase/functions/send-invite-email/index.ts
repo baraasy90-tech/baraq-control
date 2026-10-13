@@ -66,6 +66,9 @@ Deno.serve(async (req: Request) => {
     }
     const {data:allowed,error:permissionError}=await caller.rpc("can_manage_department",{p_department_id:invite.department_id});
     if(permissionError||allowed!==true) return respond(403,"لا تملك صلاحية إرسال دعوات لهذا القسم");
+    const {data:subscription,error:subscriptionError}=await caller.rpc("get_company_subscription_policy");
+    if(subscriptionError||!subscription||typeof subscription!=="object"||!("can_write" in subscription)) return respond(503,"تعذّر التحقق من حالة الاشتراك");
+    if(subscription.can_write!==true) return respond(403,"الحساب في وضع القراءة فقط؛ إرسال دعوات جديدة متوقف حتى إعادة التفعيل");
     if (invite.status !== "pending" || new Date(invite.expires_at) < new Date()) {
       return new Response(JSON.stringify({ error: "هذه الدعوة لم تعد صالحة" }), {
         status: 400,
