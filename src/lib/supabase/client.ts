@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
+import "@/features/auth/passwordRecovery";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -27,7 +28,7 @@ window.addEventListener("pageshow", event => {
 });
 
 /** Lock this tab immediately, even if the Auth server is unreachable. */
-export function logoutCurrentTab(accessToken?: string) {
+export function logoutCurrentTab(accessToken?: string, destination?: "/") {
   let token = accessToken;
   try {
     if (!token) try {
@@ -45,6 +46,7 @@ export function logoutCurrentTab(accessToken?: string) {
       headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${token}` },
     }).catch(() => {});
     // A reload also discards in-memory credentials, cached data and pending callbacks.
-    window.location.reload();
+    if (destination) window.location.replace(destination);
+    else window.location.reload();
   }
 }
