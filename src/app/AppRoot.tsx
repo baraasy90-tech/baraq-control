@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Navigate, Outlet, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useProfile } from "@/features/company/useProfile";
@@ -100,7 +100,7 @@ function BrandMark() {
 }
 
 function AppRootContent() {
-  const { session, loading: authLoading, error: authError } = useAuth();
+  const { session, loading: authLoading, error: authError, isPasswordRecovery } = useAuth();
   const profileQuery = useProfile();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -127,6 +127,7 @@ function AppRootContent() {
   useIdleLogout(!!session);
 
   if (authLoading) return <CenteredMessage>جارٍ التحميل...</CenteredMessage>;
+  if (isPasswordRecovery) return <Navigate to="/reset-password" replace />;
   if (authError) return <CenteredMessage>{authError}</CenteredMessage>;
   if (!session) return <LoginScreen />;
   if (session.user.is_anonymous) return <SecureAccountScreen />;

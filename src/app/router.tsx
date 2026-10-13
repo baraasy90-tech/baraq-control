@@ -3,6 +3,8 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppRoot } from "@/app/AppRoot";
 import { RouteErrorPage } from "@/app/RouteErrorPage";
 import { JoinScreen } from "@/features/auth/JoinScreen";
+import { ForgotPasswordScreen } from "@/features/auth/ForgotPasswordScreen";
+import { ResetPasswordScreen } from "@/features/auth/ResetPasswordScreen";
 
 const HomePage = lazy(() => import("@/app/HomePage").then((m) => ({ default: m.HomePage })));
 const ControlPanelPage = lazy(() => import("@/app/ControlPanelPage").then((m) => ({ default: m.ControlPanelPage })));
@@ -44,6 +46,8 @@ const ProjectMaterialDetailPage = lazy(() =>
 const PlatformAdminPage = lazy(() => import("@/app/PlatformAdminPage").then((m) => ({ default: m.PlatformAdminPage })));
 
 export const router = createBrowserRouter([
+  { path: "/forgot-password", element: <ForgotPasswordScreen />, errorElement: <RouteErrorPage /> },
+  { path: "/reset-password", element: <ResetPasswordScreen />, errorElement: <RouteErrorPage /> },
   { path: "/join/:token", element: <JoinScreen />, errorElement: <RouteErrorPage /> },
   {
     path: "/",

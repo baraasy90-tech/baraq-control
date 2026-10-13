@@ -5,8 +5,9 @@ import { supabase } from "@/lib/supabase/client";
 import { setPendingJoinCode } from "@/features/auth/pendingJoin";
 import { setPendingIndividual } from "@/features/auth/pendingIndividual";
 import { getErrorMessage } from "@/utils/errors";
+import { ForgotPasswordScreen } from "./ForgotPasswordScreen";
 
-type Screen = "choice" | "login" | "signup" | "employeeSignup" | "individualSignup";
+type Screen = "choice" | "login" | "signup" | "employeeSignup" | "individualSignup" | "forgot";
 
 function isAlreadyRegisteredError(message: string): boolean {
   const lower = message.toLowerCase();
@@ -69,6 +70,8 @@ export function LoginScreen() {
       setSubmitting(false);
     }
   };
+
+  if (screen === "forgot") return <ForgotPasswordScreen initialEmail={email} onBack={() => setScreen("login")} />;
 
   if (pendingConfirmation) {
     return (
@@ -201,6 +204,8 @@ export function LoginScreen() {
         )}
 
         <ErrorText>{error}</ErrorText>
+
+        {screen === "login" && <button type="button" onClick={() => { setError(""); setPassword(""); setScreen("forgot"); }} className="text-sm text-primary underline underline-offset-4 text-right">نسيت كلمة المرور؟</button>}
 
         <PrimaryButton type="submit" disabled={!canSubmit || submitting} className="inline-flex items-center justify-center gap-2">
           {submitting ? "جارٍ التحقّق..." : screen === "login" ? "تسجيل الدخول" : "إنشاء الحساب"}
