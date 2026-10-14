@@ -47,6 +47,7 @@ export function ActivityForm({
   onSave,
   onCancel,
   saving,
+  readOnly = false,
 }: {
   initial: Activity | null;
   suggestedCode?: string;
@@ -56,6 +57,7 @@ export function ActivityForm({
   onSave: (values: ActivityFormValues) => void;
   onCancel: () => void;
   saving?: boolean;
+  readOnly?: boolean;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [code, setCode] = useState(initial?.code ?? suggestedCode ?? "");
@@ -91,7 +93,7 @@ export function ActivityForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || readOnly || saving) return;
     if (scheduleMode === "dependency" && !dependsOn) {
       setError("اختر البند السابق للاعتماد عليه، أو بدّل لجدولة يدوية");
       return;
@@ -368,8 +370,8 @@ export function ActivityForm({
         <SecondaryButton type="button" onClick={onCancel} className="flex-1">
           إلغاء
         </SecondaryButton>
-        <PrimaryButton type="submit" disabled={!canSubmit || saving} className="flex-1">
-          {saving ? "جارٍ الحفظ..." : "حفظ"}
+        <PrimaryButton type="submit" disabled={!canSubmit || saving || readOnly} className="flex-1">
+          {readOnly ? "القراءة فقط" : saving ? "جارٍ الحفظ..." : "حفظ"}
         </PrimaryButton>
       </div>
     </form>
