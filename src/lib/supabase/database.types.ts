@@ -107,6 +107,7 @@ export type Database = Omit<Generated,'public'> & {public: Omit<Generated['publi
    get_project_subscription_policy: { Args: {p_project_id: string}; Returns: import("./database.generated").Json };
    get_company_subscription_policy: { Args: {p_company_id?: string}; Returns: import("./database.generated").Json };
    set_company_subscription_policy: { Args: {p_company_id: string;p_enabled: boolean}; Returns: undefined };
+   list_platform_company_users: {Args:{p_company_id:string;p_offset?:number;p_search?:string};Returns:import("./database.generated").Json};
    list_subscription_audit: { Args: {p_company_id: string}; Returns: {id:number;changed_at:string;previous_status:string;next_status:string;previous_ends_at:string;next_ends_at:string;note:string|null}[] };
  };
 }};

@@ -7,6 +7,7 @@ import type { CompanyBillingRow, SubscriptionStatus } from "@/types/domain";
 import { POLICY_LABELS, previewSubscriptionPolicy } from "./subscriptionPolicy";
 import { getUserErrorMessage } from "@/utils/errors";
 import { SubscriptionPolicyControl } from "./SubscriptionPolicyControl";
+import { PlatformUserDirectory } from "./PlatformUserDirectory";
 
 const STATUS_LABEL: Record<SubscriptionStatus, string> = {
   trial: "تجربة مجانية",
@@ -115,7 +116,7 @@ function EditSubscriptionModal({ row, onClose }: { row: CompanyBillingRow; onClo
   );
 }
 
-function CompanyRow({ row, onEdit }: { row: CompanyBillingRow; onEdit: () => void }) {
+function CompanyRow({ row, onEdit, onUsers }: { row: CompanyBillingRow; onEdit: () => void; onUsers: () => void }) {
   return (
     <Card className="flex items-center justify-between gap-3 flex-wrap">
       <div className="min-w-0">
@@ -135,6 +136,7 @@ function CompanyRow({ row, onEdit }: { row: CompanyBillingRow; onEdit: () => voi
         <SecondaryButton onClick={onEdit} className="text-xs px-3 py-2">
           تعديل
         </SecondaryButton>
+        <SecondaryButton onClick={onUsers} className="text-xs px-3 py-2">المستخدمون</SecondaryButton>
       </div>
     </Card>
   );
@@ -144,6 +146,7 @@ export function PlatformAdminScreen() {
   const navigate = useNavigate();
   const companiesQuery = useCompaniesBilling();
   const [editing, setEditing] = useState<CompanyBillingRow | null>(null);
+  const [viewingUsers,setViewingUsers]=useState<CompanyBillingRow|null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<SubscriptionStatus | "all">("all");
 
@@ -194,7 +197,7 @@ export function PlatformAdminScreen() {
           <p className="text-sm text-ink-soft">لا توجد شركات بعد</p>
         )}
         {companies.map((row) => (
-          <CompanyRow key={row.id} row={row} onEdit={() => setEditing(row)} />
+          <CompanyRow key={row.id} row={row} onEdit={() => setEditing(row)} onUsers={()=>setViewingUsers(row)} />
         ))}
       </div>
 
@@ -207,11 +210,12 @@ export function PlatformAdminScreen() {
           <p className="text-sm text-ink-soft">لا توجد حسابات فردية بعد</p>
         )}
         {individuals.map((row) => (
-          <CompanyRow key={row.id} row={row} onEdit={() => setEditing(row)} />
+          <CompanyRow key={row.id} row={row} onEdit={() => setEditing(row)} onUsers={()=>setViewingUsers(row)} />
         ))}
       </div>
 
       {editing && <EditSubscriptionModal row={editing} onClose={() => setEditing(null)} />}
+      {viewingUsers&&<PlatformUserDirectory companyId={viewingUsers.id} companyName={viewingUsers.name} onClose={()=>setViewingUsers(null)} />}
     </div>
   );
 }
