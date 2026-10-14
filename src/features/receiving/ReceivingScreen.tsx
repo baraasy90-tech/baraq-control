@@ -51,6 +51,7 @@ export function ReceivingScreen({ project }: { project: Project }) {
   const handlePrint = (submission: Submission) => {
     if (!selected) return;
     printSubmissionReport({
+      projectId: project.id,
       projectName: project.name,
       activityName: selected.name,
       submission,

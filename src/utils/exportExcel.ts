@@ -2,8 +2,8 @@
  * (بخلاف CSV/الصيغ القديمة)، فلا حاجة لأي معالجة ترميز يدوية والعربية تظهر صحيحة
  * تلقائياً. يفعّل اتجاه الورقة من اليمين لليسار ليطابق باقي الواجهة. */
 import { getExportNotice } from "@/features/billing/subscriptionAccess";
-export async function exportToExcel(fileName: string, sheets: { name: string; rows: Record<string, unknown>[] }[]): Promise<void> {
-  const notice = await getExportNotice();
+export async function exportToExcel(fileName: string, sheets: { name: string; rows: Record<string, unknown>[] }[], projectId?: string): Promise<void> {
+  const notice = await getExportNotice(projectId);
   const XLSX = await import("xlsx");
   const workbook = XLSX.utils.book_new();
   // ملاحظة: اتجاه اليمين-لليسار خاصية على مستوى الملف كاملاً (workbookView) في تنسيق

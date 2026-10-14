@@ -21,11 +21,11 @@ export async function printCurrentPage(): Promise<void> {
   window.addEventListener("afterprint",cleanup,{once:true});
   try { window.print(); } catch(err) { cleanup();window.removeEventListener("afterprint",cleanup);throw err; }
 }
-export function openPrintWindow(html: string): void {
+export function openPrintWindow(html: string, projectId?: string): void {
   const printWindow = window.open("", "_blank");
   if (!printWindow) return;
   printWindow.document.body.textContent="جارٍ تجهيز التقرير والتحقق من الاشتراك...";
-  void getExportNotice().then(notice=>{
+  void getExportNotice(projectId).then(notice=>{
     if (printWindow.closed) return;
     preparePrintWindow(printWindow, html, notice);
   }).catch(()=>{if(!printWindow.closed) printWindow.document.body.textContent="تعذّر التحقق من حالة الاشتراك. أغلق هذه النافذة وحاول التصدير مجدداً.";});

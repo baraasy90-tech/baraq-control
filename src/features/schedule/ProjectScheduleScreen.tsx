@@ -188,7 +188,7 @@ function CreateTab({
   childrenMap: Map<string | null, Activity[]>;
 }) {
   const navigate = useNavigate();
-  const { readOnly } = useSubscriptionWriteAccess(project.companyId);
+  const { readOnly } = useSubscriptionWriteAccess(project.id);
   const createActivity = useCreateActivity();
   const updateActivity = useUpdateActivity();
   const deleteActivity = useDeleteActivity(project.id);
@@ -341,7 +341,7 @@ function CreateTab({
 
   const handleExportXer = async () => {
     try {
-      const notice=await getExportNotice();
+      const notice=await getExportNotice(project.id);
       const xer = exportPrimaveraXer(project, activities, schedule, !!notice);
       downloadXerFile(xer, `${project.name.replace(/[^\w؀-ۿ]+/g, "_")}.xer`);
     } catch(err) { setDeleteError(getErrorMessage(err,"تعذّر تصدير الجدول")); }

@@ -15,6 +15,7 @@ export interface RetentionLedgerRow {
 
 export function printRetentionCertificate({
   companyName,
+  projectId,
   projectName,
   contractName,
   retentionPercentage,
@@ -24,6 +25,7 @@ export function printRetentionCertificate({
   print,
 }: {
   companyName: string;
+  projectId: string;
   projectName: string;
   contractName: string;
   retentionPercentage: number;
@@ -127,5 +129,5 @@ export function printRetentionCertificate({
 </body>
 </html>`;
 
-  openPrintWindow(html);
+  openPrintWindow(html, projectId);
 }

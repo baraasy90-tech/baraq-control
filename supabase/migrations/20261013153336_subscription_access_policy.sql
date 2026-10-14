@@ -36,6 +36,20 @@ begin
 end;
 $$;
 
+create function public.get_project_subscription_policy(p_project_id uuid)
+returns jsonb language plpgsql stable security definer set search_path='' as $$
+declare target uuid;
+begin
+ if auth.uid() is null or coalesce((auth.jwt()->>'is_anonymous')::boolean,false) or not public.can_access_project(p_project_id) then
+   raise exception 'لا تملك صلاحية عرض سياسة هذا المشروع' using errcode='42501'; end if;
+ select company_id into target from public.projects where id=p_project_id;
+ if target is null then raise exception 'المشروع غير موجود' using errcode='42501'; end if;
+ return platform_private.subscription_state(target);
+end;
+$$;
+revoke all on function public.get_project_subscription_policy(uuid) from public,anon;
+grant execute on function public.get_project_subscription_policy(uuid) to authenticated;
+
 create function public.set_company_subscription_policy(p_company_id uuid,p_enabled boolean)
 returns void language plpgsql security definer set search_path='' as $$
 declare c public.companies%rowtype; was_enabled boolean;

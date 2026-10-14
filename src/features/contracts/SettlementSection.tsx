@@ -102,6 +102,7 @@ export function SettlementSection({
 
   const handlePrint = () => {
     printSettlementCertificate({
+      projectId: contract.projectId,
       companyName: company.name,
       projectName,
       contractName: contract.name,

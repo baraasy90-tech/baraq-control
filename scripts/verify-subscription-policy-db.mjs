@@ -17,6 +17,7 @@ const rows={companies:id(101)};let next=200;
 for(const [table,[key,parent]] of Object.entries(map)){rows[table]=id(++next);await db.query(`insert into ${table}(id,${key},name) values($1,$2,'initial')`,[rows[table],rows[parent]]);}
 await db.query('insert into profiles(id,company_id,name) values($1,$2,$3)',[id(1),id(101),'owner']);
 await db.query('insert into profiles(id,company_id,name) values($1,$2,$3)',[id(2),id(102),'customer']);
+await db.exec(`create function public.can_access_project(p_id uuid) returns boolean language sql stable as $$select p_id='${rows.projects}'::uuid and auth.uid() in ('${id(1)}'::uuid,'${id(2)}'::uuid)$$`);
 await db.exec('grant select,insert,update,delete on all tables in schema public to authenticated;grant select,insert,update,delete on storage.objects to authenticated');
 await db.exec(fs.readFileSync(new URL('../supabase/migrations/20261013153336_subscription_access_policy.sql',import.meta.url),'utf8'));
 const actor=async(n=1,aal='aal1')=>{await db.exec('reset role;set role authenticated');await db.query("select set_config('request.jwt.claim.sub',$1,false),set_config('request.jwt.claims',$2,false)",[id(n),JSON.stringify({aal,is_anonymous:false})]);};
@@ -28,6 +29,9 @@ await test('deployment leaves expired tenants writable until explicit activation
 await test('owner without MFA cannot enable policy',()=>assert.rejects(()=>db.query('select set_company_subscription_policy($1,true)',[id(101)]),/التحقق بخطوتين/));
 await actor(2,'aal2');await test('customer cannot read another tenant policy',()=>assert.rejects(()=>db.query('select get_company_subscription_policy($1)',[id(101)]),/صلاحية/));
 await actor(1,'aal2');await db.query('select set_company_subscription_policy($1,true)',[id(101)]);
+await actor(2);await test('cross-company collaborator receives project owner policy',async()=>assert.equal((await db.query('select get_project_subscription_policy($1) as state',[rows.projects])).rows[0].state.can_write,false));
+await test('unrelated project policy is denied',()=>assert.rejects(()=>db.query('select get_project_subscription_policy($1)',[id(999)]),/صلاحية/));
+await actor(1,'aal2');
 await test('expired policy becomes read only and marks exports',async()=>{const s=await state();assert.equal(s.can_write,false);assert.equal(s.stage,'read_only');assert.ok(s.export_notice);});
 await test('frozen company branding cannot be changed',()=>assert.rejects(()=>db.query("update companies set name='blocked' where id=$1",[id(101)]),/القراءة فقط/));
 await test('policy change is audited exactly once, including idempotent retry',async()=>{await db.query('select set_company_subscription_policy($1,true)',[id(101)]);await root();assert.equal((await db.query('select count(*)::int as n from platform_private.subscription_audit')).rows[0].n,1);await actor();});

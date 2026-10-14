@@ -16,6 +16,7 @@ export interface SettlementSigner {
 
 export function printSettlementCertificate({
   companyName,
+  projectId,
   projectName,
   contractName,
   originalValue,
@@ -29,6 +30,7 @@ export function printSettlementCertificate({
   print,
 }: {
   companyName: string;
+  projectId: string;
   projectName: string;
   contractName: string;
   originalValue: number;
@@ -130,5 +132,5 @@ export function printSettlementCertificate({
 </body>
 </html>`;
 
-  openPrintWindow(html);
+  openPrintWindow(html, projectId);
 }
