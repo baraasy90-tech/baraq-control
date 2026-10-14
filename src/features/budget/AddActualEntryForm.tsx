@@ -11,11 +11,13 @@ const SOURCE_OPTIONS = [
 ];
 
 export function AddActualEntryForm({
+  readOnly = false,
   onSubmit,
   onCancel,
   submitting,
   contractPayments,
 }: {
+  readOnly?: boolean;
   onSubmit: (values: {
     date: string;
     amount: number;
@@ -40,6 +42,7 @@ export function AddActualEntryForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) return;
     if (!canSubmit) {
       setError("أدخل مبلغاً صحيحاً");
       return;
@@ -60,17 +63,17 @@ export function AddActualEntryForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <FieldLabel>التاريخ</FieldLabel>
-          <TextInput type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <TextInput disabled={readOnly} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
         <div>
           <FieldLabel>المبلغ (ر.س)</FieldLabel>
-          <TextInput type="number" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <TextInput disabled={readOnly} type="number" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </div>
       </div>
 
       <div>
         <FieldLabel>المصدر</FieldLabel>
-        <select
+        <select disabled={readOnly}
           value={source}
           onChange={(e) => setSource(e.target.value)}
           className="w-full px-3 py-2.5 border border-line rounded-lg text-sm font-sans bg-white box-border"
@@ -86,7 +89,7 @@ export function AddActualEntryForm({
       {source === "contract" ? (
         <div>
           <FieldLabel>دفعة العقد المرتبطة</FieldLabel>
-          <select
+          <select disabled={readOnly}
             value={contractPaymentId}
             onChange={(e) => setContractPaymentId(e.target.value)}
             className="w-full px-3 py-2.5 border border-line rounded-lg text-sm font-sans bg-white box-border"
@@ -105,13 +108,13 @@ export function AddActualEntryForm({
       ) : (
         <div>
           <FieldLabel>رقم العقد/المرجع (اختياري)</FieldLabel>
-          <TextInput value={contractRef} onChange={(e) => setContractRef(e.target.value)} />
+          <TextInput disabled={readOnly} value={contractRef} onChange={(e) => setContractRef(e.target.value)} />
         </div>
       )}
 
       <div>
         <FieldLabel>ملاحظة (اختياري)</FieldLabel>
-        <TextInput value={note} onChange={(e) => setNote(e.target.value)} />
+        <TextInput disabled={readOnly} value={note} onChange={(e) => setNote(e.target.value)} />
       </div>
 
       <ErrorText>{error}</ErrorText>
@@ -120,7 +123,7 @@ export function AddActualEntryForm({
         <SecondaryButton type="button" onClick={onCancel} className="flex-1">
           إلغاء
         </SecondaryButton>
-        <PrimaryButton type="submit" disabled={!canSubmit || submitting} className="flex-1">
+        <PrimaryButton type="submit" disabled={readOnly || (!canSubmit || submitting)} className="flex-1">
           {submitting ? "جارٍ الحفظ..." : "إضافة الدفعة"}
         </PrimaryButton>
       </div>

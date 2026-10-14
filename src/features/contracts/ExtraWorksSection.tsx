@@ -17,11 +17,13 @@ function numOrNull(v: string): number | null {
 }
 
 export function ExtraWorksSection({
+  readOnly = false,
   contractId,
   canPmApprove,
   canFinanceApprove,
   isIndividual,
 }: {
+  readOnly?: boolean;
   contractId: string;
   canPmApprove: boolean;
   canFinanceApprove: boolean;
@@ -45,6 +47,7 @@ export function ExtraWorksSection({
   const approvedTotal = extraWorks.filter((e) => e.status === "approved").reduce((s, e) => s + e.amount, 0);
 
   const handleCreate = async () => {
+    if (readOnly) return;
     if (!title.trim()) return;
     setError("");
     const parsedAmount = numOrNull(amount);
@@ -69,6 +72,7 @@ export function ExtraWorksSection({
   };
 
   const handleReview = async (extraWorkId: string, approve: boolean) => {
+    if (readOnly) return;
     await reviewExtraWork.mutateAsync({ extraWorkId, approve, note: reviewNote.trim() || null });
     setReviewingId(null);
     setReviewNote("");
@@ -78,7 +82,7 @@ export function ExtraWorksSection({
     <Card className="mb-6">
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h2 className="text-sm font-bold text-ink">الأعمال الإضافية</h2>
-        <SecondaryButton onClick={() => setCreating(true)} className="text-xs px-3 py-1.5 inline-flex items-center gap-1.5">
+        <SecondaryButton disabled={readOnly} onClick={() => setCreating(true)} className="text-xs px-3 py-1.5 inline-flex items-center gap-1.5">
           <Plus size={14} strokeWidth={2.5} /> بند جديد
         </SecondaryButton>
       </div>
@@ -109,12 +113,12 @@ export function ExtraWorksSection({
                     <>
                       <SecondaryButton
                         onClick={() => submitExtraWork.mutate(ew.id)}
-                        disabled={submitExtraWork.isPending}
+                        disabled={readOnly || (submitExtraWork.isPending)}
                         className="text-xs px-2.5 py-1"
                       >
                         تقديم للاعتماد
                       </SecondaryButton>
-                      <IconButton icon={Trash2} label="حذف" tone="critical" onClick={() => deleteExtraWork.mutate(ew.id)} />
+                      <IconButton disabled={readOnly} icon={Trash2} label="حذف" tone="critical" onClick={() => deleteExtraWork.mutate(ew.id)} />
                     </>
                   )}
                 </div>
@@ -124,23 +128,23 @@ export function ExtraWorksSection({
                 <div className="mt-2 pt-2 border-t border-line/60">
                   {reviewingId === ew.id ? (
                     <>
-                      <TextInput
+                      <TextInput disabled={readOnly}
                         value={reviewNote}
                         onChange={(e) => setReviewNote(e.target.value)}
                         placeholder="ملاحظة الاعتماد/الرفض (اختياري)"
                         className="text-xs"
                       />
                       <div className="flex gap-2 mt-2">
-                        <PrimaryButton onClick={() => handleReview(ew.id, true)} className="w-auto px-3 py-1.5 text-xs">
+                        <PrimaryButton disabled={readOnly} onClick={() => handleReview(ew.id, true)} className="w-auto px-3 py-1.5 text-xs">
                           اعتماد وتحويل للمالية
                         </PrimaryButton>
-                        <SecondaryButton onClick={() => handleReview(ew.id, false)} className="text-xs px-3 py-1.5">
+                        <SecondaryButton disabled={readOnly} onClick={() => handleReview(ew.id, false)} className="text-xs px-3 py-1.5">
                           رفض
                         </SecondaryButton>
                       </div>
                     </>
                   ) : (
-                    <SecondaryButton onClick={() => setReviewingId(ew.id)} className="text-xs px-3 py-1.5">
+                    <SecondaryButton disabled={readOnly} onClick={() => setReviewingId(ew.id)} className="text-xs px-3 py-1.5">
                       مراجعة الاعتماد الأولي
                     </SecondaryButton>
                   )}
@@ -151,23 +155,23 @@ export function ExtraWorksSection({
                 <div className="mt-2 pt-2 border-t border-line/60">
                   {reviewingId === ew.id ? (
                     <>
-                      <TextInput
+                      <TextInput disabled={readOnly}
                         value={reviewNote}
                         onChange={(e) => setReviewNote(e.target.value)}
                         placeholder="ملاحظة الاعتماد/الرفض (اختياري)"
                         className="text-xs"
                       />
                       <div className="flex gap-2 mt-2">
-                        <PrimaryButton onClick={() => handleReview(ew.id, true)} className="w-auto px-3 py-1.5 text-xs">
+                        <PrimaryButton disabled={readOnly} onClick={() => handleReview(ew.id, true)} className="w-auto px-3 py-1.5 text-xs">
                           الاعتماد النهائي
                         </PrimaryButton>
-                        <SecondaryButton onClick={() => handleReview(ew.id, false)} className="text-xs px-3 py-1.5">
+                        <SecondaryButton disabled={readOnly} onClick={() => handleReview(ew.id, false)} className="text-xs px-3 py-1.5">
                           رفض
                         </SecondaryButton>
                       </div>
                     </>
                   ) : (
-                    <SecondaryButton onClick={() => setReviewingId(ew.id)} className="text-xs px-3 py-1.5">
+                    <SecondaryButton disabled={readOnly} onClick={() => setReviewingId(ew.id)} className="text-xs px-3 py-1.5">
                       الاعتماد المالي النهائي
                     </SecondaryButton>
                   )}
@@ -181,10 +185,10 @@ export function ExtraWorksSection({
       {creating && (
         <Modal title="بند أعمال إضافية جديد" onClose={() => setCreating(false)}>
           <FieldLabel>عنوان البند</FieldLabel>
-          <TextInput value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+          <TextInput disabled={readOnly} value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
           <div className="mb-3" />
           <FieldLabel>الوصف (اختياري)</FieldLabel>
-          <textarea
+          <textarea disabled={readOnly}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
@@ -192,10 +196,10 @@ export function ExtraWorksSection({
           />
           <div className="mb-3" />
           <FieldLabel>القيمة</FieldLabel>
-          <TextInput type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <TextInput disabled={readOnly} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
           <ErrorText>{error}</ErrorText>
           <div className="flex gap-2 mt-4">
-            <PrimaryButton onClick={handleCreate} disabled={!title.trim() || createExtraWork.isPending} className="flex-1">
+            <PrimaryButton onClick={handleCreate} disabled={readOnly || (!title.trim() || createExtraWork.isPending)} className="flex-1">
               {createExtraWork.isPending ? "جارٍ الإضافة..." : "إضافة"}
             </PrimaryButton>
             <SecondaryButton onClick={() => setCreating(false)} className="flex-1">

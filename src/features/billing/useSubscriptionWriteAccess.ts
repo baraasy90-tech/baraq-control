@@ -7,7 +7,11 @@ export function useSubscriptionWriteAccess(projectId: string) {
   const query = useQuery({
     queryKey: ["project-subscription-policy", user?.id, projectId],
     queryFn: () => getSubscriptionAccess(undefined, projectId),
+    enabled: !!user?.id && !!projectId,
+    staleTime: 0,
     refetchInterval: 60000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: "always",
   });
-  return { readOnly: !query.data || query.isError || !query.data.can_write, checking: query.isPending };
+  return { readOnly: !query.data || query.isError || !query.data.can_write, checking: query.isPending, unavailable: query.isError };
 }

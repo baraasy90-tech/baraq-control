@@ -1,3 +1,5 @@
+import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
+import { ProjectWriteStatus } from "@/features/billing/ProjectWriteStatus";
 import { useState } from "react";
 import { QueryFailureScreen } from "@/components/QueryFailureScreen";
 import { useNavigate } from "react-router-dom";
@@ -51,6 +53,7 @@ type Tab = "budget" | "scurve";
 
 export function BudgetScreen({ project }: { project: Project }) {
   const navigate = useNavigate();
+  const { readOnly } = useSubscriptionWriteAccess(project.id);
   const { company, profile } = useCompany();
   const activitiesQuery = useActivities(project.id);
   const contractsQuery = useContracts(project.id);
@@ -167,6 +170,7 @@ export function BudgetScreen({ project }: { project: Project }) {
     contractRef: string | null;
     contractPaymentId: string | null;
   }) => {
+    if (readOnly) return;
     if (!selected) return;
     setError("");
     try {
@@ -183,6 +187,7 @@ export function BudgetScreen({ project }: { project: Project }) {
   };
 
   const handleDeleteEntry = async (entryId: string) => {
+    if (readOnly) return;
     setDeleteEntryError("");
     try {
       await deleteEntry.mutateAsync(entryId);
@@ -192,6 +197,7 @@ export function BudgetScreen({ project }: { project: Project }) {
   };
 
   const handleSubmitEntry = async (entryId: string) => {
+    if (readOnly) return;
     setDeleteEntryError("");
     try {
       await submitEntry.mutateAsync(entryId);
@@ -201,6 +207,7 @@ export function BudgetScreen({ project }: { project: Project }) {
   };
 
   const handleReviewEntry = async (entryId: string, approve: boolean) => {
+    if (readOnly) return;
     setDeleteEntryError("");
     try {
       await reviewEntry.mutateAsync({ entryId, approve, note: entryReviewNote.trim() || null });
@@ -212,6 +219,7 @@ export function BudgetScreen({ project }: { project: Project }) {
   };
 
   const handleResetEntryToDraft = async (entryId: string) => {
+    if (readOnly) return;
     setDeleteEntryError("");
     try {
       await resetEntryToDraft.mutateAsync(entryId);
@@ -221,6 +229,7 @@ export function BudgetScreen({ project }: { project: Project }) {
   };
 
   const openEditBudget = () => {
+    if (readOnly) return;
     if (!selected) return;
     setBudgetSource(selected.linkedContractId ? "contract" : "manual");
     setLinkedContractIdInput(selected.linkedContractId ?? "");
@@ -234,6 +243,7 @@ export function BudgetScreen({ project }: { project: Project }) {
   };
 
   const handleSaveBudget = async () => {
+    if (readOnly) return;
     if (!selected) return;
     setBudgetError("");
     try {
@@ -289,6 +299,7 @@ export function BudgetScreen({ project }: { project: Project }) {
   };
 
   const handleCreateDraftContract = async () => {
+    if (readOnly) return;
     if (!offerDraftContract) return;
     setDraftContractError("");
     setCreatingDraftContract(true);
@@ -324,6 +335,7 @@ export function BudgetScreen({ project }: { project: Project }) {
   };
 
   const handleRemoveBudget = async () => {
+    if (readOnly) return;
     if (!selected) return;
     setBudgetError("");
     try {
@@ -394,8 +406,10 @@ export function BudgetScreen({ project }: { project: Project }) {
         </div>
       </div>
 
+      <ProjectWriteStatus projectId={project.id} />
       <BudgetVarianceBanner
         projectId={project.id}
+        readOnly={readOnly}
         contractValue={contractsQuery.data && contractsQuery.data.length > 0 ? totalContractValue : null}
         trackedBudget={overallRollup.planned}
         unlinkedBudgetItems={unlinkedBudgetItems}
@@ -405,6 +419,7 @@ export function BudgetScreen({ project }: { project: Project }) {
       <BudgetVarianceBanner
         projectId={project.id}
         kind="paid_vs_actual"
+        readOnly={readOnly}
         title="اختلاف بين المدفوع فعلياً من العقود والفعلي المسجَّل بالميزانية"
         valueLabel="إجمالي المدفوع من العقود"
         budgetLabel="إجمالي الفعلي بالميزانية"
@@ -516,7 +531,7 @@ export function BudgetScreen({ project }: { project: Project }) {
                     </>
                   ) : getEstimatedAmount(selected) > 0 ? (
                     <>
-                      لا توجد ميزانية رسمية لهذا البندبعد — يوجد فقط رقم تقديري مبدئي:{" "}
+                      لا توجد ميزانية رسمية لهذا البند بعد — يوجد فقط رقم تقديري مبدئي:{" "}
                       <span className="font-semibold text-ink">{fmtMoney(getEstimatedAmount(selected))}</span>
                     </>
                   ) : (
@@ -525,14 +540,14 @@ export function BudgetScreen({ project }: { project: Project }) {
                 </p>
                 <div className="flex items-center gap-1 shrink-0">
                   {!selected.linkedContractId && getPlannedAmount(selected) === 0 && (
-                    <SecondaryButton onClick={openEditBudget} className="text-xs px-3 py-1.5">
+                    <SecondaryButton disabled={readOnly} onClick={openEditBudget} className="text-xs px-3 py-1.5">
                       إضافة ميزانية
                     </SecondaryButton>
                   )}
                   {(selected.linkedContractId || getPlannedAmount(selected) > 0) && (
                     <>
-                      <IconButton icon={Pencil} label="تعديل الميزانية" onClick={openEditBudget} />
-                      <IconButton
+                      <IconButton disabled={readOnly} icon={Pencil} label="تعديل الميزانية" onClick={openEditBudget} />
+                      <IconButton disabled={readOnly}
                         icon={Trash2}
                         label="حذف الميزانية المرفقة"
                         tone="critical"
@@ -579,7 +594,7 @@ export function BudgetScreen({ project }: { project: Project }) {
                 </div>
               )}
 
-              <PrimaryButton onClick={() => setFormOpen(true)} className="w-auto px-4 py-2 text-sm mb-4 inline-flex items-center gap-1.5">
+              <PrimaryButton disabled={readOnly} onClick={() => setFormOpen(true)} className="w-auto px-4 py-2 text-sm mb-4 inline-flex items-center gap-1.5">
                 <Plus size={15} strokeWidth={2.5} /> إضافة دفعة فعلية
               </PrimaryButton>
 
@@ -623,17 +638,17 @@ export function BudgetScreen({ project }: { project: Project }) {
                             <>
                               <SecondaryButton
                                 onClick={() => handleSubmitEntry(entry.id)}
-                                disabled={submitEntry.isPending}
+                                disabled={readOnly || (submitEntry.isPending)}
                                 className="text-[11px] px-2 py-1"
                               >
                                 رفع للاعتماد
                               </SecondaryButton>
-                              <IconButton icon={Trash2} label="حذف" tone="critical" onClick={() => handleDeleteEntry(entry.id)} />
+                              <IconButton disabled={readOnly} icon={Trash2} label="حذف" tone="critical" onClick={() => handleDeleteEntry(entry.id)} />
                             </>
                           )}
                           {((entry.status === "pending_pm_approval" && canPmApprove) ||
                             (entry.status === "pending_finance_approval" && canFinanceApprove)) && (
-                            <SecondaryButton
+                            <SecondaryButton disabled={readOnly}
                               onClick={() => setReviewingEntryId(reviewingEntryId === entry.id ? null : entry.id)}
                               className="text-[11px] px-2 py-1"
                             >
@@ -643,7 +658,7 @@ export function BudgetScreen({ project }: { project: Project }) {
                           {(entry.status === "approved" || entry.status === "rejected") && canPmApprove && (
                             <SecondaryButton
                               onClick={() => handleResetEntryToDraft(entry.id)}
-                              disabled={resetEntryToDraft.isPending}
+                              disabled={readOnly || (resetEntryToDraft.isPending)}
                               className="text-[11px] px-2 py-1"
                             >
                               إعادة للمسودة
@@ -654,7 +669,7 @@ export function BudgetScreen({ project }: { project: Project }) {
 
                       {reviewingEntryId === entry.id && (
                         <div className="mt-2 pt-2 border-t border-line/60">
-                          <TextInput
+                          <TextInput disabled={readOnly}
                             value={entryReviewNote}
                             onChange={(e) => setEntryReviewNote(e.target.value)}
                             placeholder="ملاحظة الاعتماد/الرفض (اختياري)"
@@ -662,14 +677,14 @@ export function BudgetScreen({ project }: { project: Project }) {
                           <div className="flex gap-2 mt-2">
                             <PrimaryButton
                               onClick={() => handleReviewEntry(entry.id, true)}
-                              disabled={reviewEntry.isPending}
+                              disabled={readOnly || (reviewEntry.isPending)}
                               className="w-auto px-3 py-1.5 text-xs"
                             >
                               اعتماد
                             </PrimaryButton>
                             <SecondaryButton
                               onClick={() => handleReviewEntry(entry.id, false)}
-                              disabled={reviewEntry.isPending}
+                              disabled={readOnly || (reviewEntry.isPending)}
                               className="text-xs px-3 py-1.5"
                             >
                               رفض
@@ -691,6 +706,7 @@ export function BudgetScreen({ project }: { project: Project }) {
         <Modal title={`دفعة جديدة — ${selected.name}`} onClose={() => setFormOpen(false)}>
           <ErrorText>{error}</ErrorText>
           <AddActualEntryForm
+            readOnly={readOnly}
             onSubmit={handleAddEntry}
             onCancel={() => setFormOpen(false)}
             submitting={createEntry.isPending}
@@ -703,7 +719,7 @@ export function BudgetScreen({ project }: { project: Project }) {
         <Modal title={`تعديل الميزانية — ${selected.name}`} onClose={() => setEditingBudget(false)}>
           <FieldLabel>مصدر الميزانية</FieldLabel>
           <div className="flex gap-2 mb-3">
-            <button
+            <button disabled={readOnly}
               type="button"
               onClick={() => setBudgetSource("manual")}
               className={`text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer border flex-1 ${
@@ -712,7 +728,7 @@ export function BudgetScreen({ project }: { project: Project }) {
             >
               إدخال يدوي
             </button>
-            <button
+            <button disabled={readOnly}
               type="button"
               onClick={() => setBudgetSource("contract")}
               className={`text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer border flex-1 ${
@@ -729,7 +745,7 @@ export function BudgetScreen({ project }: { project: Project }) {
               {(contractsQuery.data ?? []).length === 0 ? (
                 <p className="text-xs text-ink-soft mb-2">لا توجد عقود بهذا المشروع بعد — أضف عقداً أولاً من شاشة العقود.</p>
               ) : (
-                <select
+                <select disabled={readOnly}
                   value={linkedContractIdInput}
                   onChange={(e) => setLinkedContractIdInput(e.target.value)}
                   className="w-full text-sm border border-line/60 rounded-lg px-3 py-2 mb-2 bg-panel text-ink"
@@ -752,7 +768,7 @@ export function BudgetScreen({ project }: { project: Project }) {
             <>
               <FieldLabel>نوع الميزانية</FieldLabel>
               <div className="flex gap-2 mb-3">
-                <button
+                <button disabled={readOnly}
                   type="button"
                   onClick={() => setBudgetType("lumpsum")}
                   className={`text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer border flex-1 ${
@@ -761,7 +777,7 @@ export function BudgetScreen({ project }: { project: Project }) {
                 >
                   مبلغ مقطوع
                 </button>
-                <button
+                <button disabled={readOnly}
                   type="button"
                   onClick={() => setBudgetType("boq")}
                   className={`text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer border flex-1 ${
@@ -775,21 +791,21 @@ export function BudgetScreen({ project }: { project: Project }) {
               {budgetType === "lumpsum" ? (
                 <>
                   <FieldLabel>المبلغ المخطط</FieldLabel>
-                  <TextInput type="number" value={plannedAmountInput} onChange={(e) => setPlannedAmountInput(e.target.value)} />
+                  <TextInput disabled={readOnly} type="number" value={plannedAmountInput} onChange={(e) => setPlannedAmountInput(e.target.value)} />
                 </>
               ) : (
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <FieldLabel>الكمية</FieldLabel>
-                    <TextInput type="number" value={boqQtyInput} onChange={(e) => setBoqQtyInput(e.target.value)} />
+                    <TextInput disabled={readOnly} type="number" value={boqQtyInput} onChange={(e) => setBoqQtyInput(e.target.value)} />
                   </div>
                   <div>
                     <FieldLabel>الوحدة</FieldLabel>
-                    <TextInput value={boqUnitInput} onChange={(e) => setBoqUnitInput(e.target.value)} placeholder="م٢، طن..." />
+                    <TextInput disabled={readOnly} value={boqUnitInput} onChange={(e) => setBoqUnitInput(e.target.value)} placeholder="م٢، طن..." />
                   </div>
                   <div>
                     <FieldLabel>سعر الوحدة</FieldLabel>
-                    <TextInput type="number" value={boqUnitPriceInput} onChange={(e) => setBoqUnitPriceInput(e.target.value)} />
+                    <TextInput disabled={readOnly} type="number" value={boqUnitPriceInput} onChange={(e) => setBoqUnitPriceInput(e.target.value)} />
                   </div>
                 </div>
               )}
@@ -798,7 +814,7 @@ export function BudgetScreen({ project }: { project: Project }) {
 
           <ErrorText>{budgetError}</ErrorText>
           <div className="flex gap-2 mt-4">
-            <PrimaryButton onClick={handleSaveBudget} disabled={updateActivity.isPending} className="flex-1">
+            <PrimaryButton onClick={handleSaveBudget} disabled={readOnly || (updateActivity.isPending)} className="flex-1">
               {updateActivity.isPending ? "جارٍ الحفظ..." : "حفظ"}
             </PrimaryButton>
             <SecondaryButton onClick={() => setEditingBudget(false)} className="flex-1">
@@ -820,7 +836,7 @@ export function BudgetScreen({ project }: { project: Project }) {
             </SecondaryButton>
             <button
               onClick={handleRemoveBudget}
-              disabled={updateActivity.isPending}
+              disabled={readOnly || (updateActivity.isPending)}
               className="flex-1 py-2.5 rounded-lg bg-critical text-white border-none font-bold text-sm cursor-pointer disabled:opacity-50"
             >
               {updateActivity.isPending ? "جارٍ الحذف..." : "حذف نهائياً"}
@@ -837,7 +853,7 @@ export function BudgetScreen({ project }: { project: Project }) {
           </p>
           <ErrorText>{draftContractError}</ErrorText>
           <div className="flex gap-2">
-            <PrimaryButton onClick={handleCreateDraftContract} disabled={creatingDraftContract} className="flex-1">
+            <PrimaryButton onClick={handleCreateDraftContract} disabled={readOnly || (creatingDraftContract)} className="flex-1">
               {creatingDraftContract ? "جارٍ الإنشاء..." : "إنشاء عقد مسودة"}
             </PrimaryButton>
             <SecondaryButton onClick={() => setOfferDraftContract(null)} className="flex-1">
