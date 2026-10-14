@@ -377,6 +377,7 @@ export function ContractScreen() {
   const handlePrintRetentionCertificate = () => {
     if (!contract) return;
     printRetentionCertificate({
+      projectId: contract.projectId,
       companyName: company.name,
       projectName: project?.name ?? "",
       contractName: contract.name,

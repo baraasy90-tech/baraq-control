@@ -21,6 +21,7 @@ import { QuickSignOutButton } from "@/features/auth/QuickSignOutButton";
 import { MySignatureModal } from "@/features/company/MySignatureModal";
 import { NotificationBell } from "@/features/company/NotificationBell";
 import { useIsPlatformAdmin } from "@/features/billing/useIsPlatformAdmin";
+import { SubscriptionBanner } from "@/features/billing/SubscriptionBanner";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { fmt } from "@/utils/dates";
 import type { Company, Profile } from "@/types/domain";
@@ -257,7 +258,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <OfflineBanner />
-        <TrialBanner company={company} isOwner={profile.id === company.createdBy} />
+        <SubscriptionBanner companyId={company.id}><TrialBanner company={company} isOwner={profile.id === company.createdBy} /></SubscriptionBanner>
         <main className="flex-1 min-w-0">{children}</main>
       </div>
 

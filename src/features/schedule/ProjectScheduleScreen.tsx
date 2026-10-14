@@ -14,6 +14,8 @@ import { useCustomCalendars, useCustomCalendarMap } from "@/features/schedule/ap
 import { useCompanyMembers } from "@/features/company/api/useCompanyMembers";
 import { withComputedDone, getCompletionDates } from "@/features/schedule/lib/completion";
 import { exportPrimaveraXer, downloadXerFile } from "@/features/schedule/lib/exportXer";
+import { getExportNotice } from "@/features/billing/subscriptionAccess";
+import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
 import { suggestActivityCode } from "@/features/schedule/lib/activityCode";
 import { useScheduleHolidays } from "@/features/schedule/api/useScheduleHolidays";
 import { useCompany } from "@/features/company/useCompany";
@@ -48,6 +50,7 @@ function ActivityRow({
   onStartNow,
   onSetActualDate,
   onMove,
+  readOnly,
 }: {
   activity: Activity;
   depth: number;
@@ -62,6 +65,7 @@ function ActivityRow({
   onStartNow: (a: Activity) => void;
   onSetActualDate: (a: Activity, field: "start" | "end", value: string) => void;
   onMove: (a: Activity, direction: "up" | "down") => void;
+  readOnly: boolean;
 }) {
   const children = childrenMap.get(activity.id) ?? [];
   const sc = schedule[activity.id];
@@ -79,7 +83,7 @@ function ActivityRow({
             type="checkbox"
             checked={activity.done}
             onChange={() => !isAutoDone && onToggleDone(activity)}
-            disabled={isAutoDone}
+            disabled={isAutoDone || readOnly}
             title={isAutoDone ? "يُحدَّد تلقائياً من اعتماد الاستلام/اكتمال البنود التابعة" : undefined}
             className="shrink-0 disabled:opacity-60"
           />
@@ -106,11 +110,11 @@ function ActivityRow({
           {sc ? `${fmt(sc.start)} → ${fmt(sc.end)}` : "—"} · {activity.durationDays} يوم
         </div>
         {!activity.actualStartDate && (
-          <SecondaryButton onClick={() => onStartNow(activity)} className="text-[11px] px-2 py-1 shrink-0">
+          <SecondaryButton disabled={readOnly} onClick={() => onStartNow(activity)} className="text-[11px] px-2 py-1 shrink-0">
             بدء الآن
           </SecondaryButton>
         )}
-        <div className="flex gap-1 shrink-0">
+        <fieldset disabled={readOnly} className="flex gap-1 shrink-0 border-0 m-0 p-0 min-w-0">
           <IconButton icon={ChevronUp} label="نقل لأعلى" onClick={() => onMove(activity, "up")} disabled={index <= 0} />
           <IconButton
             icon={ChevronDown}
@@ -121,7 +125,7 @@ function ActivityRow({
           <IconButton icon={Plus} label="إضافة بند تابع" onClick={() => onAddChild(activity.id)} />
           <IconButton icon={Pencil} label="تعديل" onClick={() => onEdit(activity)} />
           <IconButton icon={Trash2} label="حذف" tone="critical" onClick={() => onDelete(activity)} />
-        </div>
+        </fieldset>
       </div>
 
       <div
@@ -133,6 +137,7 @@ function ActivityRow({
           <input
             type="date"
             value={activity.actualStartDate ?? ""}
+            disabled={readOnly}
             onChange={(e) => onSetActualDate(activity, "start", e.target.value)}
             className="border border-line rounded px-1.5 py-1 text-[11px] font-mono bg-white"
           />
@@ -142,6 +147,7 @@ function ActivityRow({
           <input
             type="date"
             value={activity.actualEndDate ?? ""}
+            disabled={readOnly}
             onChange={(e) => onSetActualDate(activity, "end", e.target.value)}
             className="border border-line rounded px-1.5 py-1 text-[11px] font-mono bg-white"
           />
@@ -163,6 +169,7 @@ function ActivityRow({
           onStartNow={onStartNow}
           onSetActualDate={onSetActualDate}
           onMove={onMove}
+          readOnly={readOnly}
         />
       ))}
     </div>
@@ -181,6 +188,7 @@ function CreateTab({
   childrenMap: Map<string | null, Activity[]>;
 }) {
   const navigate = useNavigate();
+  const { readOnly } = useSubscriptionWriteAccess(project.id);
   const createActivity = useCreateActivity();
   const updateActivity = useUpdateActivity();
   const deleteActivity = useDeleteActivity(project.id);
@@ -218,6 +226,7 @@ function CreateTab({
   };
 
   const handleSave = async (values: ActivityFormValues) => {
+    if (readOnly) { setError("الحساب في وضع القراءة فقط أو تعذّر التحقق من الاشتراك. لا يمكن حفظ التعديلات حالياً."); return; }
     setError("");
     try {
       if (editingActivity) {
@@ -330,21 +339,24 @@ function CreateTab({
 
   const candidateDependencies = activities.filter((a) => a.id !== editingActivity?.id);
 
-  const handleExportXer = () => {
-    const xer = exportPrimaveraXer(project, activities, schedule);
-    downloadXerFile(xer, `${project.name.replace(/[^\w؀-ۿ]+/g, "_")}.xer`);
+  const handleExportXer = async () => {
+    try {
+      const notice=await getExportNotice(project.id);
+      const xer = exportPrimaveraXer(project, activities, schedule, !!notice);
+      downloadXerFile(xer, `${project.name.replace(/[^\w؀-ۿ]+/g, "_")}.xer`);
+    } catch(err) { setDeleteError(getErrorMessage(err,"تعذّر تصدير الجدول")); }
   };
 
   return (
     <div>
       <div className="flex justify-end gap-2 mb-3 flex-wrap">
-        <SecondaryButton onClick={() => navigate(`/projects/${project.id}/import`)} className="text-sm">
+        <SecondaryButton disabled={readOnly} onClick={() => navigate(`/projects/${project.id}/import`)} className="text-sm">
           إرفاق الجدول الزمني
         </SecondaryButton>
         <ExportMenu
           options={[{ label: "تصدير لبريمافيرا (XER)", icon: FileCode, onSelect: handleExportXer, disabled: roots.length === 0 }]}
         />
-        <PrimaryButton onClick={() => openCreate(null)} className="w-auto px-4 py-2 text-sm inline-flex items-center gap-1.5">
+        <PrimaryButton disabled={readOnly} onClick={() => openCreate(null)} className="w-auto px-4 py-2 text-sm inline-flex items-center gap-1.5">
           <Plus size={15} strokeWidth={2.5} /> مرحلة رئيسية
         </PrimaryButton>
       </div>
@@ -371,6 +383,7 @@ function CreateTab({
               onStartNow={handleStartNow}
               onSetActualDate={handleSetActualDate}
               onMove={handleMove}
+              readOnly={readOnly}
             />
           ))}
         </div>
@@ -392,6 +405,7 @@ function CreateTab({
             customCalendars={customCalendars}
             members={members}
             saving={createActivity.isPending || updateActivity.isPending || saveChecklist.isPending}
+            readOnly={readOnly}
             onSave={handleSave}
             onCancel={() => {
               setFormOpen(false);

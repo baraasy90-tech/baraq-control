@@ -36,7 +36,7 @@ function guidFor(id: string): string {
   return id.replace(/-/g, "").slice(0, 22);
 }
 
-export function exportPrimaveraXer(project: Project, activities: Activity[], schedule: Schedule): string {
+export function exportPrimaveraXer(project: Project, activities: Activity[], schedule: Schedule, expiredSubscription = false): string {
   const today = todayISO();
   const projId = 1;
   const clndrId = 1;
@@ -126,7 +126,7 @@ export function exportPrimaveraXer(project: Project, activities: Activity[], sch
 
   // WBS: عقدة جذر للمشروع + عقدة لكل نشاط (يحافظ على نفس التسلسل الهرمي الحالي بالتطبيق).
   const wbsRows: (string | number)[][] = [
-    [rootWbsId, projId, obsId, 100, 1, "Y", "N", "WS_Open", project.name.slice(0, 30), project.name.slice(0, 100), "", "", "", "", "0.0000", "0.0000", "", "", "", "", "", "EC_Cmp_pct", "EE_PF_cpi", guidFor(project.id), "", ""],
+    [rootWbsId, projId, obsId, 100, 1, "Y", "N", "WS_Open", project.name.slice(0, 30), expiredSubscription ? `${project.name.slice(0, 30)} — انتهت الفترة التجريبية أو الاشتراك` : project.name.slice(0, 100), "", "", "", "", "0.0000", "0.0000", "", "", "", "", "", "EC_Cmp_pct", "EE_PF_cpi", guidFor(project.id), "", ""],
   ];
   for (const a of activities) {
     const wbsId = idByActivity.get(a.id)!;

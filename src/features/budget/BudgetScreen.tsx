@@ -372,7 +372,7 @@ export function BudgetScreen({ project }: { project: Project }) {
             }))
           ),
         },
-      ]);
+      ], project.id);
     } finally {
       setExporting(false);
     }
@@ -516,7 +516,7 @@ export function BudgetScreen({ project }: { project: Project }) {
                     </>
                   ) : getEstimatedAmount(selected) > 0 ? (
                     <>
-                      لا توجد ميزانية رسمية لهذا البند بعد — يوجد فقط رقم تقديري مبدئي:{" "}
+                      لا توجد ميزانية رسمية لهذا البندبعد — يوجد فقط رقم تقديري مبدئي:{" "}
                       <span className="font-semibold text-ink">{fmtMoney(getEstimatedAmount(selected))}</span>
                     </>
                   ) : (

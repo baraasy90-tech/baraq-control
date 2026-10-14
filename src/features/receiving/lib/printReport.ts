@@ -7,12 +7,14 @@ function escapeHtml(s: string): string {
 }
 
 export function printSubmissionReport({
+  projectId,
   projectName,
   activityName,
   submission,
   checklistItems,
   print,
 }: {
+  projectId: string;
   projectName: string;
   activityName: string;
   submission: Submission;
@@ -121,7 +123,7 @@ export function printSubmissionReport({
 </body>
 </html>`;
 
-  openPrintWindow(html);
+  openPrintWindow(html, projectId);
 }
 
 function decisionColor(decision: Submission["decision"]): string {
