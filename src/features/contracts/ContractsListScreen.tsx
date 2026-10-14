@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
+import { ProjectWriteStatus } from "@/features/billing/ProjectWriteStatus";
 import { useNavigate, useParams } from "react-router-dom";
 import { FileText, Paperclip, Plus, Trash2 } from "lucide-react";
 import { Card, SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText, Modal } from "@/components/ui";
@@ -17,6 +19,7 @@ import type { Contract } from "@/types/domain";
 
 export function ContractsListScreen() {
   const { id: projectId } = useParams<{ id: string }>();
+  const { readOnly } = useSubscriptionWriteAccess(projectId ?? "");
   const navigate = useNavigate();
   const { company } = useCompany();
   const contractsQuery = useContracts(projectId);
@@ -37,6 +40,7 @@ export function ContractsListScreen() {
   const trackedBudget = (activitiesQuery.data ?? []).reduce((sum, a) => sum + getPlannedAmount(a), 0);
 
   const handleCreate = async () => {
+    if (readOnly) return;
     if (!newName.trim() || !projectId) return;
     setError("");
     try {
@@ -75,8 +79,9 @@ export function ContractsListScreen() {
       </div>
 
       {contracts.length > 0 && (
-        <BudgetVarianceBanner projectId={projectId!} contractValue={totalContractValue} trackedBudget={trackedBudget} />
+        <BudgetVarianceBanner readOnly={readOnly} projectId={projectId!} contractValue={totalContractValue} trackedBudget={trackedBudget} />
       )}
+      <ProjectWriteStatus projectId={projectId ?? ""} />
 
       {contractsQuery.isLoading && <p className="text-sm text-ink-soft">جارٍ التحميل...</p>}
 
@@ -114,6 +119,7 @@ export function ContractsListScreen() {
                   <span className="text-sm font-bold text-ink font-mono">{c.totalValue ? fmtMoney(c.totalValue) : "—"}</span>
                   {(c.status === "draft" || c.status === "rejected") && (
                     <IconButton
+                      disabled={readOnly}
                       icon={Trash2}
                       label="حذف العقد"
                       tone="critical"
@@ -131,17 +137,17 @@ export function ContractsListScreen() {
         </div>
       )}
 
-      <SecondaryButton onClick={() => setCreating(true)} className="w-auto px-4 inline-flex items-center gap-1.5">
+      <SecondaryButton disabled={readOnly} onClick={() => setCreating(true)} className="w-auto px-4 inline-flex items-center gap-1.5">
         <Plus size={15} strokeWidth={2.5} /> إضافة عقد
       </SecondaryButton>
 
       {creating && (
         <Modal title="عقد جديد" onClose={() => setCreating(false)}>
           <FieldLabel>اسم العقد</FieldLabel>
-          <TextInput value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="مثال: عقد العظم، عقد التشطيبات" autoFocus />
+          <TextInput disabled={readOnly} value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="مثال: عقد العظم، عقد التشطيبات" autoFocus />
           <ErrorText>{error}</ErrorText>
           <div className="flex gap-2 mt-4">
-            <PrimaryButton onClick={handleCreate} disabled={!newName.trim() || saveContract.isPending} className="flex-1">
+            <PrimaryButton onClick={handleCreate} disabled={readOnly || !newName.trim() || saveContract.isPending} className="flex-1">
               {saveContract.isPending ? "جارٍ الإنشاء..." : "إنشاء ومتابعة"}
             </PrimaryButton>
             <SecondaryButton onClick={() => setCreating(false)} className="flex-1">
@@ -163,6 +169,7 @@ export function ContractsListScreen() {
             </SecondaryButton>
             <button
               onClick={async () => {
+                if (readOnly) return;
                 try {
                   await deleteContract.mutateAsync(confirmDelete.id);
                   setConfirmDelete(null);
@@ -170,7 +177,7 @@ export function ContractsListScreen() {
                   setDeleteError(getErrorMessage(err, "تعذّر حذف العقد، حاول مجدداً"));
                 }
               }}
-              disabled={deleteContract.isPending}
+              disabled={readOnly || deleteContract.isPending}
               className="flex-1 py-2.5 rounded-lg bg-critical text-white border-none font-bold text-sm cursor-pointer disabled:opacity-50"
             >
               {deleteContract.isPending ? "جارٍ الحذف..." : "حذف نهائياً"}
