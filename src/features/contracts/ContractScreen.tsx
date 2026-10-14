@@ -1,3 +1,5 @@
+import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
+import { ProjectWriteStatus } from "@/features/billing/ProjectWriteStatus";
 import { useState } from "react";
 import { StorageFileLink } from "@/components/StorageFileLink";
 import { useNavigate, useParams } from "react-router-dom";
@@ -43,6 +45,7 @@ function numOrNull(v: string): number | null {
 export function ContractScreen() {
   const { id: projectId, contractId } = useParams<{ id: string; contractId: string }>();
   const navigate = useNavigate();
+  const { readOnly } = useSubscriptionWriteAccess(projectId ?? "");
   const bundleQuery = useContract(contractId);
   const projectQuery = useProject(projectId);
   const project = projectQuery.data;
@@ -149,6 +152,7 @@ export function ContractScreen() {
   }
 
   const startEditMain = () => {
+    if (readOnly) return;
     if (contract) {
       setName(contract.name);
       setStartDate(contract.startDate ?? "");
@@ -184,6 +188,7 @@ export function ContractScreen() {
   };
 
   const saveMain = async () => {
+    if (readOnly) return;
     setMainError("");
     try {
       const newTotalValue = numOrNull(totalValue);
@@ -220,6 +225,7 @@ export function ContractScreen() {
   };
 
   const handleCreateDraftActivity = async () => {
+    if (readOnly) return;
     if (!offerDraftActivity || !contract || !projectId) return;
     setDraftActivityError("");
     setCreatingDraftActivity(true);
@@ -260,11 +266,13 @@ export function ContractScreen() {
   };
 
   const handleSubmitForApproval = async () => {
+    if (readOnly) return;
     if (!contract || !projectId) return;
     await submitContract.mutateAsync({ contractId: contract.id, projectId });
   };
 
   const handleFinalizeContract = async () => {
+    if (readOnly) return;
     if (!contract || !projectId) return;
     setFinalizeError("");
     setFinalizing(true);
@@ -280,18 +288,21 @@ export function ContractScreen() {
   };
 
   const handleReview = async (approve: boolean) => {
+    if (readOnly) return;
     if (!contract || !projectId) return;
     await reviewContract.mutateAsync({ contractId: contract.id, projectId, approve, note: reviewNoteInput.trim() || null });
     setReviewNoteInput("");
   };
 
   const handleReviewPayment = async (paymentId: string, approve: boolean) => {
+    if (readOnly) return;
     await reviewPayment.mutateAsync({ paymentId, approve, note: paymentReviewNote.trim() || null });
     setReviewingPaymentId(null);
     setPaymentReviewNote("");
   };
 
   const handleAddLineItem = async () => {
+    if (readOnly) return;
     if (!contract || !lineDesc.trim()) return;
     await addLineItem.mutateAsync({
       contractId: contract.id,
@@ -308,6 +319,7 @@ export function ContractScreen() {
   };
 
   const handleAddPayment = async () => {
+    if (readOnly) return;
     if (!contract || !payTitle.trim()) return;
     await addPayment.mutateAsync({
       contractId: contract.id,
@@ -329,6 +341,7 @@ export function ContractScreen() {
   };
 
   const handleAddDeduction = async () => {
+    if (readOnly) return;
     if (!contract || !violationName.trim() || !violationAmount.trim()) return;
     await addDeduction.mutateAsync({
       contractId: contract.id,
@@ -399,6 +412,7 @@ export function ContractScreen() {
       </div>
 
       {bundleQuery.isLoading && <p className="text-sm text-ink-soft">جارٍ التحميل...</p>}
+      <ProjectWriteStatus projectId={projectId ?? ""} />
 
       {contract && (
         <Card className="mb-4">
@@ -412,11 +426,11 @@ export function ContractScreen() {
 
             {contract.status === "draft" &&
               (company.isIndividual ? (
-                <PrimaryButton onClick={handleFinalizeContract} disabled={finalizing} className="w-auto px-4 py-2 text-xs">
+                <PrimaryButton onClick={handleFinalizeContract} disabled={readOnly || (finalizing)} className="w-auto px-4 py-2 text-xs">
                   {finalizing ? "جارٍ الاعتماد..." : "اعتماد نهائي"}
                 </PrimaryButton>
               ) : (
-                <PrimaryButton onClick={handleSubmitForApproval} disabled={submitContract.isPending} className="w-auto px-4 py-2 text-xs">
+                <PrimaryButton onClick={handleSubmitForApproval} disabled={readOnly || (submitContract.isPending)} className="w-auto px-4 py-2 text-xs">
                   {submitContract.isPending ? "جارٍ الإرسال..." : "تقديم للاعتماد"}
                 </PrimaryButton>
               ))}
@@ -427,16 +441,16 @@ export function ContractScreen() {
             (canPmApprove ? (
               <div className="mt-3 pt-3 border-t border-line/60">
                 <p className="text-xs text-ink-soft mb-2">اعتماد أولي — رئيس قسم إدارة المشاريع</p>
-                <TextInput
+                <TextInput disabled={readOnly}
                   value={reviewNoteInput}
                   onChange={(e) => setReviewNoteInput(e.target.value)}
                   placeholder="ملاحظة الاعتماد/الرفض (اختياري)"
                 />
                 <div className="flex gap-2 mt-2">
-                  <PrimaryButton onClick={() => handleReview(true)} disabled={reviewContract.isPending} className="w-auto px-4 py-2 text-xs">
+                  <PrimaryButton onClick={() => handleReview(true)} disabled={readOnly || (reviewContract.isPending)} className="w-auto px-4 py-2 text-xs">
                     اعتماد وتحويل للمالية
                   </PrimaryButton>
-                  <SecondaryButton onClick={() => handleReview(false)} disabled={reviewContract.isPending} className="text-xs px-3 py-2">
+                  <SecondaryButton onClick={() => handleReview(false)} disabled={readOnly || (reviewContract.isPending)} className="text-xs px-3 py-2">
                     رفض
                   </SecondaryButton>
                 </div>
@@ -451,16 +465,16 @@ export function ContractScreen() {
                 <p className="text-xs text-ink-soft mb-2">
                   اعتُمد مبدئياً من إدارة المشاريع — الاعتماد المالي النهائي
                 </p>
-                <TextInput
+                <TextInput disabled={readOnly}
                   value={reviewNoteInput}
                   onChange={(e) => setReviewNoteInput(e.target.value)}
                   placeholder="ملاحظة الاعتماد/الرفض (اختياري)"
                 />
                 <div className="flex gap-2 mt-2">
-                  <PrimaryButton onClick={() => handleReview(true)} disabled={reviewContract.isPending} className="w-auto px-4 py-2 text-xs">
+                  <PrimaryButton onClick={() => handleReview(true)} disabled={readOnly || (reviewContract.isPending)} className="w-auto px-4 py-2 text-xs">
                     الاعتماد النهائي
                   </PrimaryButton>
-                  <SecondaryButton onClick={() => handleReview(false)} disabled={reviewContract.isPending} className="text-xs px-3 py-2">
+                  <SecondaryButton onClick={() => handleReview(false)} disabled={readOnly || (reviewContract.isPending)} className="text-xs px-3 py-2">
                     رفض
                   </SecondaryButton>
                 </div>
@@ -510,7 +524,7 @@ export function ContractScreen() {
         <Card className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-ink">بيانات العقد</h2>
-            <SecondaryButton onClick={startEditMain} className="text-xs px-3 py-1.5">
+            <SecondaryButton disabled={readOnly} onClick={startEditMain} className="text-xs px-3 py-1.5">
               تعديل
             </SecondaryButton>
           </div>
@@ -603,7 +617,7 @@ export function ContractScreen() {
 
           <div className="mb-4">
             <FieldLabel>اسم العقد</FieldLabel>
-            <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: عقد العظم" />
+            <TextInput disabled={readOnly} value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: عقد العظم" />
           </div>
 
           <div className="mb-4">
@@ -611,7 +625,7 @@ export function ContractScreen() {
             <label className="flex items-center gap-2 border border-dashed border-line rounded-lg px-3 py-2.5 cursor-pointer text-sm text-ink-soft hover:bg-bg">
               <Upload size={15} />
               {pdfFile ? pdfFile.name : contract?.pdfUrl ? "استبدال الملف الحالي" : "اختر ملف PDF"}
-              <input
+              <input disabled={readOnly}
                 type="file"
                 accept="application/pdf"
                 className="hidden"
@@ -623,21 +637,21 @@ export function ContractScreen() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
             <div>
               <FieldLabel>تاريخ بدء العقد</FieldLabel>
-              <TextInput type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <TextInput disabled={readOnly} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </div>
             <div>
               <FieldLabel>مدة العقد (بالأيام)</FieldLabel>
-              <TextInput type="number" value={durationDays} onChange={(e) => setDurationDays(e.target.value)} />
+              <TextInput disabled={readOnly} type="number" value={durationDays} onChange={(e) => setDurationDays(e.target.value)} />
             </div>
             <div>
               <FieldLabel>قيمة العقد الإجمالية</FieldLabel>
-              <TextInput type="number" value={totalValue} onChange={(e) => setTotalValue(e.target.value)} />
+              <TextInput disabled={readOnly} type="number" value={totalValue} onChange={(e) => setTotalValue(e.target.value)} />
             </div>
           </div>
 
           <div className="mb-4 bg-bg rounded-lg p-3">
             <label className="flex items-center gap-2 text-sm text-ink cursor-pointer">
-              <input type="checkbox" checked={vatInclusive} onChange={(e) => setVatInclusive(e.target.checked)} />
+              <input disabled={readOnly} type="checkbox" checked={vatInclusive} onChange={(e) => setVatInclusive(e.target.checked)} />
               القيمة المُدخلة شاملة ضريبة القيمة المضافة
             </label>
             <p className="text-xs text-ink-soft mt-1">
@@ -648,7 +662,7 @@ export function ContractScreen() {
 
           <div className="mb-4">
             <FieldLabel>سياسة الدفعات</FieldLabel>
-            <textarea
+            <textarea disabled={readOnly}
               value={paymentTerms}
               onChange={(e) => setPaymentTerms(e.target.value)}
               rows={3}
@@ -659,22 +673,22 @@ export function ContractScreen() {
 
           <div className="mb-4 bg-bg rounded-lg p-3">
             <label className="flex items-center gap-2 text-sm font-semibold text-ink mb-2 cursor-pointer">
-              <input type="checkbox" checked={hasAdvancePayment} onChange={(e) => setHasAdvancePayment(e.target.checked)} />
+              <input disabled={readOnly} type="checkbox" checked={hasAdvancePayment} onChange={(e) => setHasAdvancePayment(e.target.checked)} />
               يوجد دفعة مقدمة
             </label>
             {hasAdvancePayment && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <FieldLabel>نسبة الدفعة المقدمة (%)</FieldLabel>
-                  <TextInput type="number" value={advancePct} onChange={(e) => setAdvancePct(e.target.value)} />
+                  <TextInput disabled={readOnly} type="number" value={advancePct} onChange={(e) => setAdvancePct(e.target.value)} />
                 </div>
                 <div>
                   <FieldLabel>نسبة الخصم من كل دفعة لاحقة (%)</FieldLabel>
-                  <TextInput type="number" value={advanceDeductionPct} onChange={(e) => setAdvanceDeductionPct(e.target.value)} />
+                  <TextInput disabled={readOnly} type="number" value={advanceDeductionPct} onChange={(e) => setAdvanceDeductionPct(e.target.value)} />
                 </div>
                 <div className="sm:col-span-2">
                   <FieldLabel>ضمان الدفعة المقدمة (مثال: سند لأمر بقيمتها)</FieldLabel>
-                  <TextInput value={advanceGuaranteeNote} onChange={(e) => setAdvanceGuaranteeNote(e.target.value)} />
+                  <TextInput disabled={readOnly} value={advanceGuaranteeNote} onChange={(e) => setAdvanceGuaranteeNote(e.target.value)} />
                 </div>
               </div>
             )}
@@ -685,22 +699,22 @@ export function ContractScreen() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
               <div>
                 <FieldLabel>نسبة الاستقطاع (عادة 5 إلى 10%)</FieldLabel>
-                <TextInput type="number" value={retentionPct} onChange={(e) => setRetentionPct(e.target.value)} />
+                <TextInput disabled={readOnly} type="number" value={retentionPct} onChange={(e) => setRetentionPct(e.target.value)} />
               </div>
               <div className="flex items-end">
                 <label className="flex items-center gap-2 text-sm text-ink cursor-pointer pb-2.5">
-                  <input type="checkbox" checked={retentionReleased} onChange={(e) => setRetentionReleased(e.target.checked)} />
+                  <input disabled={readOnly} type="checkbox" checked={retentionReleased} onChange={(e) => setRetentionReleased(e.target.checked)} />
                   تم استرداد الاستقطاع
                 </label>
               </div>
             </div>
             <FieldLabel>ملاحظة الاسترداد (الضمانات، شهادة الإنجاز، الاعتماد النهائي)</FieldLabel>
-            <TextInput value={retentionNote} onChange={(e) => setRetentionNote(e.target.value)} />
+            <TextInput disabled={readOnly} value={retentionNote} onChange={(e) => setRetentionNote(e.target.value)} />
           </div>
 
           <ErrorText>{mainError}</ErrorText>
           <div className="flex gap-2">
-            <PrimaryButton onClick={saveMain} disabled={saveContract.isPending} className="w-auto px-5">
+            <PrimaryButton onClick={saveMain} disabled={readOnly || (saveContract.isPending)} className="w-auto px-5">
               {saveContract.isPending ? "جارٍ الحفظ..." : "حفظ"}
             </PrimaryButton>
             <SecondaryButton onClick={() => setEditingMain(false)} className="px-5">
@@ -726,18 +740,18 @@ export function ContractScreen() {
                         {li.quantity ?? "—"} {li.unit ?? ""} × {li.unitPrice ? fmtMoney(li.unitPrice) : "—"}
                       </div>
                     </div>
-                    <IconButton icon={Trash2} label="حذف البند" tone="critical" onClick={() => deleteLineItem.mutate(li.id)} />
+                    <IconButton disabled={readOnly} icon={Trash2} label="حذف البند" tone="critical" onClick={() => deleteLineItem.mutate(li.id)} />
                   </div>
                 ))}
               </div>
             )}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <TextInput placeholder="الوصف" value={lineDesc} onChange={(e) => setLineDesc(e.target.value)} className="sm:col-span-1" />
-              <TextInput placeholder="الكمية" type="number" value={lineQty} onChange={(e) => setLineQty(e.target.value)} />
-              <TextInput placeholder="الوحدة" value={lineUnit} onChange={(e) => setLineUnit(e.target.value)} />
-              <TextInput placeholder="سعر الوحدة" type="number" value={lineUnitPrice} onChange={(e) => setLineUnitPrice(e.target.value)} />
+              <TextInput disabled={readOnly} placeholder="الوصف" value={lineDesc} onChange={(e) => setLineDesc(e.target.value)} className="sm:col-span-1" />
+              <TextInput disabled={readOnly} placeholder="الكمية" type="number" value={lineQty} onChange={(e) => setLineQty(e.target.value)} />
+              <TextInput disabled={readOnly} placeholder="الوحدة" value={lineUnit} onChange={(e) => setLineUnit(e.target.value)} />
+              <TextInput disabled={readOnly} placeholder="سعر الوحدة" type="number" value={lineUnitPrice} onChange={(e) => setLineUnitPrice(e.target.value)} />
             </div>
-            <SecondaryButton onClick={handleAddLineItem} disabled={!lineDesc.trim()} className="text-xs mt-2 px-3 py-1.5">
+            <SecondaryButton onClick={handleAddLineItem} disabled={readOnly || (!lineDesc.trim())} className="text-xs mt-2 px-3 py-1.5">
               إضافة بند
             </SecondaryButton>
           </Card>
@@ -774,7 +788,7 @@ export function ContractScreen() {
                         <input
                           type="checkbox"
                           checked={p.paid}
-                          disabled={!p.paid && p.status !== "approved"}
+                          disabled={readOnly || (!p.paid && p.status !== "approved")}
                           title={p.status !== "approved" && !p.paid ? "لازم اعتماد الدفعة أولاً قبل تسجيلها كمدفوعة" : undefined}
                           onChange={(e) => togglePaymentPaid.mutate({ id: p.id, paid: e.target.checked })}
                         />
@@ -807,7 +821,7 @@ export function ContractScreen() {
                         {p.status === "pending" && (
                           <SecondaryButton
                             onClick={() => submitPayment.mutate(p.id)}
-                            disabled={submitPayment.isPending}
+                            disabled={readOnly || (submitPayment.isPending)}
                             className="text-[11px] px-2 py-1"
                           >
                             تقديم للاعتماد
@@ -815,20 +829,20 @@ export function ContractScreen() {
                         )}
                         {((p.status === "pending_pm_approval" && canPmApprove) ||
                           (p.status === "pending_finance_approval" && canFinanceApprove)) && (
-                          <SecondaryButton
+                          <SecondaryButton disabled={readOnly}
                             onClick={() => setReviewingPaymentId(reviewingPaymentId === p.id ? null : p.id)}
                             className="text-[11px] px-2 py-1"
                           >
                             {p.status === "pending_pm_approval" ? "اعتماد أولي" : "الاعتماد المالي النهائي"}
                           </SecondaryButton>
                         )}
-                        <IconButton icon={Trash2} label="حذف الدفعة" tone="critical" onClick={() => deletePayment.mutate(p.id)} />
+                        <IconButton disabled={readOnly} icon={Trash2} label="حذف الدفعة" tone="critical" onClick={() => deletePayment.mutate(p.id)} />
                       </div>
                     </div>
 
                     {reviewingPaymentId === p.id && (
                       <div className="mt-2 pt-2 border-t border-line/60">
-                        <TextInput
+                        <TextInput disabled={readOnly}
                           value={paymentReviewNote}
                           onChange={(e) => setPaymentReviewNote(e.target.value)}
                           placeholder="ملاحظة الاعتماد/الرفض (اختياري)"
@@ -836,14 +850,14 @@ export function ContractScreen() {
                         <div className="flex gap-2 mt-2">
                           <PrimaryButton
                             onClick={() => handleReviewPayment(p.id, true)}
-                            disabled={reviewPayment.isPending}
+                            disabled={readOnly || (reviewPayment.isPending)}
                             className="w-auto px-3 py-1.5 text-xs"
                           >
                             اعتماد
                           </PrimaryButton>
                           <SecondaryButton
                             onClick={() => handleReviewPayment(p.id, false)}
-                            disabled={reviewPayment.isPending}
+                            disabled={readOnly || (reviewPayment.isPending)}
                             className="text-xs px-3 py-1.5"
                           >
                             رفض
@@ -856,24 +870,25 @@ export function ContractScreen() {
               </div>
             )}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-              <TextInput placeholder="عنوان الدفعة" value={payTitle} onChange={(e) => setPayTitle(e.target.value)} />
-              <TextInput placeholder="الموعد" type="date" value={payDueDate} onChange={(e) => setPayDueDate(e.target.value)} />
-              <TextInput placeholder="المبلغ" type="number" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
-              <TextInput placeholder="أو نسبة %" type="number" value={payPct} onChange={(e) => setPayPct(e.target.value)} />
-              <TextInput placeholder="ملاحظة ضمان" value={payGuarantee} onChange={(e) => setPayGuarantee(e.target.value)} />
+              <TextInput disabled={readOnly} placeholder="عنوان الدفعة" value={payTitle} onChange={(e) => setPayTitle(e.target.value)} />
+              <TextInput disabled={readOnly} placeholder="الموعد" type="date" value={payDueDate} onChange={(e) => setPayDueDate(e.target.value)} />
+              <TextInput disabled={readOnly} placeholder="المبلغ" type="number" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
+              <TextInput disabled={readOnly} placeholder="أو نسبة %" type="number" value={payPct} onChange={(e) => setPayPct(e.target.value)} />
+              <TextInput disabled={readOnly} placeholder="ملاحظة ضمان" value={payGuarantee} onChange={(e) => setPayGuarantee(e.target.value)} />
             </div>
             {contract.hasAdvancePayment && (
               <label className="flex items-center gap-2 text-xs text-ink-soft mt-2 cursor-pointer">
-                <input type="checkbox" checked={payIsAdvance} onChange={(e) => setPayIsAdvance(e.target.checked)} />
+                <input disabled={readOnly} type="checkbox" checked={payIsAdvance} onChange={(e) => setPayIsAdvance(e.target.checked)} />
                 هذه الدفعة هي الدفعة المقدمة نفسها (تُستثنى من خصومات الاسترداد والاستقطاع)
               </label>
             )}
-            <SecondaryButton onClick={handleAddPayment} disabled={!payTitle.trim()} className="text-xs mt-2 px-3 py-1.5">
+            <SecondaryButton onClick={handleAddPayment} disabled={readOnly || (!payTitle.trim())} className="text-xs mt-2 px-3 py-1.5">
               إضافة دفعة
             </SecondaryButton>
           </Card>
 
           <ExtraWorksSection
+            readOnly={readOnly}
             contractId={contract.id}
             canPmApprove={canPmApprove}
             canFinanceApprove={canFinanceApprove}
@@ -916,6 +931,7 @@ export function ContractScreen() {
           )}
 
           <SettlementSection
+            readOnly={readOnly}
             contract={contract}
             projectName={project?.name ?? ""}
             company={company}
@@ -948,20 +964,20 @@ export function ContractScreen() {
                         {d.damageDescription ? ` · ${d.damageDescription}` : ""}
                       </div>
                     </div>
-                    <IconButton icon={Trash2} label="حذف الخصم" tone="critical" onClick={() => deleteDeduction.mutate(d.id)} />
+                    <IconButton disabled={readOnly} icon={Trash2} label="حذف الخصم" tone="critical" onClick={() => deleteDeduction.mutate(d.id)} />
                   </div>
                 ))}
               </div>
             )}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <TextInput placeholder="اسم المخالفة" value={violationName} onChange={(e) => setViolationName(e.target.value)} />
-              <TextInput placeholder="قيمة الخصم" type="number" value={violationAmount} onChange={(e) => setViolationAmount(e.target.value)} />
-              <TextInput placeholder="الضرر الناتج" value={violationDesc} onChange={(e) => setViolationDesc(e.target.value)} />
-              <TextInput type="date" value={violationDate} onChange={(e) => setViolationDate(e.target.value)} />
+              <TextInput disabled={readOnly} placeholder="اسم المخالفة" value={violationName} onChange={(e) => setViolationName(e.target.value)} />
+              <TextInput disabled={readOnly} placeholder="قيمة الخصم" type="number" value={violationAmount} onChange={(e) => setViolationAmount(e.target.value)} />
+              <TextInput disabled={readOnly} placeholder="الضرر الناتج" value={violationDesc} onChange={(e) => setViolationDesc(e.target.value)} />
+              <TextInput disabled={readOnly} type="date" value={violationDate} onChange={(e) => setViolationDate(e.target.value)} />
             </div>
             <SecondaryButton
               onClick={handleAddDeduction}
-              disabled={!violationName.trim() || !violationAmount.trim()}
+              disabled={readOnly || (!violationName.trim() || !violationAmount.trim())}
               className="text-xs mt-2 px-3 py-1.5"
             >
               إضافة خصم
@@ -981,7 +997,7 @@ export function ContractScreen() {
           </p>
           <ErrorText>{draftActivityError}</ErrorText>
           <div className="flex gap-2">
-            <PrimaryButton onClick={handleCreateDraftActivity} disabled={creatingDraftActivity} className="flex-1">
+            <PrimaryButton onClick={handleCreateDraftActivity} disabled={readOnly || (creatingDraftActivity)} className="flex-1">
               {creatingDraftActivity ? "جارٍ الإنشاء..." : "إنشاء بند مسودة"}
             </PrimaryButton>
             <SecondaryButton onClick={() => setOfferDraftActivity(null)} className="flex-1">

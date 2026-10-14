@@ -26,6 +26,7 @@ const SETTLEMENT_TONE: Record<string, string> = {
 };
 
 export function SettlementSection({
+  readOnly = false,
   contract,
   projectName,
   company,
@@ -40,6 +41,7 @@ export function SettlementSection({
   totalPaidNet,
   isIndividual,
 }: {
+  readOnly?: boolean;
   contract: Contract;
   projectName: string;
   company: Company;
@@ -73,6 +75,7 @@ export function SettlementSection({
   const finalBalance = entitlement - totalPaidNet - retentionOwed;
 
   const handleSubmit = async () => {
+    if (readOnly) return;
     setError("");
     try {
       await submitSettlement.mutateAsync(note.trim() || null);
@@ -82,6 +85,7 @@ export function SettlementSection({
   };
 
   const handleFinalizeSettlement = async () => {
+    if (readOnly) return;
     setError("");
     setFinalizing(true);
     try {
@@ -96,6 +100,7 @@ export function SettlementSection({
   };
 
   const handleReview = async (approve: boolean) => {
+    if (readOnly) return;
     await reviewSettlement.mutateAsync({ approve, note: reviewNote.trim() || null });
     setReviewNote("");
   };
@@ -164,14 +169,14 @@ export function SettlementSection({
               سبب الرفض: {contract.settlementFinanceReviewNote || contract.settlementPmReviewNote || "بدون سبب"}
             </p>
           )}
-          <TextInput value={note} onChange={(e) => setNote(e.target.value)} placeholder="ملاحظة التصفية (اختياري)" />
+          <TextInput disabled={readOnly} value={note} onChange={(e) => setNote(e.target.value)} placeholder="ملاحظة التصفية (اختياري)" />
           <ErrorText>{error}</ErrorText>
           {isIndividual ? (
-            <PrimaryButton onClick={handleFinalizeSettlement} disabled={finalizing} className="w-auto px-4 py-2 text-xs mt-2">
+            <PrimaryButton onClick={handleFinalizeSettlement} disabled={readOnly || (finalizing)} className="w-auto px-4 py-2 text-xs mt-2">
               {finalizing ? "جارٍ الاعتماد..." : "اعتماد التصفية النهائية"}
             </PrimaryButton>
           ) : (
-            <PrimaryButton onClick={handleSubmit} disabled={submitSettlement.isPending} className="w-auto px-4 py-2 text-xs mt-2">
+            <PrimaryButton onClick={handleSubmit} disabled={readOnly || (submitSettlement.isPending)} className="w-auto px-4 py-2 text-xs mt-2">
               {submitSettlement.isPending ? "جارٍ التقديم..." : "بدء إجراءات التصفية النهائية"}
             </PrimaryButton>
           )}
@@ -181,16 +186,16 @@ export function SettlementSection({
       {contract.settlementStatus === "pending_pm_approval" &&
         (canPmApprove ? (
           <div>
-            <TextInput
+            <TextInput disabled={readOnly}
               value={reviewNote}
               onChange={(e) => setReviewNote(e.target.value)}
               placeholder="ملاحظة الاعتماد/الرفض (اختياري)"
             />
             <div className="flex gap-2 mt-2">
-              <PrimaryButton onClick={() => handleReview(true)} disabled={reviewSettlement.isPending} className="w-auto px-4 py-2 text-xs">
+              <PrimaryButton onClick={() => handleReview(true)} disabled={readOnly || (reviewSettlement.isPending)} className="w-auto px-4 py-2 text-xs">
                 اعتماد وتحويل للمالية
               </PrimaryButton>
-              <SecondaryButton onClick={() => handleReview(false)} disabled={reviewSettlement.isPending} className="text-xs px-3 py-2">
+              <SecondaryButton onClick={() => handleReview(false)} disabled={readOnly || (reviewSettlement.isPending)} className="text-xs px-3 py-2">
                 رفض
               </SecondaryButton>
             </div>
@@ -202,16 +207,16 @@ export function SettlementSection({
       {contract.settlementStatus === "pending_finance_approval" &&
         (canFinanceApprove ? (
           <div>
-            <TextInput
+            <TextInput disabled={readOnly}
               value={reviewNote}
               onChange={(e) => setReviewNote(e.target.value)}
               placeholder="ملاحظة الاعتماد/الرفض (اختياري)"
             />
             <div className="flex gap-2 mt-2">
-              <PrimaryButton onClick={() => handleReview(true)} disabled={reviewSettlement.isPending} className="w-auto px-4 py-2 text-xs">
+              <PrimaryButton onClick={() => handleReview(true)} disabled={readOnly || (reviewSettlement.isPending)} className="w-auto px-4 py-2 text-xs">
                 الاعتماد النهائي للتصفية
               </PrimaryButton>
-              <SecondaryButton onClick={() => handleReview(false)} disabled={reviewSettlement.isPending} className="text-xs px-3 py-2">
+              <SecondaryButton onClick={() => handleReview(false)} disabled={readOnly || (reviewSettlement.isPending)} className="text-xs px-3 py-2">
                 رفض
               </SecondaryButton>
             </div>

@@ -23,6 +23,7 @@ const STATUS_TONE: Record<string, string> = {
 };
 
 export function BudgetVarianceBanner({
+  readOnly = false,
   projectId,
   contractValue,
   trackedBudget,
@@ -33,6 +34,7 @@ export function BudgetVarianceBanner({
   unlinkedBudgetItems = [],
   unlinkedContracts = [],
 }: {
+  readOnly?: boolean;
   projectId: string;
   contractValue: number | null;
   trackedBudget: number;
@@ -79,6 +81,7 @@ export function BudgetVarianceBanner({
   if (!hasVariance && notes.length === 0) return null;
 
   const handleSubmit = async () => {
+    if (readOnly) return;
     if (!note.trim()) return;
     setError("");
     try {
@@ -91,6 +94,7 @@ export function BudgetVarianceBanner({
   };
 
   const handleReview = async (status: "approved" | "rejected") => {
+    if (readOnly) return;
     if (!latestNote) return;
     setError("");
     try {
@@ -181,7 +185,7 @@ export function BudgetVarianceBanner({
             <div className="min-w-0">
               <div className="text-sm font-bold text-ink">اختلاف بانتظار الاعتماد</div>
               <div className="text-xs text-ink-soft mt-1">
-                {valueLabel}: {fmtMoney(contractValue)} — {budgetLabel}: {fmtMoney(trackedBudget)} — الفرق:{" "}
+                {valueLabel}: {fmtMoney(contractValue)} —{budgetLabel}: {fmtMoney(trackedBudget)} — الفرق:{" "}
                 {fmtMoney(Math.abs((contractValue ?? 0) - trackedBudget))}
               </div>
               {breakdown}
@@ -191,17 +195,17 @@ export function BudgetVarianceBanner({
 
           {canApprove ? (
             <div className="mt-2">
-              <TextInput
+              <TextInput disabled={readOnly}
                 value={reviewComment}
                 onChange={(e) => setReviewComment(e.target.value)}
                 placeholder="ملاحظة الاعتماد/الرفض (اختياري)"
               />
               <ErrorText>{error}</ErrorText>
               <div className="flex gap-2 mt-2">
-                <PrimaryButton onClick={() => handleReview("approved")} disabled={reviewNote.isPending} className="w-auto px-4 py-2 text-xs">
+                <PrimaryButton onClick={() => handleReview("approved")} disabled={readOnly || (reviewNote.isPending)} className="w-auto px-4 py-2 text-xs">
                   اعتماد
                 </PrimaryButton>
-                <SecondaryButton onClick={() => handleReview("rejected")} disabled={reviewNote.isPending} className="text-xs px-3 py-2">
+                <SecondaryButton onClick={() => handleReview("rejected")} disabled={readOnly || (reviewNote.isPending)} className="text-xs px-3 py-2">
                   رفض
                 </SecondaryButton>
               </div>
@@ -225,19 +229,19 @@ export function BudgetVarianceBanner({
           </div>
 
           {!formOpen ? (
-            <SecondaryButton onClick={() => setFormOpen(true)} className="text-xs px-3 py-1.5">
+            <SecondaryButton disabled={readOnly} onClick={() => setFormOpen(true)} className="text-xs px-3 py-1.5">
               معالجة الاختلاف وإرفاق مبرر
             </SecondaryButton>
           ) : (
             <div className="mt-2">
-              <TextInput
+              <TextInput disabled={readOnly}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="اشرح سبب الاختلاف (مثال: بند إضافي معتمد لم يُدخل بعد بالميزانية)"
               />
               <ErrorText>{error}</ErrorText>
               <div className="flex gap-2 mt-2">
-                <PrimaryButton onClick={handleSubmit} disabled={!note.trim() || addNote.isPending} className="w-auto px-4 py-2 text-xs">
+                <PrimaryButton onClick={handleSubmit} disabled={readOnly || (!note.trim() || addNote.isPending)} className="w-auto px-4 py-2 text-xs">
                   {addNote.isPending ? "جارٍ الحفظ..." : "إرسال للاعتماد"}
                 </PrimaryButton>
                 <SecondaryButton onClick={() => setFormOpen(false)} className="text-xs px-3 py-1.5">
