@@ -19,6 +19,7 @@ interface ChecklistDraftState extends ChecklistRowState {
 }
 
 export function NewSubmissionForm({
+  readOnly = false,
   activity,
   defaultManagerName,
   defaultSignatureUrl,
@@ -27,6 +28,7 @@ export function NewSubmissionForm({
   onCancel,
   submitting,
 }: {
+  readOnly?: boolean;
   activity: Activity;
   defaultManagerName: string;
   defaultSignatureUrl: string | null;
@@ -52,7 +54,7 @@ export function NewSubmissionForm({
   const managerSignatureUrl = initial?.managerSignatureUrl ?? defaultSignatureUrl;
   const [managerName, setManagerName] = useState(initial?.managerName ?? defaultManagerName);
   const [checklistState, setChecklistState] = useState<Record<string, ChecklistDraftState>>(() =>
-    Object.fromEntries(
+   Object.fromEntries(
       activity.checklist.map((c) => {
         const existing = initial?.checklistResults.find((r) => r.checklistItemId === c.id);
         return [c.id, { checked: existing?.checked ?? false, imagePreview: existing?.imageUrl ?? null, file: null }];
@@ -81,19 +83,23 @@ export function NewSubmissionForm({
   ].filter(Boolean) as string[];
 
   const toggleItem = (id: string) => {
+    if (readOnly) return;
     setChecklistState((prev) => ({ ...prev, [id]: { ...prev[id], checked: !prev[id].checked } }));
   };
 
   const setItemImage = (id: string, file: File) => {
+    if (readOnly) return;
     const preview = URL.createObjectURL(file);
     setChecklistState((prev) => ({ ...prev, [id]: { ...prev[id], file, imagePreview: preview } }));
   };
 
   const removeItemImage = (id: string) => {
+    if (readOnly) return;
     setChecklistState((prev) => ({ ...prev, [id]: { ...prev[id], file: null, imagePreview: null } }));
   };
 
   const addGeneralImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (readOnly) return;
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -101,12 +107,13 @@ export function NewSubmissionForm({
   };
 
   const removeGeneralImage = (index: number) => {
+    if (readOnly) return;
     setGeneralImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSubmit || !user) return;
+    if (readOnly || !canSubmit || !user || uploading || submitting) return;
     setError("");
     setUploading(true);
     try {
@@ -147,7 +154,7 @@ export function NewSubmissionForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div>
         <FieldLabel>اسم مدير المشروع</FieldLabel>
-        <TextInput value={managerName} onChange={(e) => setManagerName(e.target.value)} />
+        <TextInput disabled={readOnly} value={managerName} onChange={(e) => setManagerName(e.target.value)} />
       </div>
 
       {activity.checklist.length > 0 && (
@@ -156,6 +163,7 @@ export function NewSubmissionForm({
           <div className="border border-line rounded-lg px-3">
             {activity.checklist.map((item) => (
               <ChecklistConfirmRow
+                readOnly={readOnly}
                 key={item.id}
                 item={item}
                 state={checklistState[item.id]}
@@ -174,7 +182,7 @@ export function NewSubmissionForm({
           {generalImages.map((g, i) => (
             <div key={i} className="relative">
               <img src={g.preview} alt="" className="w-16 h-16 object-cover rounded-lg border border-line" />
-              <button
+              <button disabled={readOnly}
                 type="button"
                 onClick={() => removeGeneralImage(i)}
                 className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-critical text-white text-xs leading-none cursor-pointer border-none"
@@ -186,7 +194,7 @@ export function NewSubmissionForm({
           ))}
           <label className="w-16 h-16 flex items-center justify-center text-xs text-primary cursor-pointer border border-dashed border-primary rounded-lg">
             + صورة
-            <input type="file" accept="image/*" capture="environment" onChange={addGeneralImage} className="hidden" />
+            <input disabled={readOnly} type="file" accept="image/*" capture="environment" onChange={addGeneralImage} className="hidden" />
           </label>
         </div>
       </div>
@@ -195,7 +203,7 @@ export function NewSubmissionForm({
         <FieldLabel>القرار</FieldLabel>
         <div className="flex gap-2">
           {DECISION_OPTIONS.map((opt) => (
-            <button
+            <button disabled={readOnly}
               key={opt.value}
               type="button"
               onClick={() => setDecision(opt.value)}
@@ -209,7 +217,7 @@ export function NewSubmissionForm({
 
       <div>
         <FieldLabel>ملاحظات (اختياري)</FieldLabel>
-        <textarea
+        <textarea disabled={readOnly}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
@@ -263,7 +271,7 @@ export function NewSubmissionForm({
         <SecondaryButton type="button" onClick={onCancel} className="flex-1">
           إلغاء
         </SecondaryButton>
-        <PrimaryButton type="submit" disabled={!canSubmit || uploading || submitting} className="flex-1">
+        <PrimaryButton type="submit" disabled={readOnly || (!canSubmit || uploading || submitting)} className="flex-1">
           {uploading || submitting ? "جارٍ الحفظ..." : isEditing ? "حفظ التعديلات" : "إرسال التقديم"}
         </PrimaryButton>
       </div>

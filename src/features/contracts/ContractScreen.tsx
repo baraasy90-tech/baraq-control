@@ -306,7 +306,7 @@ export function ContractScreen() {
     if (!contract || !lineDesc.trim()) return;
     await addLineItem.mutateAsync({
       contractId: contract.id,
-      description: lineDesc.trim(),
+     description: lineDesc.trim(),
       quantity: numOrNull(lineQty),
       unit: lineUnit || null,
       unitPrice: numOrNull(lineUnitPrice),
@@ -783,7 +783,7 @@ export function ContractScreen() {
               <div className="flex flex-col gap-1.5 mb-3">
                 {paymentBreakdowns.map(({ payment: p, gross, advanceDeduction, retentionDeduction, net }) => (
                   <div key={p.id} className="bg-bg rounded-lg px-3 py-2">
-                    <div className="flex items-center justify-between gap-2 text-sm">
+ <div className="flex items-center justify-between gap-2 text-sm">
                       <label className="flex items-center gap-2 min-w-0 cursor-pointer flex-1">
                         <input
                           type="checkbox"

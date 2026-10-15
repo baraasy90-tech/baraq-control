@@ -1,3 +1,5 @@
+import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
+import { ProjectWriteStatus } from "@/features/billing/ProjectWriteStatus";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Folder, FileText, Trash2 } from "lucide-react";
@@ -14,6 +16,7 @@ import { getFileUrl } from "@/lib/supabase/storage";
 
 export function DocumentsScreen({ project }: { project: Project }) {
   const navigate = useNavigate();
+  const { readOnly } = useSubscriptionWriteAccess(project.id);
   const foldersQuery = useDocumentFolders(project.id);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const documentsQuery = useDocuments(currentFolderId ?? undefined);
@@ -58,6 +61,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
   const breadcrumb = buildBreadcrumb();
 
   const handleCreateFolder = async () => {
+    if (readOnly) return;
     if (!newFolderName.trim()) return;
     setError("");
     try {
@@ -70,6 +74,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
   };
 
   const handleDeleteFolder = async (folder: DocumentFolder) => {
+    if (readOnly) return;
     try {
       await deleteFolder.mutateAsync(folder.id);
       if (currentFolderId === folder.id) setCurrentFolderId(folder.parentFolderId);
@@ -81,6 +86,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (readOnly) return;
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !currentFolderId) return;
@@ -96,6 +102,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
   };
 
   const handleDeleteDocument = async (id: string) => {
+    if (readOnly) return;
     try {
       await deleteDocument.mutateAsync(id);
     } catch {
@@ -112,6 +119,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-4xl mx-auto">
+      <ProjectWriteStatus projectId={project.id} />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-lg font-bold text-ink truncate">المستندات — {project.name}</h1>
         <SecondaryButton onClick={() => navigate(`/projects/${project.id}`)}>رجوع</SecondaryButton>
@@ -138,16 +146,17 @@ export function DocumentsScreen({ project }: { project: Project }) {
       </div>
 
       <div className="flex gap-2 mb-5">
-        <SecondaryButton onClick={() => setFolderModalOpen(true)} className="text-sm">
+        <SecondaryButton disabled={readOnly} onClick={() => setFolderModalOpen(true)} className="text-sm">
           + مجلد جديد
         </SecondaryButton>
         <label
+          aria-disabled={readOnly || !currentFolderId || uploading}
           className={`text-sm px-4 py-2.5 rounded-lg border font-semibold cursor-pointer ${
-            currentFolderId ? "border-primary text-primary bg-primary-bg" : "border-line text-ink-soft bg-bg cursor-not-allowed"
+            currentFolderId && !readOnly && !uploading ? "border-primary text-primary bg-primary-bg" : "border-line text-ink-soft bg-bg cursor-not-allowed"
           }`}
         >
           {uploading ? "جارٍ الرفع..." : "+ رفع ملف"}
-          <input type="file" onChange={handleUpload} disabled={!currentFolderId || uploading} className="hidden" />
+          <input type="file" onChange={handleUpload} disabled={readOnly || (!currentFolderId || uploading)} className="hidden" />
         </label>
       </div>
       {!currentFolderId && (
@@ -178,7 +187,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
                 <Folder size={18} className="text-primary shrink-0" strokeWidth={2} />
                 <span className="text-sm font-semibold text-ink">{folder.name}</span>
               </button>
-              <IconButton icon={Trash2} label="حذف" tone="critical" onClick={() => setConfirmDeleteFolder(folder)} />
+              <IconButton disabled={readOnly} icon={Trash2} label="حذف" tone="critical" onClick={() => setConfirmDeleteFolder(folder)} />
             </div>
           ))}
 
@@ -198,7 +207,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
                   {new Date(doc.uploadedAt).toLocaleDateString("ar-SA")}
                 </span>
               </button>
-              <IconButton icon={Trash2} label="حذف" tone="critical" onClick={() => setConfirmDeleteDocId(doc.id)} />
+              <IconButton disabled={readOnly} icon={Trash2} label="حذف" tone="critical" onClick={() => setConfirmDeleteDocId(doc.id)} />
             </div>
           ))}
         </div>
@@ -207,13 +216,13 @@ export function DocumentsScreen({ project }: { project: Project }) {
       {folderModalOpen && (
         <Modal title="مجلد جديد" onClose={() => setFolderModalOpen(false)}>
           <FieldLabel>اسم المجلد</FieldLabel>
-          <TextInput value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} />
+          <TextInput disabled={readOnly} value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} />
           <ErrorText>{error}</ErrorText>
           <div className="flex gap-2 mt-4">
             <SecondaryButton onClick={() => setFolderModalOpen(false)} className="flex-1">
               إلغاء
             </SecondaryButton>
-            <PrimaryButton onClick={handleCreateFolder} disabled={!newFolderName.trim() || createFolder.isPending} className="flex-1">
+            <PrimaryButton onClick={handleCreateFolder} disabled={readOnly || (!newFolderName.trim() || createFolder.isPending)} className="flex-1">
               {createFolder.isPending ? "جارٍ الإنشاء..." : "إنشاء"}
             </PrimaryButton>
           </div>
@@ -229,7 +238,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
             <SecondaryButton onClick={() => setConfirmDeleteFolder(null)} className="flex-1">
               إلغاء
             </SecondaryButton>
-            <button
+            <button disabled={readOnly}
               onClick={() => handleDeleteFolder(confirmDeleteFolder)}
               className="flex-1 py-2.5 rounded-lg bg-critical text-white border-none font-bold text-sm cursor-pointer"
             >
@@ -246,7 +255,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
             <SecondaryButton onClick={() => setConfirmDeleteDocId(null)} className="flex-1">
               إلغاء
             </SecondaryButton>
-            <button
+            <button disabled={readOnly}
               onClick={() => handleDeleteDocument(confirmDeleteDocId)}
               className="flex-1 py-2.5 rounded-lg bg-critical text-white border-none font-bold text-sm cursor-pointer"
             >
