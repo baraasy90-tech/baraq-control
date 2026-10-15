@@ -6,6 +6,7 @@ import { Modal, SecondaryButton, IconButton } from "@/components/ui";
 import type { ChecklistItem, Submission } from "@/types/domain";
 
 export function SubmissionHistory({
+  readOnly = false,
   activityName,
   submissions,
   checklistItems,
@@ -14,6 +15,7 @@ export function SubmissionHistory({
   onPrint,
   deleting,
 }: {
+  readOnly?: boolean;
   activityName: string;
   submissions: Submission[];
   checklistItems: ChecklistItem[];
@@ -42,22 +44,25 @@ export function SubmissionHistory({
             </div>
             <DecisionPill submissions={[s]} />
           </button>
-          <IconButton icon={Trash2} label="حذف التقديم" tone="critical" onClick={() => setConfirmDeleteId(s.id)} />
+          <IconButton disabled={readOnly} icon={Trash2} label="حذف التقديم" tone="critical" onClick={() => setConfirmDeleteId(s.id)} />
         </div>
       ))}
 
       {previewing && (
         <ReportPreviewModal
+          readOnly={readOnly}
           activityName={activityName}
           submission={previewing}
           checklistItems={checklistItems}
           onClose={() => setPreviewing(null)}
           onPrint={() => onPrint(previewing)}
           onEdit={() => {
+            if (readOnly) return;
             setPreviewing(null);
             onEdit(previewing);
           }}
           onDelete={() => {
+            if (readOnly) return;
             setPreviewing(null);
             setConfirmDeleteId(previewing.id);
           }}
@@ -75,10 +80,11 @@ export function SubmissionHistory({
             </SecondaryButton>
             <button
               onClick={() => {
+                if (readOnly) return;
                 onDelete(confirmDeleteId);
                 setConfirmDeleteId(null);
               }}
-              disabled={deleting}
+              disabled={readOnly || deleting}
               className="flex-1 py-2.5 rounded-lg bg-critical text-white border-none font-bold text-sm cursor-pointer disabled:opacity-50"
             >
               حذف نهائياً

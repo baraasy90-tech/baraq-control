@@ -6,12 +6,14 @@ export interface ChecklistRowState {
 }
 
 export function ChecklistConfirmRow({
+  readOnly = false,
   item,
   state,
   onToggle,
   onImage,
   onRemoveImage,
 }: {
+  readOnly?: boolean;
   item: ChecklistItem;
   state: ChecklistRowState;
   onToggle: () => void;
@@ -19,6 +21,7 @@ export function ChecklistConfirmRow({
   onRemoveImage: () => void;
 }) {
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (readOnly) return;
     const file = e.target.files?.[0];
     e.target.value = "";
     if (file) onImage(file);
@@ -26,7 +29,7 @@ export function ChecklistConfirmRow({
 
   return (
     <div className="flex items-start gap-3 py-2.5 border-b border-line last:border-0">
-      <input type="checkbox" aria-label={item.text} checked={state.checked} onChange={onToggle} className="mt-1 shrink-0" />
+      <input disabled={readOnly} type="checkbox" aria-label={item.text} checked={state.checked} onChange={onToggle} className="mt-1 shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="text-sm text-ink">
           {item.text} {item.photoRequired && <span className="text-critical text-xs">(صورة إلزامية)</span>}
@@ -35,7 +38,7 @@ export function ChecklistConfirmRow({
           {state.imagePreview ? (
             <div className="relative">
               <img src={state.imagePreview} alt="" className="w-16 h-16 object-cover rounded-lg border border-line" />
-              <button
+              <button disabled={readOnly}
                 type="button"
                 onClick={onRemoveImage}
                 className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-critical text-white text-xs leading-none cursor-pointer border-none"
@@ -47,7 +50,7 @@ export function ChecklistConfirmRow({
           ) : (
             <label className="text-xs text-primary cursor-pointer border border-dashed border-primary rounded-lg px-2.5 py-1.5">
               + إضافة صورة
-              <input type="file" accept="image/*" capture="environment" onChange={handleFile} className="hidden" />
+              <input disabled={readOnly} type="file" accept="image/*" capture="environment" onChange={handleFile} className="hidden" />
             </label>
           )}
         </div>

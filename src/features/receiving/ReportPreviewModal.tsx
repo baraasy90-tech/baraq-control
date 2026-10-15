@@ -3,6 +3,7 @@ import { DecisionStamp } from "@/features/receiving/DecisionStamp";
 import type { ChecklistItem, Submission } from "@/types/domain";
 
 export function ReportPreviewModal({
+  readOnly = false,
   activityName,
   submission,
   checklistItems,
@@ -11,6 +12,7 @@ export function ReportPreviewModal({
   onEdit,
   onPrint,
 }: {
+  readOnly?: boolean;
   activityName: string;
   submission: Submission;
   checklistItems: ChecklistItem[];
@@ -80,12 +82,12 @@ export function ReportPreviewModal({
           </SecondaryButton>
         )}
         {onEdit && (
-          <SecondaryButton onClick={onEdit} className="flex-1">
+          <SecondaryButton disabled={readOnly} onClick={onEdit} className="flex-1">
             تعديل
           </SecondaryButton>
         )}
         {onDelete && (
-          <button
+          <button disabled={readOnly}
             onClick={onDelete}
             className="flex-1 py-2.5 rounded-lg border border-critical/40 text-critical bg-transparent font-semibold text-sm cursor-pointer"
           >

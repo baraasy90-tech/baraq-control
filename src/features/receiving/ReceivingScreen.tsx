@@ -1,3 +1,5 @@
+import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
+import { ProjectWriteStatus } from "@/features/billing/ProjectWriteStatus";
 import { useState } from "react";
 import { QueryFailureScreen } from "@/components/QueryFailureScreen";
 import { useNavigate } from "react-router-dom";
@@ -30,6 +32,7 @@ interface SubmissionPayload {
 
 export function ReceivingScreen({ project }: { project: Project }) {
   const navigate = useNavigate();
+  const { readOnly } = useSubscriptionWriteAccess(project.id);
   const { company } = useCompany();
   const activitiesQuery = useActivities(project.id);
   const createSubmission = useCreateSubmission();
@@ -61,6 +64,7 @@ export function ReceivingScreen({ project }: { project: Project }) {
   };
 
   const handleSubmit = async (payload: SubmissionPayload) => {
+    if (readOnly) return;
     if (!selected) return;
     setError("");
     if (editingSubmission) {
@@ -73,12 +77,14 @@ export function ReceivingScreen({ project }: { project: Project }) {
   };
 
   const openNewSubmission = () => {
+    if (readOnly) return;
     setDraftId(crypto.randomUUID());
     setEditingSubmission(null);
     setFormOpen(true);
   };
 
   const openEditSubmission = (submission: Submission) => {
+    if (readOnly) return;
     setEditingSubmission(submission);
     setFormOpen(true);
   };
@@ -88,6 +94,7 @@ export function ReceivingScreen({ project }: { project: Project }) {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">
+      <ProjectWriteStatus projectId={project.id} />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-lg font-bold text-ink truncate">الاستلام — {project.name}</h1>
         <SecondaryButton onClick={() => navigate(`/projects/${project.id}`)}>رجوع</SecondaryButton>
@@ -119,7 +126,7 @@ export function ReceivingScreen({ project }: { project: Project }) {
                     : `الاستلام غير متاح — يجب اعتماد "${gate.predecessor.name}" (مع صور) أولاً`}
                 </div>
               ) : (
-                <PrimaryButton onClick={openNewSubmission} className="w-auto px-4 py-2 text-sm mb-4 inline-flex items-center gap-1.5">
+                <PrimaryButton disabled={readOnly} onClick={openNewSubmission} className="w-auto px-4 py-2 text-sm mb-4 inline-flex items-center gap-1.5">
                   <Plus size={15} strokeWidth={2.5} /> تقديم استلام جديد
                 </PrimaryButton>
               )}
@@ -127,10 +134,11 @@ export function ReceivingScreen({ project }: { project: Project }) {
               <div>
                 <h3 className="text-sm font-bold text-ink mb-2">سجل التقديمات</h3>
                 <SubmissionHistory
+                  readOnly={readOnly}
                   activityName={selected.name}
                   submissions={selected.submissions}
                   checklistItems={selected.checklist}
-                  onDelete={(submissionId) => deleteSubmission.mutate(submissionId)}
+                  onDelete={(submissionId) => { if (!readOnly) deleteSubmission.mutate(submissionId); }}
                   onEdit={openEditSubmission}
                   onPrint={handlePrint}
                   deleting={deleteSubmission.isPending}
@@ -151,6 +159,7 @@ export function ReceivingScreen({ project }: { project: Project }) {
         >
           <ErrorText>{error}</ErrorText>
           <NewSubmissionForm
+            readOnly={readOnly}
             activity={selected}
             defaultManagerName={project.managerName}
             defaultSignatureUrl={project.managerSignatureUrl}
