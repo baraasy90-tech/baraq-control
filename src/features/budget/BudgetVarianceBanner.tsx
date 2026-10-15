@@ -185,7 +185,7 @@ export function BudgetVarianceBanner({
             <div className="min-w-0">
               <div className="text-sm font-bold text-ink">اختلاف بانتظار الاعتماد</div>
               <div className="text-xs text-ink-soft mt-1">
-                {valueLabel}: {fmtMoney(contractValue)} — {budgetLabel}: {fmtMoney(trackedBudget)} — الفرق:{" "}
+                {valueLabel}: {fmtMoney(contractValue)} —{budgetLabel}: {fmtMoney(trackedBudget)} — الفرق:{" "}
                 {fmtMoney(Math.abs((contractValue ?? 0) - trackedBudget))}
               </div>
               {breakdown}

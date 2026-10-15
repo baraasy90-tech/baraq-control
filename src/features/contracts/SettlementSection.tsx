@@ -22,7 +22,7 @@ const SETTLEMENT_TONE: Record<string, string> = {
   pending_pm_approval: "text-warn bg-warn-bg",
   pending_finance_approval: "text-warn bg-warn-bg",
   settled: "text-accent bg-accent-bg",
-rejected: "text-critical bg-critical-bg",
+  rejected: "text-critical bg-critical-bg",
 };
 
 export function SettlementSection({

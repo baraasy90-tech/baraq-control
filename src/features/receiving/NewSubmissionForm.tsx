@@ -54,7 +54,7 @@ export function NewSubmissionForm({
   const managerSignatureUrl = initial?.managerSignatureUrl ?? defaultSignatureUrl;
   const [managerName, setManagerName] = useState(initial?.managerName ?? defaultManagerName);
   const [checklistState, setChecklistState] = useState<Record<string, ChecklistDraftState>>(() =>
-   Object.fromEntries(
+    Object.fromEntries(
       activity.checklist.map((c) => {
         const existing = initial?.checklistResults.find((r) => r.checklistItemId === c.id);
         return [c.id, { checked: existing?.checked ?? false, imagePreview: existing?.imageUrl ?? null, file: null }];
