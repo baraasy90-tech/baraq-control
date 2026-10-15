@@ -1,3 +1,4 @@
+import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
 import { useState } from "react";
 import { StorageFileLink } from "@/components/StorageFileLink";
 import { Paperclip, Trash2, Upload } from "lucide-react";
@@ -25,10 +26,12 @@ function numOrNull(v: string): number | null {
 }
 
 export function AttachmentsList({
+  readOnly = false,
   attachments,
   canDelete,
   onDelete,
 }: {
+  readOnly?: boolean;
   attachments: { id: string; fileUrl: string; fileName: string }[];
   canDelete: boolean;
   onDelete: (id: string) => void;
@@ -41,7 +44,7 @@ export function AttachmentsList({
           <StorageFileLink stored={a.fileUrl} className="text-primary inline-flex items-center gap-1">
             <Paperclip size={11} /> {a.fileName}
           </StorageFileLink>
-          {canDelete && <IconButton icon={Trash2} label="حذف المرفق" tone="critical" onClick={() => onDelete(a.id)} />}
+          {canDelete && <IconButton disabled={readOnly} icon={Trash2} label="حذف المرفق" tone="critical" onClick={() => onDelete(a.id)} />}
         </div>
       ))}
     </div>
@@ -67,6 +70,7 @@ export function SourcingSection({
   companyMembers: CompanyMember[];
   profilesById: Map<string, MiniProfile>;
 }) {
+  const { readOnly } = useSubscriptionWriteAccess(request.projectId);
   const canEdit = request.status === "draft" || request.status === "sample_rejected";
 
   const saveSourcingDetails = useSaveSourcingDetails();
@@ -98,6 +102,7 @@ export function SourcingSection({
   const [optionError, setOptionError] = useState("");
 
   const saveEdit = async () => {
+    if (readOnly) return;
     if (!itemName.trim()) return;
     setEditError("");
     try {
@@ -116,10 +121,12 @@ export function SourcingSection({
   };
 
   const handleUploadRequestFile = async (file: File) => {
+    if (readOnly) return;
     await uploadAttachment.mutateAsync({ file, optionId: null });
   };
 
   const handleSubmit = async () => {
+    if (readOnly) return;
     setSubmitError("");
     try {
       await submitSourcing.mutateAsync({ requestId: request.id, note: submitNote.trim() || null });
@@ -130,6 +137,7 @@ export function SourcingSection({
   };
 
   const handleAddOption = async () => {
+    if (readOnly) return;
     if (!newOptionDesc.trim()) return;
     setOptionError("");
     try {
@@ -159,11 +167,11 @@ export function SourcingSection({
         <div className="mb-4">
           <div className="mb-3">
             <FieldLabel>اسم المادة/المنتج</FieldLabel>
-            <TextInput value={itemName} onChange={(e) => setItemName(e.target.value)} />
+            <TextInput disabled={readOnly} value={itemName} onChange={(e) => setItemName(e.target.value)} />
           </div>
           <div className="mb-3">
             <FieldLabel>وصف/مواصفات المطلوب</FieldLabel>
-            <textarea
+            <textarea disabled={readOnly}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -173,19 +181,19 @@ export function SourcingSection({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
             <div>
               <FieldLabel>الكمية الكلية المطلوبة</FieldLabel>
-              <TextInput type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+              <TextInput disabled={readOnly} type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
             </div>
             <div>
               <FieldLabel>سعر الوحدة المستهدف (اختياري)</FieldLabel>
-              <TextInput type="number" value={targetUnitPrice} onChange={(e) => setTargetUnitPrice(e.target.value)} />
+              <TextInput disabled={readOnly} type="number" value={targetUnitPrice} onChange={(e) => setTargetUnitPrice(e.target.value)} />
             </div>
             <div>
               <FieldLabel>موعد الحاجة لاستلام العروض</FieldLabel>
-              <TextInput type="date" value={neededBy} onChange={(e) => setNeededBy(e.target.value)} />
+              <TextInput disabled={readOnly} type="date" value={neededBy} onChange={(e) => setNeededBy(e.target.value)} />
             </div>
           </div>
           <ErrorText>{editError}</ErrorText>
-          <SecondaryButton onClick={saveEdit} disabled={saveSourcingDetails.isPending || !itemName.trim()} className="text-xs px-3 py-1.5">
+          <SecondaryButton onClick={saveEdit} disabled={readOnly || (saveSourcingDetails.isPending || !itemName.trim())} className="text-xs px-3 py-1.5">
             {saveSourcingDetails.isPending ? "جارٍ الحفظ..." : "حفظ"}
           </SecondaryButton>
         </div>
@@ -204,11 +212,11 @@ export function SourcingSection({
 
       <div className="mb-4">
         <FieldLabel>مرفقات الطلب (صور/ملفات توضّح المطلوب)</FieldLabel>
-        <AttachmentsList attachments={requestAttachments} canDelete={canEdit} onDelete={(id) => deleteAttachment.mutate(id)} />
+        <AttachmentsList readOnly={readOnly} attachments={requestAttachments} canDelete={canEdit} onDelete={(id) => deleteAttachment.mutate(id)} />
         {canEdit && (
           <label className="mt-2 flex items-center gap-2 border border-dashed border-line rounded-lg px-3 py-2 cursor-pointer text-xs text-ink-soft hover:bg-bg w-fit">
             <Upload size={13} /> إرفاق صورة/ملف
-            <input
+            <input disabled={readOnly}
               type="file"
               className="hidden"
               onChange={(e) => {
@@ -224,9 +232,9 @@ export function SourcingSection({
       {canEdit && (
         <div className="mb-4">
           <FieldLabel>ملاحظة لقسم المشتريات (اختياري)</FieldLabel>
-          <TextInput value={submitNote} onChange={(e) => setSubmitNote(e.target.value)} placeholder="سياق إضافي" />
+          <TextInput disabled={readOnly} value={submitNote} onChange={(e) => setSubmitNote(e.target.value)} placeholder="سياق إضافي" />
           <ErrorText>{submitError}</ErrorText>
-          <PrimaryButton onClick={handleSubmit} disabled={submitSourcing.isPending || !itemName.trim()} className="w-auto px-4 py-2 text-xs mt-2">
+          <PrimaryButton onClick={handleSubmit} disabled={readOnly || (submitSourcing.isPending || !itemName.trim())} className="w-auto px-4 py-2 text-xs mt-2">
             {submitSourcing.isPending ? "جارٍ الإرسال..." : "إرسال لقسم المشتريات"}
           </PrimaryButton>
         </div>
@@ -264,11 +272,11 @@ export function SourcingSection({
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-sm font-bold text-ink font-mono">{o.price ? fmtMoney(o.price) : "—"}</span>
                       {canManageOptions && (
-                        <IconButton icon={Trash2} label="حذف العرض" tone="critical" onClick={() => deleteOption.mutate(o.id)} />
+                        <IconButton disabled={readOnly} icon={Trash2} label="حذف العرض" tone="critical" onClick={() => deleteOption.mutate(o.id)} />
                       )}
                     </div>
                   </div>
-                  <AttachmentsList
+                  <AttachmentsList readOnly={readOnly}
                     attachments={attachments.filter((a) => a.optionId === o.id)}
                     canDelete={canManageOptions}
                     onDelete={(id) => deleteAttachment.mutate(id)}
@@ -281,17 +289,17 @@ export function SourcingSection({
           {canManageOptions && (
             <div className="border-t border-line/60 pt-3">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
-                <TextInput
+                <TextInput disabled={readOnly}
                   placeholder="وصف العرض/البديل"
                   value={newOptionDesc}
                   onChange={(e) => setNewOptionDesc(e.target.value)}
                   className="sm:col-span-2"
                 />
-                <TextInput placeholder="السعر" type="number" value={newOptionPrice} onChange={(e) => setNewOptionPrice(e.target.value)} />
+                <TextInput disabled={readOnly} placeholder="السعر" type="number" value={newOptionPrice} onChange={(e) => setNewOptionPrice(e.target.value)} />
               </div>
-              <input type="file" multiple onChange={(e) => setNewOptionFiles(e.target.files)} className="text-xs mb-2" />
+              <input disabled={readOnly} type="file" multiple onChange={(e) => setNewOptionFiles(e.target.files)} className="text-xs mb-2" />
               <ErrorText>{optionError}</ErrorText>
-              <SecondaryButton onClick={handleAddOption} disabled={!newOptionDesc.trim() || addOption.isPending} className="text-xs px-3 py-1.5">
+              <SecondaryButton onClick={handleAddOption} disabled={readOnly || (!newOptionDesc.trim() || addOption.isPending)} className="text-xs px-3 py-1.5">
                 {addOption.isPending ? "جارٍ الإضافة..." : "إضافة عرض"}
               </SecondaryButton>
             </div>

@@ -1,3 +1,5 @@
+import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
+import { ProjectWriteStatus } from "@/features/billing/ProjectWriteStatus";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Package, Plus, Trash2 } from "lucide-react";
@@ -12,6 +14,7 @@ import { MATERIAL_STATUS_LABEL, MATERIAL_STATUS_TONE } from "@/features/procurem
 export function MaterialRequestsListScreen() {
   const { id: projectId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { readOnly } = useSubscriptionWriteAccess(projectId ?? "");
   const requestsQuery = useMaterialRequests(projectId);
   const createRequest = useCreateMaterialRequest();
   const deleteRequest = useDeleteMaterialRequest(projectId);
@@ -23,6 +26,7 @@ export function MaterialRequestsListScreen() {
   const requests = requestsQuery.data ?? [];
 
   const handleCreate = async () => {
+    if (readOnly) return;
     if (!newName.trim() || !projectId) return;
     setError("");
     try {
@@ -37,6 +41,7 @@ export function MaterialRequestsListScreen() {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-4xl mx-auto">
+      <ProjectWriteStatus projectId={projectId ?? ""} />
       <div className="flex items-center justify-between mb-6 gap-2">
         <h1 className="text-lg sm:text-xl font-bold text-ink">اعتماد المواد والمشتريات</h1>
         <SecondaryButton onClick={() => navigate(`/projects/${projectId}`)} className="text-sm">
@@ -71,12 +76,13 @@ export function MaterialRequestsListScreen() {
                     {MATERIAL_STATUS_LABEL[r.status]}
                   </span>
                   <span className="text-sm font-bold text-ink font-mono">{r.quotePrice ? fmtMoney(r.quotePrice) : "—"}</span>
-                  <IconButton
+                  <IconButton disabled={readOnly}
                     icon={Trash2}
                     label="حذف الطلب"
                     tone="critical"
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (readOnly) return;
                       if (window.confirm(`حذف طلب "${r.itemName}" نهائياً؟ هذا الإجراء لا يمكن التراجع عنه.`)) {
                         deleteRequest.mutate(r.id);
                       }
@@ -89,17 +95,17 @@ export function MaterialRequestsListScreen() {
         </div>
       )}
 
-      <SecondaryButton onClick={() => setCreating(true)} className="w-auto px-4 inline-flex items-center gap-1.5">
+      <SecondaryButton disabled={readOnly} onClick={() => setCreating(true)} className="w-auto px-4 inline-flex items-center gap-1.5">
         <Plus size={15} strokeWidth={2.5} /> طلب مادة جديد
       </SecondaryButton>
 
       {creating && (
         <Modal title="طلب مادة/عينة جديد" onClose={() => setCreating(false)}>
           <FieldLabel>اسم المادة/المنتج</FieldLabel>
-          <TextInput value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="مثال: بلاط أرضيات، دهانات" autoFocus />
+          <TextInput disabled={readOnly} value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="مثال: بلاط أرضيات، دهانات" autoFocus />
           <ErrorText>{error}</ErrorText>
           <div className="flex gap-2 mt-4">
-            <PrimaryButton onClick={handleCreate} disabled={!newName.trim() || createRequest.isPending} className="flex-1">
+            <PrimaryButton onClick={handleCreate} disabled={readOnly || (!newName.trim() || createRequest.isPending)} className="flex-1">
               {createRequest.isPending ? "جارٍ الإنشاء..." : "إنشاء ومتابعة"}
             </PrimaryButton>
             <SecondaryButton onClick={() => setCreating(false)} className="flex-1">
