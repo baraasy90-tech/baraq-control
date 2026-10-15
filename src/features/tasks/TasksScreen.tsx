@@ -1,3 +1,5 @@
+import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
+import { ProjectWriteStatus } from "@/features/billing/ProjectWriteStatus";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Trash2 } from "lucide-react";
@@ -166,11 +168,12 @@ function TaskForm({
   const [error, setError] = useState("");
 
   const effectiveProjectId = projectId || projects[0]?.id || "";
+  const { readOnly } = useSubscriptionWriteAccess(effectiveProjectId);
   const canSubmit = title.trim().length > 0 && !!effectiveProjectId;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (readOnly || !canSubmit || createTask.isPending) return;
     setError("");
     try {
       await createTask.mutateAsync({
@@ -190,9 +193,10 @@ function TaskForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <ProjectWriteStatus projectId={effectiveProjectId} />
       <div>
         <FieldLabel>عنوان المهمة</FieldLabel>
-        <TextInput value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثال: اعتماد عقد الاستشارات" autoFocus />
+        <TextInput disabled={readOnly} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="مثال: اعتماد عقد الاستشارات" autoFocus />
       </div>
       <div>
         <FieldLabel>المشروع</FieldLabel>
@@ -211,7 +215,7 @@ function TaskForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <FieldLabel>الأولوية</FieldLabel>
-          <select
+          <select disabled={readOnly}
             value={priority}
             onChange={(e) => setPriority(e.target.value as TaskPriority)}
             className="w-full px-3 py-2.5 border border-line rounded-lg text-sm font-sans bg-white box-border"
@@ -223,12 +227,12 @@ function TaskForm({
         </div>
         <div>
           <FieldLabel>تاريخ الاستحقاق</FieldLabel>
-          <TextInput type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          <TextInput disabled={readOnly} type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
         </div>
       </div>
       <div>
         <FieldLabel>إسناد إلى</FieldLabel>
-        <select
+        <select disabled={readOnly}
           value={assignedTo}
           onChange={(e) => setAssignedTo(e.target.value)}
           className="w-full px-3 py-2.5 border border-line rounded-lg text-sm font-sans bg-white box-border"
@@ -243,7 +247,7 @@ function TaskForm({
       </div>
       <div>
         <FieldLabel>ملاحظات (اختياري)</FieldLabel>
-        <textarea
+        <textarea disabled={readOnly}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
@@ -257,7 +261,7 @@ function TaskForm({
         <SecondaryButton type="button" onClick={onClose} className="flex-1">
           إلغاء
         </SecondaryButton>
-        <PrimaryButton type="submit" disabled={!canSubmit || createTask.isPending} className="flex-1">
+        <PrimaryButton type="submit" disabled={readOnly || (!canSubmit || createTask.isPending)} className="flex-1">
           {createTask.isPending ? "جارٍ الحفظ..." : "إنشاء المهمة"}
         </PrimaryButton>
       </div>
@@ -266,6 +270,7 @@ function TaskForm({
 }
 
 function TaskRow({ task, companyId }: { task: TaskWithContext; companyId: string }) {
+  const { readOnly } = useSubscriptionWriteAccess(task.projectId);
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask(companyId);
 
@@ -284,9 +289,10 @@ function TaskRow({ task, companyId }: { task: TaskWithContext; companyId: string
         </span>
       </td>
       <td className="py-2.5 pl-3">
-        <select
+        <select disabled={readOnly}
           value={task.status}
-          onChange={(e) => updateTask.mutate({ id: task.id, companyId, status: e.target.value as TaskStatus })}
+          aria-label={`حالة المهمة ${task.title}`}
+          onChange={(e) => { if (!readOnly) updateTask.mutate({ id: task.id, companyId, status: e.target.value as TaskStatus }); }}
           className="text-xs border border-line/60 rounded-lg px-2 py-1 bg-white text-ink"
         >
           {(Object.keys(STATUS_LABEL) as TaskStatus[]).map((s) => (
@@ -299,7 +305,7 @@ function TaskRow({ task, companyId }: { task: TaskWithContext; companyId: string
       <td className="py-2.5 pl-3 text-xs text-ink-soft font-mono">{task.dueDate ? fmt(task.dueDate) : "—"}</td>
       <td className="py-2.5 pl-3 text-sm text-ink-soft truncate max-w-[120px]">{task.assigneeName ?? "—"}</td>
       <td className="py-2.5">
-        <IconButton icon={Trash2} label="حذف" tone="critical" onClick={() => deleteTask.mutate(task.id)} />
+        <IconButton disabled={readOnly} icon={Trash2} label="حذف" tone="critical" onClick={() => { if (!readOnly) deleteTask.mutate(task.id); }} />
       </td>
     </tr>
   );

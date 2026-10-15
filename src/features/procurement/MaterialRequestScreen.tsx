@@ -1,3 +1,5 @@
+import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
+import { ProjectWriteStatus } from "@/features/billing/ProjectWriteStatus";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Upload } from "lucide-react";
@@ -30,6 +32,7 @@ function numOrNull(v: string): number | null {
 export function MaterialRequestScreen() {
   const { id: projectId, requestId } = useParams<{ id: string; requestId: string }>();
   const navigate = useNavigate();
+  const { readOnly } = useSubscriptionWriteAccess(projectId ?? "");
   const requestQuery = useMaterialRequest(requestId);
   const chainsQuery = useApprovalChains(requestId);
 
@@ -93,6 +96,7 @@ export function MaterialRequestScreen() {
   };
 
   const savePurchase = async () => {
+    if (readOnly) return;
     setPurchaseError("");
     try {
       await savePurchaseDetails.mutateAsync({
@@ -110,6 +114,7 @@ export function MaterialRequestScreen() {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-3xl mx-auto">
+      <ProjectWriteStatus projectId={projectId ?? ""} />
       <div className="flex items-center justify-between mb-6 gap-2">
         <h1 className="text-lg sm:text-xl font-bold text-ink truncate">{request.itemName}</h1>
         <SecondaryButton onClick={() => navigate(`/projects/${projectId}/materials`)} className="text-sm shrink-0">
@@ -146,7 +151,7 @@ export function MaterialRequestScreen() {
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-bold text-ink">المرحلة 2 — الشراء الرسمي</h2>
             {canEditPurchaseFields && !editingPurchase && (
-              <SecondaryButton onClick={startEditPurchase} className="text-xs px-3 py-1.5">
+              <SecondaryButton disabled={readOnly} onClick={startEditPurchase} className="text-xs px-3 py-1.5">
                 تعديل بيانات الشراء
               </SecondaryButton>
             )}
@@ -170,16 +175,16 @@ export function MaterialRequestScreen() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                 <div>
                   <FieldLabel>سعر عرض السعر</FieldLabel>
-                  <TextInput type="number" value={quotePrice} onChange={(e) => setQuotePrice(e.target.value)} />
+                  <TextInput disabled={readOnly} type="number" value={quotePrice} onChange={(e) => setQuotePrice(e.target.value)} />
                 </div>
                 <div>
                   <FieldLabel>تاريخ استلام عرض السعر</FieldLabel>
-                  <TextInput type="date" value={quoteReceivedAt} onChange={(e) => setQuoteReceivedAt(e.target.value)} />
+                  <TextInput disabled={readOnly} type="date" value={quoteReceivedAt} onChange={(e) => setQuoteReceivedAt(e.target.value)} />
                 </div>
               </div>
               <div className="mb-4">
                 <FieldLabel>مرفقات خاصة مطلوبة (إن وجدت)</FieldLabel>
-                <textarea
+                <textarea disabled={readOnly}
                   value={attachmentsNote}
                   onChange={(e) => setAttachmentsNote(e.target.value)}
                   rows={3}
@@ -189,7 +194,7 @@ export function MaterialRequestScreen() {
               </div>
               <ErrorText>{purchaseError}</ErrorText>
               <div className="flex gap-2">
-                <PrimaryButton onClick={savePurchase} disabled={savePurchaseDetails.isPending} className="w-auto px-5">
+                <PrimaryButton onClick={savePurchase} disabled={readOnly || (savePurchaseDetails.isPending)} className="w-auto px-5">
                   {savePurchaseDetails.isPending ? "جارٍ الحفظ..." : "حفظ"}
                 </PrimaryButton>
                 <SecondaryButton onClick={() => setEditingPurchase(false)} className="px-5">
@@ -201,14 +206,15 @@ export function MaterialRequestScreen() {
 
           <div className="mb-4">
             <FieldLabel>مرفقات الشراء (عرض السعر، شهادة المطابقة...)</FieldLabel>
-            <AttachmentsList attachments={purchaseAttachments} canDelete={canEditPurchaseFields} onDelete={(id) => deleteAttachment.mutate(id)} />
+            <AttachmentsList readOnly={readOnly} attachments={purchaseAttachments} canDelete={canEditPurchaseFields} onDelete={(id) => deleteAttachment.mutate(id)} />
             {canEditPurchaseFields && (
               <label className="mt-2 flex items-center gap-2 border border-dashed border-line rounded-lg px-3 py-2 cursor-pointer text-xs text-ink-soft hover:bg-bg w-fit">
                 <Upload size={13} /> إرفاق ملف
-                <input
+                <input disabled={readOnly}
                   type="file"
                   className="hidden"
                   onChange={(e) => {
+                    if (readOnly) { e.target.value = ""; return; }
                     const file = e.target.files?.[0];
                     if (file) uploadAttachment.mutate({ file, optionId: null, phase: "purchase" });
                     e.target.value = "";

@@ -1,3 +1,4 @@
+import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
 import { useState } from "react";
 import { Plus, Trash2, ArrowUp, ArrowDown, CircleCheck, CircleX, CircleDashed, CircleEllipsis } from "lucide-react";
 import { SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText } from "@/components/ui";
@@ -79,6 +80,7 @@ function StepTargetPicker({
 }
 
 function ChainBuilder({
+  readOnly = false,
   departments,
   members,
   initialSteps,
@@ -90,6 +92,7 @@ function ChainBuilder({
   initialSteps: ChainStepInput[];
   onSubmit: (steps: ChainStepInput[], note: string | null) => void;
   pending: boolean;
+  readOnly?: boolean;
 }) {
   const [steps, setSteps] = useState<ChainStepInput[]>(initialSteps.length > 0 ? initialSteps : [{ departmentId: null, userId: null }]);
   const [note, setNote] = useState("");
@@ -111,6 +114,7 @@ function ChainBuilder({
   };
 
   const handleSubmit = () => {
+    if (readOnly) return;
     setError("");
     if (steps.some((s) => !s.departmentId && !s.userId)) {
       setError("لازم تحديد قسم أو شخص لكل مرحلة اعتماد");
@@ -119,7 +123,7 @@ function ChainBuilder({
     onSubmit(steps, note.trim() || null);
   };
 
-  return (
+  return <fieldset disabled={readOnly} className="min-w-0 border-0 p-0 m-0">{(
     <div className="mt-3 pt-3 border-t border-line/60">
       <p className="text-xs text-ink-soft mb-2">
         حدد الجهات المطلوب اعتمادها بالترتيب — كل مرحلة تنتظر اعتماد اللي قبلها. لو ما تعرف الشخص بالضبط، اختر القسم فقط
@@ -157,7 +161,7 @@ function ChainBuilder({
         {pending ? "جارٍ التقديم..." : "تقديم للاعتماد"}
       </PrimaryButton>
     </div>
-  );
+  )}</fieldset>;
 }
 
 function StepStatusIcon({ status }: { status: ApprovalChainStep["status"] }) {
@@ -419,7 +423,8 @@ export function ApprovalStepsList({
   profilesById: Map<string, MiniProfile>;
   isOrgManager: boolean;
 }) {
-  return (
+  const { readOnly } = useSubscriptionWriteAccess(projectId);
+  return <fieldset disabled={readOnly} className="min-w-0 border-0 p-0 m-0">{(
     <div className="flex flex-col gap-1.5">
       {steps.map((step) => {
         const active = isStepActive(step, steps);
@@ -452,7 +457,7 @@ export function ApprovalStepsList({
         );
       })}
     </div>
-  );
+  )}</fieldset>;
 }
 
 export function ApprovalChainSection({
@@ -482,6 +487,7 @@ export function ApprovalChainSection({
   profilesById: Map<string, MiniProfile>;
   isOrgManager: boolean;
 }) {
+  const { readOnly } = useSubscriptionWriteAccess(projectId);
   const submit = useSubmitPurchaseChain(projectId);
   const [showBuilder, setShowBuilder] = useState(false);
   const [error, setError] = useState("");
@@ -489,6 +495,7 @@ export function ApprovalChainSection({
   const latest = bundles.length > 0 ? bundles[bundles.length - 1] : null;
 
   const handleSubmit = async (steps: ChainStepInput[], note: string | null) => {
+    if (readOnly) return;
     setError("");
     try {
       await submit.mutateAsync({ requestId, steps, note });
@@ -535,11 +542,11 @@ export function ApprovalChainSection({
           {!priceEntered ? (
             <p className="text-xs text-ink-soft">أدخل السعر أولاً قبل تقديم الطلب للاعتماد.</p>
           ) : !showBuilder ? (
-            <SecondaryButton onClick={() => setShowBuilder(true)} className="text-xs px-3 py-1.5">
+            <SecondaryButton disabled={readOnly} onClick={() => setShowBuilder(true)} className="text-xs px-3 py-1.5">
               {latest ? "إعادة التقديم للاعتماد" : "تقديم للاعتماد"}
             </SecondaryButton>
           ) : (
-            <ChainBuilder departments={departments} members={members} initialSteps={prefillSteps} onSubmit={handleSubmit} pending={submit.isPending} />
+            <ChainBuilder readOnly={readOnly} departments={departments} members={members} initialSteps={prefillSteps} onSubmit={handleSubmit} pending={submit.isPending} />
           )}
           <ErrorText>{error}</ErrorText>
         </>
