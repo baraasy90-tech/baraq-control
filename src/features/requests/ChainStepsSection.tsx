@@ -1,3 +1,4 @@
+import { useCompanyWriteAccess } from "@/features/billing/useCompanyWriteAccess";
 import { useState } from "react";
 import { CircleCheck, CircleX, CircleDashed, CircleEllipsis, Undo2 } from "lucide-react";
 import { SecondaryButton, PrimaryButton, TextInput, ErrorText } from "@/components/ui";
@@ -332,13 +333,15 @@ export function ChainStepsSection({
   profilesById: Map<string, MiniProfile>;
   isOrgManager: boolean;
 }) {
+  const { readOnly } = useCompanyWriteAccess();
   const chainQuery = useInternalApprovalChain(requestId);
   const bundle = chainQuery.data;
 
   if (chainQuery.isLoading) return <p className="text-xs text-ink-soft">جارٍ التحميل...</p>;
+  if (chainQuery.isError) return <div role="alert" className="text-xs text-danger">تعذّر تحميل سلسلة الاعتماد. <button type="button" onClick={() => void chainQuery.refetch()}>إعادة المحاولة</button></div>;
   if (!bundle) return <p className="text-xs text-ink-soft">لا توجد سلسلة اعتماد لهذا الطلب.</p>;
 
-  return (
+  return <fieldset disabled={readOnly} className="min-w-0 border-0 p-0 m-0">{(
     <div>
       <div className="flex items-center gap-2 mb-2">
         <h4 className="text-xs font-bold text-ink-soft">سلسلة الاعتماد</h4>
@@ -364,5 +367,5 @@ export function ChainStepsSection({
         ))}
       </div>
     </div>
-  );
+  )}</fieldset>;
 }

@@ -21,11 +21,9 @@ export function ProjectAppearancePage() {
     <AppearanceSettingsScreen
       project={project}
       saving={updateProject.isPending}
-      onSave={(patch) => {
-        updateProject.mutate(
-          { id: project.id, companyId: company.id, ...patch },
-          { onSuccess: () => navigate(`/projects/${id}`) }
-        );
+      onSave={async (patch) => {
+        await updateProject.mutateAsync({ id: project.id, companyId: company.id, ...patch });
+        navigate(`/projects/${id}`);
       }}
       onBack={() => navigate(`/projects/${id}`)}
     />

@@ -1,3 +1,4 @@
+import { useCompanyWriteAccess } from "@/features/billing/useCompanyWriteAccess";
 import { useRef, useState } from "react";
 import { StorageFileLink } from "@/components/StorageFileLink";
 import { Paperclip, History } from "lucide-react";
@@ -38,6 +39,7 @@ function RevisionHistory({ revisions }: { revisions: { id: string; revisionNumbe
 }
 
 export function RequestAttachmentsSection({ requestId, canEdit }: { requestId: string; canEdit: boolean }) {
+  const { readOnly } = useCompanyWriteAccess();
   const { user } = useAuth();
   const attachmentsQuery = useRequestAttachments(requestId);
   const bundles = attachmentsQuery.data ?? [];
@@ -52,6 +54,7 @@ export function RequestAttachmentsSection({ requestId, canEdit }: { requestId: s
   const [revisionTargetId, setRevisionTargetId] = useState<string | null>(null);
 
   const handleNewFile = async (file: File | null) => {
+    if (readOnly) return;
     if (!file || !user) return;
     setError("");
     setUploading(true);
@@ -67,6 +70,7 @@ export function RequestAttachmentsSection({ requestId, canEdit }: { requestId: s
   };
 
   const handleRevisionFile = async (file: File | null) => {
+    if (readOnly) return;
     if (!file || !user || !revisionTargetId) return;
     setError("");
     setUploading(true);
@@ -87,7 +91,9 @@ export function RequestAttachmentsSection({ requestId, canEdit }: { requestId: s
     <div>
       <h4 className="text-xs font-bold text-ink-soft mb-2">المرفقات</h4>
 
-      {bundles.length === 0 ? (
+      {attachmentsQuery.isError && <div role="alert" className="text-xs text-danger mb-2">تعذّر تحميل المرفقات. <button type="button" onClick={() => void attachmentsQuery.refetch()}>إعادة المحاولة</button></div>}
+
+      {attachmentsQuery.isLoading ? <p className="text-xs text-ink-soft">جارٍ التحميل...</p> : bundles.length === 0 && !attachmentsQuery.isError ? (
         <p className="text-xs text-ink-soft mb-2">لا توجد مرفقات بعد.</p>
       ) : (
         <div className="flex flex-col gap-2 mb-2">
@@ -104,7 +110,7 @@ export function RequestAttachmentsSection({ requestId, canEdit }: { requestId: s
                     <span className="truncate">{attachment.fileName}</span>
                   </StorageFileLink>
                   {canEdit && (
-                    <SecondaryButton
+                    <SecondaryButton disabled={readOnly}
                       onClick={() => setRevisionTargetId(attachment.id)}
                       className="text-[10px] px-2 py-1 shrink-0"
                     >
@@ -121,11 +127,11 @@ export function RequestAttachmentsSection({ requestId, canEdit }: { requestId: s
 
       {canEdit && (
         <>
-          <input ref={newFileInputRef} type="file" onChange={(e) => handleNewFile(e.target.files?.[0] ?? null)} className="text-xs" />
+          <input disabled={readOnly} ref={newFileInputRef} type="file" onChange={(e) => handleNewFile(e.target.files?.[0] ?? null)} className="text-xs" />
           {revisionTargetId && (
             <div className="mt-2 pt-2 border-t border-line/60">
               <p className="text-xs text-ink-soft mb-1">رفع نسخة جديدة — سيُحتفظ بالنسخة السابقة في السجل</p>
-              <input ref={revisionInputRef} type="file" onChange={(e) => handleRevisionFile(e.target.files?.[0] ?? null)} className="text-xs" />
+              <input disabled={readOnly} ref={revisionInputRef} type="file" onChange={(e) => handleRevisionFile(e.target.files?.[0] ?? null)} className="text-xs" />
             </div>
           )}
           {uploading && <p className="text-xs text-ink-soft mt-1">جارٍ الرفع...</p>}

@@ -1,3 +1,4 @@
+import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Trash2 } from "lucide-react";
@@ -16,6 +17,7 @@ import type { Project, ProjectMemberRole } from "@/types/domain";
 const ROLE_LABEL: Record<ProjectMemberRole, string> = { manager: "مدير المشروع", member: "عضو فريق" };
 
 function ProjectDepartmentsCard({ project, isOrgManager }: { project: Project; isOrgManager: boolean }) {
+  const { readOnly } = useSubscriptionWriteAccess(project.id);
   const { company } = useCompany();
   const departmentsQuery = useDepartments(company.id);
   const departments = departmentsQuery.data ?? [];
@@ -33,6 +35,7 @@ function ProjectDepartmentsCard({ project, isOrgManager }: { project: Project; i
   const changed = departmentId !== (project.departmentId ?? "") || procurementDepartmentId !== (project.procurementDepartmentId ?? "");
 
   const handleSave = async () => {
+    if (readOnly) return;
     setError("");
     setSaved(false);
     try {
@@ -57,7 +60,7 @@ function ProjectDepartmentsCard({ project, isOrgManager }: { project: Project; i
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div>
           <FieldLabel>قسم إدارة المشروع</FieldLabel>
-          <select
+          <select disabled={readOnly}
             value={departmentId}
             onChange={(e) => setDepartmentId(e.target.value)}
             className="w-full px-3 py-2.5 border border-line rounded-lg text-sm font-sans bg-white box-border"
@@ -72,7 +75,7 @@ function ProjectDepartmentsCard({ project, isOrgManager }: { project: Project; i
         </div>
         <div>
           <FieldLabel>قسم المشتريات</FieldLabel>
-          <select
+          <select disabled={readOnly}
             value={procurementDepartmentId}
             onChange={(e) => setProcurementDepartmentId(e.target.value)}
             className="w-full px-3 py-2.5 border border-line rounded-lg text-sm font-sans bg-white box-border"
@@ -87,7 +90,7 @@ function ProjectDepartmentsCard({ project, isOrgManager }: { project: Project; i
         </div>
       </div>
       <ErrorText>{error}</ErrorText>
-      <PrimaryButton onClick={handleSave} disabled={!changed || setDepartments.isPending} className="w-auto px-4 py-2 text-sm">
+      <PrimaryButton onClick={handleSave} disabled={readOnly || (!changed || setDepartments.isPending)} className="w-auto px-4 py-2 text-sm">
         {setDepartments.isPending ? "جارٍ الحفظ..." : saved && !changed ? "تم الحفظ" : "حفظ"}
       </PrimaryButton>
     </Card>
@@ -95,6 +98,7 @@ function ProjectDepartmentsCard({ project, isOrgManager }: { project: Project; i
 }
 
 export function ProjectTeamScreen({ project }: { project: Project }) {
+  const { readOnly } = useSubscriptionWriteAccess(project.id);
   const navigate = useNavigate();
   const { company, profile } = useCompany();
   const membersQuery = useProjectMembers(project.id);
@@ -121,6 +125,7 @@ export function ProjectTeamScreen({ project }: { project: Project }) {
   const effectiveUserId = selectedUserId || availableCompanyMembers[0]?.id || "";
 
   const handleAdd = async () => {
+    if (readOnly) return;
     if (!effectiveUserId) return;
     setError("");
     try {
@@ -148,6 +153,7 @@ export function ProjectTeamScreen({ project }: { project: Project }) {
     : [];
 
   const handleBulkAdd = async () => {
+    if (readOnly) return;
     if (bulkCandidates.length === 0) return;
     setBulkError("");
     setBulkAdding(true);
@@ -186,7 +192,7 @@ export function ProjectTeamScreen({ project }: { project: Project }) {
                   <div className="text-sm font-semibold text-ink">{m.fullName}</div>
                   <div className="text-xs text-ink-soft">{ROLE_LABEL[m.role]}</div>
                 </div>
-                <IconButton icon={Trash2} label="إزالة من المشروع" tone="critical" onClick={() => removeMember.mutate(m.id)} />
+                <IconButton disabled={readOnly} icon={Trash2} label="إزالة من المشروع" tone="critical" onClick={() => removeMember.mutate(m.id)} />
               </div>
             ))}
           </div>
@@ -199,7 +205,7 @@ export function ProjectTeamScreen({ project }: { project: Project }) {
           <p className="text-sm text-ink-soft">كل أعضاء الشركة مُضافون بالفعل، أو لا يوجد أعضاء بعد بالشركة</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-            <select
+            <select disabled={readOnly}
               value={effectiveUserId}
               onChange={(e) => setSelectedUserId(e.target.value)}
               className="w-full px-3 py-2.5 border border-line rounded-lg text-sm font-sans bg-white box-border"
@@ -210,7 +216,7 @@ export function ProjectTeamScreen({ project }: { project: Project }) {
                 </option>
               ))}
             </select>
-            <select
+            <select disabled={readOnly}
               value={role}
               onChange={(e) => setRole(e.target.value as ProjectMemberRole)}
               className="w-full px-3 py-2.5 border border-line rounded-lg text-sm font-sans bg-white box-border"
@@ -223,7 +229,7 @@ export function ProjectTeamScreen({ project }: { project: Project }) {
         <ErrorText>{error}</ErrorText>
         <PrimaryButton
           onClick={handleAdd}
-          disabled={!effectiveUserId || addMember.isPending}
+          disabled={readOnly || (!effectiveUserId || addMember.isPending)}
           className="w-auto px-4 py-2 text-sm"
         >
           {addMember.isPending ? "جارٍ الإضافة..." : "إضافة للمشروع"}
@@ -240,7 +246,7 @@ export function ProjectTeamScreen({ project }: { project: Project }) {
           <p className="text-sm text-ink-soft">لا توجد أقسام بعد بالهيكلة</p>
         ) : (
           <>
-            <select
+            <select disabled={readOnly}
               value={bulkDepartmentId}
               onChange={(e) => setBulkDepartmentId(e.target.value)}
               className="w-full px-3 py-2.5 border border-line rounded-lg text-sm font-sans bg-white box-border mb-3"
@@ -262,7 +268,7 @@ export function ProjectTeamScreen({ project }: { project: Project }) {
             <ErrorText>{bulkError}</ErrorText>
             <SecondaryButton
               onClick={handleBulkAdd}
-              disabled={bulkCandidates.length === 0 || bulkAdding}
+              disabled={readOnly || (bulkCandidates.length === 0 || bulkAdding)}
               className="w-auto px-4 py-2 text-sm"
             >
               {bulkAdding ? "جارٍ الإضافة..." : "إضافة كل أعضاء القسم"}

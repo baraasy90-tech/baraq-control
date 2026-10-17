@@ -43,8 +43,8 @@ export function ProjectPage() {
   const project = projectQuery.data;
 
   if (!project.scopeConfig) {
-    const handleComplete = (config: ScopeConfig) => {
-      updateProject.mutate({ id: project.id, companyId: company.id, scopeConfig: config });
+    const handleComplete = async (config: ScopeConfig) => {
+      await updateProject.mutateAsync({ id: project.id, companyId: company.id, scopeConfig: config });
     };
     return <ScopeSetupScreen initial={null} onComplete={handleComplete} saving={updateProject.isPending} />;
   }

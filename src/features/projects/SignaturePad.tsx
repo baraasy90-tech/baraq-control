@@ -2,14 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { SecondaryButton, ErrorText } from "@/components/ui";
 
 interface SignaturePadProps {
+  disabled?: boolean;
   value: string | null;
   onChange: (dataUrl: string | null) => void;
 }
 
-export function SignaturePad({ value, onChange }: SignaturePadProps) {
+export function SignaturePad({ value, onChange, disabled = false }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const drawing = useRef(false);
+  useEffect(() => { if (disabled) drawing.current = false; }, [disabled]);
   const hasStroke = useRef(false);
   const [preview, setPreview] = useState<string | null>(value);
   const [uploadError, setUploadError] = useState("");
@@ -40,6 +42,7 @@ export function SignaturePad({ value, onChange }: SignaturePadProps) {
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (disabled) return;
     if (preview) setPreview(null);
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -52,6 +55,7 @@ export function SignaturePad({ value, onChange }: SignaturePadProps) {
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (disabled) return;
     if (!drawing.current) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -63,6 +67,7 @@ export function SignaturePad({ value, onChange }: SignaturePadProps) {
   };
 
   const handlePointerUp = () => {
+    if (disabled) return;
     if (!drawing.current) return;
     drawing.current = false;
     if (hasStroke.current && canvasRef.current) {
@@ -71,6 +76,7 @@ export function SignaturePad({ value, onChange }: SignaturePadProps) {
   };
 
   const handleClear = () => {
+    if (disabled) return;
     const canvas = canvasRef.current;
     if (canvas) {
       const ctx = canvas.getContext("2d");
@@ -84,6 +90,7 @@ export function SignaturePad({ value, onChange }: SignaturePadProps) {
   };
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) { e.target.value = ""; return; }
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -119,13 +126,13 @@ export function SignaturePad({ value, onChange }: SignaturePadProps) {
       </div>
       <p className="text-xs text-ink-soft mt-1.5">ارسم التوقيع مباشرة بالماوس/اللمس، أو ارفع صورة توقيعك الرسمي</p>
       <div className="mt-2 flex flex-wrap gap-2 items-center">
-        <SecondaryButton type="button" onClick={handleClear} className="text-xs py-1.5 px-3">
+        <SecondaryButton disabled={disabled} type="button" onClick={handleClear} className="text-xs py-1.5 px-3">
           مسح التوقيع
         </SecondaryButton>
-        <SecondaryButton type="button" onClick={() => fileInputRef.current?.click()} className="text-xs py-1.5 px-3">
+        <SecondaryButton disabled={disabled} type="button" onClick={() => fileInputRef.current?.click()} className="text-xs py-1.5 px-3">
           رفع صورة توقيع (PNG)
         </SecondaryButton>
-        <input ref={fileInputRef} type="file" accept="image/png" onChange={handleUpload} className="hidden" />
+        <input disabled={disabled} ref={fileInputRef} type="file" accept="image/png" onChange={handleUpload} className="hidden" />
       </div>
       <ErrorText>{uploadError}</ErrorText>
     </div>

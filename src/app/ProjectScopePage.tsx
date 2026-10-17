@@ -22,11 +22,9 @@ export function ProjectScopePage() {
       initial={project.scopeConfig}
       saving={updateProject.isPending}
       onBack={() => navigate(`/projects/${id}`)}
-      onComplete={(config) => {
-        updateProject.mutate(
-          { id: project.id, companyId: company.id, scopeConfig: config },
-          { onSuccess: () => navigate(`/projects/${id}`) }
-        );
+      onComplete={async (config) => {
+        await updateProject.mutateAsync({ id: project.id, companyId: company.id, scopeConfig: config });
+        navigate(`/projects/${id}`);
       }}
     />
   );

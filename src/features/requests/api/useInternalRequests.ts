@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 import { mapInternalRequest } from "@/features/requests/api/mapInternalRequest";
 import type { ApprovalChainStepInput, ApprovalChainType, InternalRequest, InternalRequestType } from "@/types/domain";
 
@@ -9,12 +10,11 @@ export function useMyInternalRequests(userId: string | undefined) {
     queryKey: ["my-internal-requests", userId],
     enabled: !!userId,
     queryFn: async (): Promise<InternalRequest[]> => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from("internal_requests")
         .select("*")
         .eq("user_id", userId!)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
+        .order("created_at", { ascending: false }).order("id").range(from, to));
       return data.map(mapInternalRequest);
     },
   });
@@ -27,12 +27,11 @@ export function useCompanyInternalRequests(companyId: string | undefined) {
     queryKey: ["company-internal-requests", companyId],
     enabled: !!companyId,
     queryFn: async (): Promise<InternalRequest[]> => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows((from, to) => supabase
         .from("internal_requests")
         .select("*")
         .eq("company_id", companyId!)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
+        .order("created_at", { ascending: false }).order("id").range(from, to));
       return data.map(mapInternalRequest);
     },
   });
