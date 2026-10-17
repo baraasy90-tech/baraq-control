@@ -26,6 +26,7 @@ export function useUploadDocument(folderId: string | undefined) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents", folderId] });
+      queryClient.invalidateQueries({ queryKey: ["project-document-index"] });
     },
   });
 }
