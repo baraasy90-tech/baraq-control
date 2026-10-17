@@ -1,3 +1,4 @@
+import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
 import { useState } from "react";
 import clsx from "clsx";
 import { SecondaryButton, PrimaryButton, ErrorText, FieldLabel } from "@/components/ui";
@@ -11,17 +12,20 @@ export function AppearanceSettingsScreen({
   saving,
 }: {
   project: Project;
-  onSave: (patch: { themeColor: string; themeIcon: string }) => void;
+  onSave: (patch: { themeColor: string; themeIcon: string }) => void | Promise<void>;
   onBack: () => void;
   saving?: boolean;
 }) {
+  const { readOnly } = useSubscriptionWriteAccess(project.id);
   const [themeColor, setThemeColor] = useState(project.themeColor);
   const [themeIcon, setThemeIcon] = useState(project.themeIcon);
   const [error, setError] = useState("");
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (readOnly) return;
     setError("");
-    onSave({ themeColor, themeIcon });
+    try { await onSave({ themeColor, themeIcon }); }
+    catch { setError("تعذّر حفظ مظهر المشروع. احتفظ بالصفحة مفتوحة وحاول مجدداً."); }
   };
 
   return (
@@ -42,7 +46,7 @@ export function AppearanceSettingsScreen({
         <FieldLabel>لون المشروع</FieldLabel>
         <div className="flex flex-wrap gap-2 mb-5">
           {THEME_COLOR_PRESETS.map((c) => (
-            <button
+            <button disabled={readOnly}
               key={c}
               type="button"
               onClick={() => setThemeColor(c)}
@@ -59,7 +63,7 @@ export function AppearanceSettingsScreen({
         <FieldLabel>أيقونة المشروع</FieldLabel>
         <div className="flex flex-wrap gap-2">
           {THEME_ICON_PRESETS.map((icon) => (
-            <button
+            <button disabled={readOnly}
               key={icon}
               type="button"
               onClick={() => setThemeIcon(icon)}
@@ -75,7 +79,7 @@ export function AppearanceSettingsScreen({
       </div>
 
       <ErrorText>{error}</ErrorText>
-      <PrimaryButton onClick={handleSave} disabled={saving} className="w-auto px-6">
+      <PrimaryButton onClick={handleSave} disabled={readOnly || (saving)} className="w-auto px-6">
         {saving ? "جارٍ الحفظ..." : "حفظ"}
       </PrimaryButton>
     </div>

@@ -1,3 +1,4 @@
+import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
 import { Pencil, Trash2 } from "lucide-react";
 import type { Project, ProjectStatus } from "@/types/domain";
 import { IconButton } from "@/components/ui";
@@ -27,9 +28,10 @@ export function ProjectCard({
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: (e: React.DragEvent) => void;
 }) {
+  const { readOnly } = useSubscriptionWriteAccess(project.id);
   return (
     <div
-      draggable={draggable}
+      draggable={draggable && !readOnly}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       className="bg-panel border border-line/60 shadow-sm rounded-xl p-5 flex flex-col gap-4 cursor-grab active:cursor-grabbing"
@@ -56,7 +58,7 @@ export function ProjectCard({
         <span>{project.projectType}</span>
       </div>
 
-      <select
+      <select disabled={readOnly}
         value={project.status}
         onChange={(e) => onStatusChange(e.target.value as ProjectStatus)}
         onClick={(e) => e.stopPropagation()}
@@ -77,8 +79,8 @@ export function ProjectCard({
         >
           فتح المشروع
         </button>
-        <IconButton icon={Pencil} label="تعديل" onClick={onEdit} />
-        <IconButton icon={Trash2} label="حذف" tone="critical" onClick={onDelete} />
+        <IconButton disabled={readOnly} icon={Pencil} label="تعديل" onClick={onEdit} />
+        <IconButton disabled={readOnly} icon={Trash2} label="حذف" tone="critical" onClick={onDelete} />
       </div>
     </div>
   );

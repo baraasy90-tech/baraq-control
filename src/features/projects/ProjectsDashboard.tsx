@@ -1,4 +1,7 @@
+import { CompanyWriteStatus } from "@/features/billing/CompanyWriteStatus";
+import { useCompanyWriteAccess } from "@/features/billing/useCompanyWriteAccess";
 import { useState } from "react";
+import { QueryFailureScreen } from "@/components/QueryFailureScreen";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { SecondaryButton, IconButton, Modal, ErrorText } from "@/components/ui";
@@ -23,6 +26,7 @@ export function ProjectsDashboard({
   company: Company;
   onOpenControlPanel: () => void;
 }) {
+  const { readOnly } = useCompanyWriteAccess();
   const navigate = useNavigate();
   const projectsQuery = useProjects(company.id);
   const createProject = useCreateProject();
@@ -37,16 +41,19 @@ export function ProjectsDashboard({
   const [dragOverStatus, setDragOverStatus] = useState<ProjectStatus | null>(null);
 
   const openCreate = () => {
+    if (readOnly) return;
     setEditingProject(null);
     setFormOpen(true);
   };
 
   const openEdit = (project: Project) => {
+    if (readOnly) return;
     setEditingProject(project);
     setFormOpen(true);
   };
 
   const handleSave = async (values: ProjectFormValues) => {
+    if (readOnly) return;
     setError("");
     try {
       if (editingProject) {
@@ -62,6 +69,7 @@ export function ProjectsDashboard({
   };
 
   const handleDelete = async (id: string) => {
+    if (readOnly) return;
     try {
       await deleteProject.mutateAsync(id);
     } finally {
@@ -70,14 +78,18 @@ export function ProjectsDashboard({
   };
 
   const changeStatus = (project: Project, status: ProjectStatus) => {
+    if (readOnly) return;
     if (project.status === status) return;
     updateProject.mutate({ id: project.id, companyId: company.id, status });
   };
 
   const projects = projectsQuery.data ?? [];
+  if (projectsQuery.isError && !projectsQuery.data) return <QueryFailureScreen title="المشاريع" retry={() => projectsQuery.refetch()} />;
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-7xl mx-auto">
+      <CompanyWriteStatus />
+      {projectsQuery.isError && <p role="alert" className="text-xs text-critical mb-3">تعذّر تحديث المشاريع. المعروض آخر بيانات محمّلة؛ احتفظ بمدخلاتك وتحقق من الاتصال.</p>}
       <div
         className="flex items-center justify-between gap-3 mb-4 rounded-xl px-4 py-3 sm:px-5 sm:py-4"
         style={{ background: company.headerColor }}
@@ -112,7 +124,7 @@ export function ProjectsDashboard({
 
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-base font-bold text-ink">المشاريع</h2>
-        <IconButton icon={Plus} label="مشروع جديد" onClick={openCreate} />
+        <IconButton disabled={readOnly} icon={Plus} label="مشروع جديد" onClick={openCreate} />
       </div>
 
       {projectsQuery.isLoading && <p className="text-sm text-ink-soft">جارٍ التحميل...</p>}
@@ -192,6 +204,7 @@ export function ProjectsDashboard({
         <Modal title={editingProject ? "تعديل المشروع" : "مشروع جديد"} onClose={() => setFormOpen(false)}>
           <ErrorText>{error}</ErrorText>
           <ProjectForm
+            readOnly={readOnly}
             initial={editingProject}
             onSave={handleSave}
             onCancel={() => setFormOpen(false)}
@@ -211,7 +224,7 @@ export function ProjectsDashboard({
             </SecondaryButton>
             <button
               onClick={() => handleDelete(confirmDeleteId)}
-              disabled={deleteProject.isPending}
+              disabled={readOnly || (deleteProject.isPending)}
               className="flex-1 py-2.5 rounded-lg bg-critical text-white border-none font-bold text-sm cursor-pointer disabled:opacity-50"
             >
               {deleteProject.isPending ? "جارٍ الحذف..." : "حذف نهائياً"}

@@ -1,3 +1,4 @@
+import { useCompanyWriteAccess } from "@/features/billing/useCompanyWriteAccess";
 import { Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { SecondaryButton, IconButton, FieldLabel } from "@/components/ui";
 import type { ApprovalChainStepInput, Department, DepartmentMember } from "@/types/domain";
@@ -73,6 +74,7 @@ export function ChainBuilder({
   steps: ApprovalChainStepInput[];
   onChange: (steps: ApprovalChainStepInput[]) => void;
 }) {
+  const { readOnly } = useCompanyWriteAccess();
   const updateStep = (index: number, patch: Partial<ApprovalChainStepInput>) => {
     onChange(steps.map((s, i) => (i === index ? { ...s, ...patch } : s)));
   };
@@ -86,7 +88,7 @@ export function ChainBuilder({
     onChange(next);
   };
 
-  return (
+  return <fieldset disabled={readOnly} className="min-w-0 border-0 p-0 m-0">{(
     <div>
       <FieldLabel>خطوات الاعتماد (بالترتيب)</FieldLabel>
       <p className="text-xs text-ink-soft mb-2">كل خطوة تنتظر اعتماد اللي قبلها.</p>
@@ -119,5 +121,5 @@ export function ChainBuilder({
         <Plus size={14} strokeWidth={2.5} /> إضافة خطوة اعتماد
       </SecondaryButton>
     </div>
-  );
+  )}</fieldset>;
 }

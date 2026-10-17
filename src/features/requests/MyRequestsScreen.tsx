@@ -1,4 +1,7 @@
+import { CompanyWriteStatus } from "@/features/billing/CompanyWriteStatus";
+import { useCompanyWriteAccess } from "@/features/billing/useCompanyWriteAccess";
 import { useState } from "react";
+import { QueryFailureScreen } from "@/components/QueryFailureScreen";
 import { useNavigate } from "react-router-dom";
 import { Plus, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { Card, StatCard, SecondaryButton, PrimaryButton, IconButton, FieldLabel, TextInput, ErrorText, Modal } from "@/components/ui";
@@ -34,6 +37,7 @@ const STATUS_TONE: Record<string, string> = {
 };
 
 export function MyRequestsScreen() {
+  const { readOnly } = useCompanyWriteAccess();
   const navigate = useNavigate();
   const { company, profile } = useCompany();
 
@@ -82,6 +86,7 @@ export function MyRequestsScreen() {
   const deleteRequest = useDeleteInternalRequest();
 
   const handleConfirmDelete = async () => {
+    if (readOnly) return;
     if (!confirmDeleteId) return;
     setDeleteError("");
     try {
@@ -93,6 +98,7 @@ export function MyRequestsScreen() {
   };
 
   const openCreate = () => {
+    if (readOnly) return;
     setTemplateId("");
     setChainType("linear");
     setSteps([{ departmentId: null, userId: null }]);
@@ -109,6 +115,7 @@ export function MyRequestsScreen() {
   };
 
   const handleCreate = async () => {
+    if (readOnly) return;
     if (!title.trim()) return;
     const incompleteIndex = templateId ? -1 : steps.findIndex((s) => !s.departmentId && !s.userId);
     if (incompleteIndex !== -1) {
@@ -142,9 +149,14 @@ export function MyRequestsScreen() {
   };
 
   const pendingInbox = inboxRequests.filter((r) => r.status === "pending");
+  const requiredQueries = [myRequestsQuery, companyRequestsQuery, departmentsQuery, membersQuery, templatesQuery];
+  if (requiredQueries.some(query => query.isError && !query.data)) return <QueryFailureScreen title="الطلبات الداخلية" retry={() => Promise.all(requiredQueries.map(query => query.refetch()))} />;
+  if (myRequestsQuery.isPending || companyRequestsQuery.isPending) return <p role="status" className="p-6">جارٍ تحميل الطلبات...</p>;
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-4xl mx-auto">
+      <CompanyWriteStatus />
+      {requiredQueries.some(query => query.isError) && <p role="alert" className="text-xs text-critical mb-3">تعذّر تحديث الطلبات. المعروض آخر بيانات محمّلة؛ احتفظ بمدخلاتك وتحقق من الاتصال.</p>}
       <div className="flex items-center justify-between mb-6 gap-2">
         <h1 className="text-lg sm:text-xl font-bold text-ink">طلباتي</h1>
         <SecondaryButton onClick={() => navigate("/")} className="text-sm">
@@ -154,7 +166,7 @@ export function MyRequestsScreen() {
 
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-sm font-bold text-ink">طلباتي المُرسَلة</h2>
-        <IconButton icon={Plus} label="طلب جديد" onClick={openCreate} />
+        <IconButton disabled={readOnly} icon={Plus} label="طلب جديد" onClick={openCreate} />
       </div>
 
       {myRequests.length === 0 ? (
@@ -182,7 +194,7 @@ export function MyRequestsScreen() {
                     {r.description && <div className="text-xs text-ink-soft mt-1">{r.description}</div>}
                   </div>
                   <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <IconButton icon={Trash2} label="حذف الطلب" tone="critical" onClick={() => setConfirmDeleteId(r.id)} />
+                    <IconButton disabled={readOnly} icon={Trash2} label="حذف الطلب" tone="critical" onClick={() => setConfirmDeleteId(r.id)} />
                     <button
                       type="button"
                       onClick={() => setExpandedId(expanded ? null : r.id)}
@@ -245,7 +257,7 @@ export function MyRequestsScreen() {
                   </div>
                   <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                     {isOrgManager && (
-                      <IconButton icon={Trash2} label="حذف الطلب" tone="critical" onClick={() => setConfirmDeleteId(r.id)} />
+                      <IconButton disabled={readOnly} icon={Trash2} label="حذف الطلب" tone="critical" onClick={() => setConfirmDeleteId(r.id)} />
                     )}
                     <button
                       type="button"
@@ -301,7 +313,7 @@ export function MyRequestsScreen() {
             </SecondaryButton>
             <button
               onClick={handleConfirmDelete}
-              disabled={deleteRequest.isPending}
+              disabled={readOnly || (deleteRequest.isPending)}
               className="flex-1 py-2.5 rounded-lg bg-critical text-white border-none font-bold text-sm cursor-pointer disabled:opacity-50"
             >
               {deleteRequest.isPending ? "جارٍ الحذف..." : "حذف نهائياً"}
@@ -313,11 +325,11 @@ export function MyRequestsScreen() {
       {creating && (
         <Modal title="طلب جديد" onClose={() => setCreating(false)}>
           <FieldLabel>العنوان</FieldLabel>
-          <TextInput value={title} onChange={(e) => setTitle(e.target.value)} />
+          <TextInput disabled={readOnly} value={title} onChange={(e) => setTitle(e.target.value)} />
           <div className="mb-3" />
 
           <FieldLabel>نوع الطلب</FieldLabel>
-          <select value={type} onChange={(e) => setType(e.target.value as InternalRequestType)} className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink">
+          <select disabled={readOnly} value={type} onChange={(e) => setType(e.target.value as InternalRequestType)} className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink">
             {Object.entries(TYPE_LABEL).map(([key, label]) => (
               <option key={key} value={key}>
                 {label}
@@ -328,18 +340,18 @@ export function MyRequestsScreen() {
             <div className="grid grid-cols-2 gap-3 mt-3">
               <div>
                 <FieldLabel>من تاريخ</FieldLabel>
-                <TextInput type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                <TextInput disabled={readOnly} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               </div>
               <div>
                 <FieldLabel>إلى تاريخ</FieldLabel>
-                <TextInput type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                <TextInput disabled={readOnly} type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               </div>
             </div>
           )}
           <div className="mb-3" />
 
           <FieldLabel>تفاصيل إضافية (اختياري)</FieldLabel>
-          <textarea
+          <textarea disabled={readOnly}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
@@ -348,7 +360,7 @@ export function MyRequestsScreen() {
           <div className="mb-3" />
 
           <FieldLabel>قالب سلسلة الاعتماد</FieldLabel>
-          <select value={templateId} onChange={(e) => setTemplateId(e.target.value)} className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink">
+          <select disabled={readOnly} value={templateId} onChange={(e) => setTemplateId(e.target.value)} className="w-full bg-bg border border-line/60 rounded-lg px-3 py-2 text-sm text-ink">
             <option value="">بدون قالب — بناء السلسلة يدوياً</option>
             {templates.map(({ template }) => (
               <option key={template.id} value={template.id}>
@@ -362,7 +374,7 @@ export function MyRequestsScreen() {
             <>
               <FieldLabel>نوع السلسلة</FieldLabel>
               <div className="flex gap-2 mb-3">
-                <button
+                <button disabled={readOnly}
                   type="button"
                   onClick={() => setChainType("linear")}
                   className={`text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer border flex-1 ${
@@ -371,7 +383,7 @@ export function MyRequestsScreen() {
                 >
                   خطية — تسلسل بسيط
                 </button>
-                <button
+                <button disabled={readOnly}
                   type="button"
                   onClick={() => setChainType("network")}
                   className={`text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer border flex-1 ${
@@ -386,20 +398,20 @@ export function MyRequestsScreen() {
               <div className="mb-3" />
 
               <label className="flex items-center gap-2 text-xs text-ink-soft mb-2">
-                <input type="checkbox" checked={saveAsTemplate} onChange={(e) => setSaveAsTemplate(e.target.checked)} />
+                <input disabled={readOnly} type="checkbox" checked={saveAsTemplate} onChange={(e) => setSaveAsTemplate(e.target.checked)} />
                 احفظ هذه السلسلة كقالب لإعادة الاستخدام لاحقاً
               </label>
-              {saveAsTemplate && <TextInput value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="اسم القالب" />}
+              {saveAsTemplate && <TextInput disabled={readOnly} value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="اسم القالب" />}
               <div className="mb-3" />
             </>
           )}
 
           <FieldLabel>ملاحظة/تبرير (اختياري)</FieldLabel>
-          <TextInput value={note} onChange={(e) => setNote(e.target.value)} placeholder="سياق إضافي للمعتمدين" />
+          <TextInput disabled={readOnly} value={note} onChange={(e) => setNote(e.target.value)} placeholder="سياق إضافي للمعتمدين" />
 
           <ErrorText>{error}</ErrorText>
           <div className="flex gap-2 mt-4">
-            <PrimaryButton onClick={handleCreate} disabled={!title.trim() || createRequest.isPending} className="flex-1">
+            <PrimaryButton onClick={handleCreate} disabled={readOnly || (!title.trim() || createRequest.isPending)} className="flex-1">
               {createRequest.isPending ? "جارٍ التقديم..." : "تقديم الطلب"}
             </PrimaryButton>
             <SecondaryButton onClick={() => setCreating(false)} className="flex-1">

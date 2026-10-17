@@ -21,13 +21,15 @@ export interface ProjectFormValues {
 }
 
 export function ProjectForm({
+  readOnly = false,
   initial,
   onSave,
   onCancel,
   saving,
 }: {
+  readOnly?: boolean;
   initial: Project | null;
-  onSave: (values: ProjectFormValues) => void;
+  onSave: (values: ProjectFormValues) => void | Promise<void>;
   onCancel: () => void;
   saving?: boolean;
 }) {
@@ -50,6 +52,7 @@ export function ProjectForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) return;
     if (!canSubmit || !user) return;
     setError("");
     try {
@@ -63,7 +66,7 @@ export function ProjectForm({
           managerSignatureUrl = null;
         }
       }
-      onSave({
+      await onSave({
         name: name.trim(),
         managerName: managerName.trim(),
         location: location.trim(),
@@ -86,17 +89,17 @@ export function ProjectForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div>
         <FieldLabel>اسم المشروع</FieldLabel>
-        <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: مشروع أبراج الياسمين" />
+        <TextInput disabled={readOnly} value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: مشروع أبراج الياسمين" />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <FieldLabel>اسم مدير المشروع</FieldLabel>
-          <TextInput value={managerName} onChange={(e) => setManagerName(e.target.value)} />
+          <TextInput disabled={readOnly} value={managerName} onChange={(e) => setManagerName(e.target.value)} />
         </div>
         <div>
           <FieldLabel>نوع المشروع</FieldLabel>
-          <select
+          <select disabled={readOnly}
             value={projectType}
             onChange={(e) => setProjectType(e.target.value)}
             className="w-full px-3 py-2.5 border border-line rounded-lg text-sm font-sans box-border bg-white"
@@ -113,22 +116,22 @@ export function ProjectForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <FieldLabel>الموقع</FieldLabel>
-          <TextInput value={location} onChange={(e) => setLocation(e.target.value)} />
+          <TextInput disabled={readOnly} value={location} onChange={(e) => setLocation(e.target.value)} />
         </div>
         <div>
           <FieldLabel>رابط الخريطة</FieldLabel>
-          <TextInput value={mapLink} onChange={(e) => setMapLink(e.target.value)} placeholder="https://maps.google.com/..." />
+          <TextInput disabled={readOnly} value={mapLink} onChange={(e) => setMapLink(e.target.value)} placeholder="https://maps.google.com/..." />
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <FieldLabel>المساحة (م²)</FieldLabel>
-          <TextInput value={area} onChange={(e) => setArea(e.target.value)} inputMode="numeric" />
+          <TextInput disabled={readOnly} value={area} onChange={(e) => setArea(e.target.value)} inputMode="numeric" />
         </div>
         <div>
           <FieldLabel>عدد الوحدات</FieldLabel>
-          <TextInput value={unitsCount} onChange={(e) => setUnitsCount(e.target.value)} inputMode="numeric" />
+          <TextInput disabled={readOnly} value={unitsCount} onChange={(e) => setUnitsCount(e.target.value)} inputMode="numeric" />
         </div>
       </div>
 
@@ -136,7 +139,7 @@ export function ProjectForm({
         <FieldLabel>لون المشروع</FieldLabel>
         <div className="flex flex-wrap gap-2">
           {THEME_COLOR_PRESETS.map((c) => (
-            <button
+            <button disabled={readOnly}
               key={c}
               type="button"
               onClick={() => setThemeColor(c)}
@@ -155,7 +158,7 @@ export function ProjectForm({
         <FieldLabel>أيقونة المشروع</FieldLabel>
         <div className="flex flex-wrap gap-2">
           {THEME_ICON_PRESETS.map((icon) => (
-            <button
+            <button disabled={readOnly}
               key={icon}
               type="button"
               onClick={() => setThemeIcon(icon)}
@@ -172,7 +175,7 @@ export function ProjectForm({
 
       <div>
         <FieldLabel>توقيع مدير المشروع (اختياري)</FieldLabel>
-        <SignaturePad
+        <SignaturePad disabled={readOnly}
           value={initial?.managerSignatureUrl ?? null}
           onChange={(dataUrl) => {
             setSignatureDataUrl(dataUrl);
@@ -188,7 +191,7 @@ export function ProjectForm({
         <SecondaryButton type="button" onClick={onCancel} className="flex-1">
           إلغاء
         </SecondaryButton>
-        <PrimaryButton type="submit" disabled={!canSubmit || uploading || saving} className="flex-1">
+        <PrimaryButton type="submit" disabled={readOnly || (!canSubmit || uploading || saving)} className="flex-1">
           {uploading || saving ? "جارٍ الحفظ..." : "حفظ"}
         </PrimaryButton>
       </div>

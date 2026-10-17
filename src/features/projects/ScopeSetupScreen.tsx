@@ -1,3 +1,5 @@
+import { useParams } from "react-router-dom";
+import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
 import { useState } from "react";
 import { CodeListManager } from "@/features/projects/CodeListManager";
 import { UnitListManager } from "@/features/projects/UnitListManager";
@@ -11,18 +13,22 @@ export function ScopeSetupScreen({
   saving,
 }: {
   initial: ScopeConfig | null;
-  onComplete: (config: ScopeConfig) => void;
+  onComplete: (config: ScopeConfig) => void | Promise<void>;
   onBack?: () => void;
   saving?: boolean;
 }) {
+  const { id } = useParams<{ id: string }>();
+  const { readOnly } = useSubscriptionWriteAccess(id ?? "");
   const [zones, setZones] = useState(initial?.zones ?? []);
   const [units, setUnits] = useState(initial?.units ?? []);
   const [facilities, setFacilities] = useState(initial?.facilities ?? []);
   const [error, setError] = useState("");
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
+    if (readOnly) return;
     setError("");
-    onComplete({ zones, units, facilities });
+    try { await onComplete({ zones, units, facilities }); }
+    catch { setError("تعذّر حفظ نطاقات المشروع. احتفظ بالقيم وحاول مجدداً بعد التحقق من الاتصال."); }
   };
 
   return (
@@ -39,7 +45,7 @@ export function ScopeSetupScreen({
         واحدة لاحقاً. يمكنك تجاوز هذه الخطوة إذا كان مشروعك موحّداً بالكامل.
       </p>
 
-      <div className="flex flex-col gap-4 mb-6">
+      <fieldset disabled={readOnly} className="min-w-0 border-0 p-0 m-0 flex flex-col gap-4 mb-6">
         <CodeListManager
           title="الزونات (Zones)"
           placeholder="مثال: Z1"
@@ -63,10 +69,10 @@ export function ScopeSetupScreen({
           onAdd={(code) => setFacilities((prev) => [...prev, { code }])}
           onRemove={(code) => setFacilities((prev) => prev.filter((f) => f.code !== code))}
         />
-      </div>
+      </fieldset>
 
       <ErrorText>{error}</ErrorText>
-      <PrimaryButton onClick={handleFinish} disabled={saving} className="w-auto px-6">
+      <PrimaryButton onClick={handleFinish} disabled={readOnly || (saving)} className="w-auto px-6">
         {saving ? "جارٍ الحفظ..." : onBack ? "حفظ" : "متابعة"}
       </PrimaryButton>
     </div>
