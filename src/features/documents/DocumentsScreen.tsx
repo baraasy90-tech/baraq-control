@@ -1,7 +1,7 @@
 import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
 import { ProjectWriteStatus } from "@/features/billing/ProjectWriteStatus";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Folder, FileText, Trash2 } from "lucide-react";
 import { QueryFailureScreen } from "@/components/QueryFailureScreen";
 import { SecondaryButton, PrimaryButton, IconButton, Modal, ErrorText, TextInput, FieldLabel } from "@/components/ui";
@@ -13,12 +13,28 @@ import { useUploadDocument } from "@/features/documents/api/useUploadDocument";
 import { useDeleteDocument } from "@/features/documents/api/useDeleteDocument";
 import type { DocumentFolder, Project } from "@/types/domain";
 import { getFileUrl } from "@/lib/supabase/storage";
+import { useProjectDocumentIndex } from "./api/useProjectDocumentIndex";
+import { ArchiveFolderTree } from "./ArchiveFolderTree";
+import { ArchiveSearchResults } from "./ArchiveSearchResults";
+import { folderPath, type ArchiveFileType } from "./archiveIndex";
 
 export function DocumentsScreen({ project }: { project: Project }) {
   const navigate = useNavigate();
   const { readOnly } = useSubscriptionWriteAccess(project.id);
   const foldersQuery = useDocumentFolders(project.id);
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedFolderId = searchParams.get("folder");
+  const folders = foldersQuery.data ?? [];
+  const currentFolderId = folders.some(folder => folder.id === requestedFolderId) ? requestedFolderId : null;
+  const [search, setSearch] = useState("");
+  const [fileType, setFileType] = useState<ArchiveFileType>("all");
+  const searching = !!search.trim() || fileType !== "all";
+  const indexQuery = useProjectDocumentIndex(project.id, folders.map(folder => folder.id), searching && foldersQuery.isSuccess);
+  const setCurrentFolderId = (id: string | null) => {
+    setSearch("");
+    setFileType("all");
+    setSearchParams(previous => { const next = new URLSearchParams(previous); if (id) next.set("folder", id); else next.delete("folder"); return next; });
+  };
   const documentsQuery = useDocuments(currentFolderId ?? undefined);
   const createFolder = useCreateFolder(project.id);
   const deleteFolder = useDeleteFolder(project.id);
@@ -45,20 +61,10 @@ export function DocumentsScreen({ project }: { project: Project }) {
     finally { setOpeningId(null); }
   };
 
-  const folders = foldersQuery.data ?? [];
   const documents = documentsQuery.data ?? [];
   const subfolders = folders.filter((f) => f.parentFolderId === currentFolderId);
 
-  const buildBreadcrumb = (): DocumentFolder[] => {
-    const path: DocumentFolder[] = [];
-    let cursor = folders.find((f) => f.id === currentFolderId) ?? null;
-    while (cursor) {
-      path.unshift(cursor);
-      cursor = folders.find((f) => f.id === cursor!.parentFolderId) ?? null;
-    }
-    return path;
-  };
-  const breadcrumb = buildBreadcrumb();
+  const breadcrumb = folderPath(folders, currentFolderId);
 
   const handleCreateFolder = async () => {
     if (readOnly) return;
@@ -112,20 +118,38 @@ export function DocumentsScreen({ project }: { project: Project }) {
     }
   };
 
-  if (foldersQuery.isError || documentsQuery.isError) {
+  if (foldersQuery.isError && !foldersQuery.data) {
     return <QueryFailureScreen title="مستندات المشروع" retry={() => Promise.all([foldersQuery.refetch(), ...(currentFolderId ? [documentsQuery.refetch()] : [])])} />;
   }
-  if (foldersQuery.isPending || (currentFolderId && documentsQuery.isPending)) return <p role="status" className="p-6">جارٍ تحميل البيانات...</p>;
+  if (foldersQuery.isPending) return <p role="status" className="p-6">جارٍ تحميل البيانات...</p>;
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 max-w-4xl mx-auto">
+    <div className="min-h-screen p-4 sm:p-6 max-w-6xl mx-auto">
       <ProjectWriteStatus projectId={project.id} />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-lg font-bold text-ink truncate">المستندات — {project.name}</h1>
         <SecondaryButton onClick={() => navigate(`/projects/${project.id}`)}>رجوع</SecondaryButton>
       </div>
 
-      <div className="flex items-center flex-wrap gap-1 text-sm mb-4">
+      <div className="bg-panel border border-line/60 rounded-xl p-4 mb-5">
+        <h2 className="text-sm font-bold mb-1">أرشيف المشروع</h2>
+        <p className="text-xs text-ink-soft mb-3">ابحث باسم الملف أو المجلد في جميع مجلدات المشروع. البحث داخل محتوى الوثائق سيُضاف لاحقاً.</p>
+        <div className="flex gap-3 flex-wrap">
+          <div className="flex-1 min-w-0 basis-56"><FieldLabel>البحث في الأرشيف</FieldLabel><TextInput type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="مثال: اعتماد مخططات أو عقد الاستشاري" /></div>
+          <div><FieldLabel>نوع الملف</FieldLabel><select value={fileType} onChange={event => setFileType(event.target.value as ArchiveFileType)} className="border border-line rounded-lg p-2.5 bg-panel text-sm">
+            <option value="all">جميع الأنواع والمجلدات</option><option value="pdf">PDF</option><option value="image">صور</option><option value="office">مستندات وجداول وعروض</option><option value="other">أنواع أخرى</option>
+          </select></div>
+          {searching && <SecondaryButton className="self-end" onClick={() => { setSearch(""); setFileType("all"); }}>مسح البحث</SecondaryButton>}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_minmax(0,1fr)] gap-5 items-start">
+      <ArchiveFolderTree key={project.id} folders={folders} currentFolderId={currentFolderId} onOpen={setCurrentFolderId} />
+      <main className="min-w-0">
+      {requestedFolderId && !currentFolderId && <p role="status" className="text-xs text-ink-soft mb-3">المجلد المطلوب غير متاح، ربما حُذف أو تغيرت صلاحيات الوصول إليه. تظهر المجلدات المتاحة لك.</p>}
+      {(foldersQuery.isError || (!searching && documentsQuery.isError)) && <div role="alert" className="text-xs text-critical mb-3">تعذّر تحميل أحدث بيانات الأرشيف. ما يظهر قد يكون من آخر تحميل ناجح. <button type="button" onClick={() => { void foldersQuery.refetch(); if (currentFolderId) void documentsQuery.refetch(); }}>إعادة المحاولة</button></div>}
+
+      <nav aria-label="مسار المجلد الحالي" className="flex items-center flex-wrap gap-1 text-sm mb-4 break-words">
         <button
           onClick={() => setCurrentFolderId(null)}
           className={`cursor-pointer bg-transparent border-none ${currentFolderId === null ? "font-bold text-ink" : "text-primary"}`}
@@ -133,19 +157,19 @@ export function DocumentsScreen({ project }: { project: Project }) {
           📁 الرئيسية
         </button>
         {breadcrumb.map((f) => (
-          <span key={f.id} className="flex items-center gap-1">
+          <span key={f.id} className="flex items-center gap-1 min-w-0 max-w-full">
             <span className="text-ink-soft">/</span>
             <button
               onClick={() => setCurrentFolderId(f.id)}
-              className={`cursor-pointer bg-transparent border-none ${f.id === currentFolderId ? "font-bold text-ink" : "text-primary"}`}
+              className={`cursor-pointer bg-transparent border-none text-right break-all min-w-0 ${f.id === currentFolderId ? "font-bold text-ink" : "text-primary"}`}
             >
               {f.name}
             </button>
           </span>
         ))}
-      </div>
+      </nav>
 
-      <div className="flex gap-2 mb-5">
+      {!searching && <div className="flex gap-2 mb-5">
         <SecondaryButton disabled={readOnly} onClick={() => setFolderModalOpen(true)} className="text-sm">
           + مجلد جديد
         </SecondaryButton>
@@ -158,18 +182,20 @@ export function DocumentsScreen({ project }: { project: Project }) {
           {uploading ? "جارٍ الرفع..." : "+ رفع ملف"}
           <input type="file" onChange={handleUpload} disabled={readOnly || (!currentFolderId || uploading)} className="hidden" />
         </label>
-      </div>
-      {!currentFolderId && (
+      </div>}
+      {!searching && !currentFolderId && (
         <p className="text-xs text-ink-soft mb-4">افتح مجلداً أولاً لرفع الملفات داخله (لا يمكن رفع ملفات بالجذر مباشرة)</p>
       )}
 
       <ErrorText>{error}</ErrorText>
 
-      {(foldersQuery.isLoading || (currentFolderId && documentsQuery.isLoading)) && (
+      {!searching && (foldersQuery.isLoading || (currentFolderId && documentsQuery.isLoading)) && (
         <p className="text-sm text-ink-soft">جارٍ التحميل...</p>
       )}
 
-      {subfolders.length === 0 && documents.length === 0 && !foldersQuery.isLoading ? (
+      {searching ? (indexQuery.isError ? <div role="alert" className="text-sm text-critical">تعذّر إكمال البحث؛ لم نعرض نتائج جزئية. <SecondaryButton onClick={() => void indexQuery.refetch()}>إعادة البحث</SecondaryButton></div> : indexQuery.isPending ? <p role="status" className="text-sm text-ink-soft">جارٍ البحث في مجلدات المشروع...</p> :
+        <ArchiveSearchResults key={`${search.trim()}-${fileType}`} folders={folders} documents={indexQuery.data ?? []} query={search} type={fileType} opening={openingId !== null} onOpenFolder={setCurrentFolderId} onOpenFile={doc => void handleOpenDocument(doc.id, doc.fileUrl)} />
+      ) : subfolders.length === 0 && documents.length === 0 && !documentsQuery.isError && !foldersQuery.isLoading && !(currentFolderId && documentsQuery.isPending) ? (
         <div className="bg-panel border border-dashed border-line rounded-xl p-10 text-center text-sm text-ink-soft">
           هذا المجلد فارغ
         </div>
@@ -182,10 +208,10 @@ export function DocumentsScreen({ project }: { project: Project }) {
             >
               <button
                 onClick={() => setCurrentFolderId(folder.id)}
-                className="flex-1 text-right flex items-center gap-2 cursor-pointer bg-transparent border-none"
+                className="flex-1 min-w-0 text-right flex items-center gap-2 cursor-pointer bg-transparent border-none"
               >
                 <Folder size={18} className="text-primary shrink-0" strokeWidth={2} />
-                <span className="text-sm font-semibold text-ink">{folder.name}</span>
+                <span className="text-sm font-semibold text-ink truncate">{folder.name}</span>
               </button>
               <IconButton disabled={readOnly} icon={Trash2} label="حذف" tone="critical" onClick={() => setConfirmDeleteFolder(folder)} />
             </div>
@@ -213,6 +239,9 @@ export function DocumentsScreen({ project }: { project: Project }) {
         </div>
       )}
 
+      </main>
+      </div>
+
       {folderModalOpen && (
         <Modal title="مجلد جديد" onClose={() => setFolderModalOpen(false)}>
           <FieldLabel>اسم المجلد</FieldLabel>
@@ -238,7 +267,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
             <SecondaryButton onClick={() => setConfirmDeleteFolder(null)} className="flex-1">
               إلغاء
             </SecondaryButton>
-            <button disabled={readOnly}
+            <button disabled={readOnly || deleteFolder.isPending}
               onClick={() => handleDeleteFolder(confirmDeleteFolder)}
               className="flex-1 py-2.5 rounded-lg bg-critical text-white border-none font-bold text-sm cursor-pointer"
             >
@@ -255,7 +284,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
             <SecondaryButton onClick={() => setConfirmDeleteDocId(null)} className="flex-1">
               إلغاء
             </SecondaryButton>
-            <button disabled={readOnly}
+            <button disabled={readOnly || deleteDocument.isPending}
               onClick={() => handleDeleteDocument(confirmDeleteDocId)}
               className="flex-1 py-2.5 rounded-lg bg-critical text-white border-none font-bold text-sm cursor-pointer"
             >

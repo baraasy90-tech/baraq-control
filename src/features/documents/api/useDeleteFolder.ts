@@ -12,6 +12,7 @@ export function useDeleteFolder(projectId: string | undefined) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["document-folders", projectId] });
       queryClient.invalidateQueries({ queryKey: ["documents"] });
+      queryClient.invalidateQueries({ queryKey: ["project-document-index"] });
     },
   });
 }
