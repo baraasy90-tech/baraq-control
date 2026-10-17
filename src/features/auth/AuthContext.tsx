@@ -18,6 +18,8 @@ interface AuthContextValue {
   isPasswordRecovery: boolean;
   recoveryUserId: string | null;
   clearPasswordRecovery: () => void;
+  passwordRecoveryCompleted: boolean;
+  setPasswordRecoveryCompleted: (completed: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -29,6 +31,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [cacheEpoch, setCacheEpoch] = useState(0);
   const [recoveryUserId, setRecoveryUserId] = useState<string | null>(recoveryUser);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(() => recoveryCallback || !!recoveryUser());
+  // Keep the confirmation above the query-provider boundary, which remounts on sign-out.
+  const [passwordRecoveryCompleted, setPasswordRecoveryCompleted] = useState(false);
   const clearPasswordRecovery = () => {
     try { sessionStorage.removeItem(recoveryKey); } catch { /* Memory is cleared below. */ }
     setRecoveryUserId(null);
@@ -62,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // تسجيل دخول تفاعلي جديد — لازم يصفّر ساعة الخمول، وإلا طابع نشاط قديم متبقٍ من جلسة
       // سابقة (بأي عمر) يخلي useIdleLogout يسجّل خروجاً فورياً بعد الدخول مباشرة.
       if (event === "SIGNED_IN" || event === "PASSWORD_RECOVERY") recordActivity();
+      if (event === "SIGNED_IN" || event === "PASSWORD_RECOVERY") setPasswordRecoveryCompleted(false);
       if (event === "SIGNED_IN" && recoveryUser() && recoveryUser() !== newSession?.user.id) clearPasswordRecovery();
       if (event === "PASSWORD_RECOVERY" && newSession) {
         try { sessionStorage.setItem(recoveryKey, newSession.user.id); } catch { /* Current-page flow remains available. */ }
@@ -84,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, error, cacheEpoch, isPasswordRecovery, recoveryUserId, clearPasswordRecovery }}>
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, error, cacheEpoch, isPasswordRecovery, recoveryUserId, clearPasswordRecovery, passwordRecoveryCompleted, setPasswordRecoveryCompleted }}>
       {children}
     </AuthContext.Provider>
   );
