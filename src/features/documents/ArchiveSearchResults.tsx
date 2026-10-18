@@ -3,10 +3,12 @@ import { FileText, Folder } from "lucide-react";
 import { SecondaryButton } from "@/components/ui";
 import type { DocumentFolder, ProjectDocument } from "@/types/domain";
 import { searchArchive, type ArchiveFileType } from "./archiveIndex";
+import type { ArchiveEditTarget } from "./OrganizeArchiveModal";
 
-export function ArchiveSearchResults({ folders, documents, query, type, opening, onOpenFolder, onOpenFile }: {
+export function ArchiveSearchResults({ folders, documents, query, type, opening, onOpenFolder, onOpenFile, readOnly, onOrganize }: {
   folders: DocumentFolder[]; documents: ProjectDocument[]; query: string; type: ArchiveFileType; opening: boolean;
   onOpenFolder: (id: string) => void; onOpenFile: (doc: ProjectDocument) => void;
+  readOnly: boolean; onOrganize: (target: ArchiveEditTarget) => void;
 }) {
   const [limit, setLimit] = useState(50);
   const results = useMemo(() => searchArchive(folders, documents, query, type), [folders, documents, query, type]);
@@ -26,6 +28,7 @@ export function ArchiveSearchResults({ folders, documents, query, type, opening,
         </button>}
         <p className="text-xs text-ink-soft break-words mt-2 mb-0">{results.paths.get(row.kind === "folder" ? row.item.id : row.item.folderId)}</p>
         {row.kind === "document" && <button type="button" onClick={() => onOpenFolder(row.item.folderId)} className="text-xs text-primary mt-2 bg-transparent border-0 cursor-pointer">فتح المجلد الحاوي</button>}
+        <SecondaryButton disabled={readOnly} aria-label={`تنظيم ${row.item.name}`} className="text-xs mt-2 mr-2 py-1 px-2" onClick={() => onOrganize(row.kind === "folder" ? { kind: "folder", folder: row.item } : { kind: "document", document: row.item })}>تنظيم</SecondaryButton>
       </li>)}
     </ul>
     {rows.length > limit && <SecondaryButton className="mt-4" onClick={() => setLimit(value => value + 50)}>عرض المزيد ({rows.length - limit})</SecondaryButton>}
