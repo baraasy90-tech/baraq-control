@@ -2,7 +2,7 @@ import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWr
 import { ProjectWriteStatus } from "@/features/billing/ProjectWriteStatus";
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Folder, FileText, Trash2 } from "lucide-react";
+import { Folder, FileText, Trash2, Pencil } from "lucide-react";
 import { QueryFailureScreen } from "@/components/QueryFailureScreen";
 import { SecondaryButton, PrimaryButton, IconButton, Modal, ErrorText, TextInput, FieldLabel } from "@/components/ui";
 import { useDocumentFolders } from "@/features/documents/api/useDocumentFolders";
@@ -17,6 +17,7 @@ import { useProjectDocumentIndex } from "./api/useProjectDocumentIndex";
 import { ArchiveFolderTree } from "./ArchiveFolderTree";
 import { ArchiveSearchResults } from "./ArchiveSearchResults";
 import { folderPath, type ArchiveFileType } from "./archiveIndex";
+import { OrganizeArchiveModal, type ArchiveEditTarget } from "./OrganizeArchiveModal";
 
 export function DocumentsScreen({ project }: { project: Project }) {
   const navigate = useNavigate();
@@ -48,6 +49,8 @@ export function DocumentsScreen({ project }: { project: Project }) {
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<ArchiveEditTarget | null>(null);
+  const openOrganize = (target: ArchiveEditTarget) => { if (!readOnly) setEditTarget(target); };
   const handleOpenDocument = async (id: string, stored: string) => {
     setError("");setOpeningId(id);
     const tab = window.open("about:blank", "_blank");
@@ -194,7 +197,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
       )}
 
       {searching ? (indexQuery.isError ? <div role="alert" className="text-sm text-critical">تعذّر إكمال البحث؛ لم نعرض نتائج جزئية. <SecondaryButton onClick={() => void indexQuery.refetch()}>إعادة البحث</SecondaryButton></div> : indexQuery.isPending ? <p role="status" className="text-sm text-ink-soft">جارٍ البحث في مجلدات المشروع...</p> :
-        <ArchiveSearchResults key={`${search.trim()}-${fileType}`} folders={folders} documents={indexQuery.data ?? []} query={search} type={fileType} opening={openingId !== null} onOpenFolder={setCurrentFolderId} onOpenFile={doc => void handleOpenDocument(doc.id, doc.fileUrl)} />
+        <ArchiveSearchResults key={`${search.trim()}-${fileType}`} folders={folders} documents={indexQuery.data ?? []} query={search} type={fileType} opening={openingId !== null} onOpenFolder={setCurrentFolderId} onOpenFile={doc => void handleOpenDocument(doc.id, doc.fileUrl)} readOnly={readOnly} onOrganize={openOrganize} />
       ) : subfolders.length === 0 && documents.length === 0 && !documentsQuery.isError && !foldersQuery.isLoading && !(currentFolderId && documentsQuery.isPending) ? (
         <div className="bg-panel border border-dashed border-line rounded-xl p-10 text-center text-sm text-ink-soft">
           هذا المجلد فارغ
@@ -213,6 +216,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
                 <Folder size={18} className="text-primary shrink-0" strokeWidth={2} />
                 <span className="text-sm font-semibold text-ink truncate">{folder.name}</span>
               </button>
+              <IconButton disabled={readOnly} icon={Pencil} label={`إعادة تسمية ${folder.name}`} onClick={() => openOrganize({ kind: "folder", folder })} />
               <IconButton disabled={readOnly} icon={Trash2} label="حذف" tone="critical" onClick={() => setConfirmDeleteFolder(folder)} />
             </div>
           ))}
@@ -233,6 +237,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
                   {new Date(doc.uploadedAt).toLocaleDateString("ar-SA")}
                 </span>
               </button>
+              <IconButton disabled={readOnly} icon={Pencil} label={`تنظيم ${doc.name}`} onClick={() => openOrganize({ kind: "document", document: doc })} />
               <IconButton disabled={readOnly} icon={Trash2} label="حذف" tone="critical" onClick={() => setConfirmDeleteDocId(doc.id)} />
             </div>
           ))}
@@ -241,6 +246,8 @@ export function DocumentsScreen({ project }: { project: Project }) {
 
       </main>
       </div>
+
+      {editTarget && <OrganizeArchiveModal projectId={project.id} folders={folders} target={editTarget} readOnly={readOnly} onClose={() => setEditTarget(null)} />}
 
       {folderModalOpen && (
         <Modal title="مجلد جديد" onClose={() => setFolderModalOpen(false)}>
