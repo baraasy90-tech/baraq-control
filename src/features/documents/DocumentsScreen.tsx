@@ -9,7 +9,7 @@ import { useDocumentFolders } from "@/features/documents/api/useDocumentFolders"
 import { useDocuments } from "@/features/documents/api/useDocuments";
 import { useCreateFolder } from "@/features/documents/api/useCreateFolder";
 import { useDeleteFolder } from "@/features/documents/api/useDeleteFolder";
-import { useUploadDocument } from "@/features/documents/api/useUploadDocument";
+import { ArchiveUploadPanel } from "./ArchiveUploadPanel";
 import { useDeleteDocument } from "@/features/documents/api/useDeleteDocument";
 import type { DocumentFolder, Project } from "@/types/domain";
 import { getFileUrl } from "@/lib/supabase/storage";
@@ -39,7 +39,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
   const documentsQuery = useDocuments(currentFolderId ?? undefined);
   const createFolder = useCreateFolder(project.id);
   const deleteFolder = useDeleteFolder(project.id);
-  const uploadDocument = useUploadDocument(currentFolderId ?? undefined);
+
   const deleteDocument = useDeleteDocument(currentFolderId ?? undefined);
 
   const [folderModalOpen, setFolderModalOpen] = useState(false);
@@ -51,14 +51,16 @@ export function DocumentsScreen({ project }: { project: Project }) {
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<ArchiveEditTarget | null>(null);
   const openOrganize = (target: ArchiveEditTarget) => { if (!readOnly) setEditTarget(target); };
-  const handleOpenDocument = async (id: string, stored: string) => {
+  const handleOpenDocument = async (id: string, stored: string, name: string) => {
     setError("");setOpeningId(id);
-    const tab = window.open("about:blank", "_blank");
+    const preview=/\.(pdf|txt|csv|png|jpe?g|webp|gif|bmp|tiff?|mp4|webm|mov|mp3|m4a|wav|ogg)$/i.test(name.includes('.')?name:stored.split('?')[0]);
+    const tab = preview ? window.open("about:blank", "_blank") : null;
     if (tab) tab.opener = null;
     try {
-      const url = await getFileUrl("documents", stored);
+      const url = await getFileUrl("documents", stored,preview?undefined:name);
       if (!url) throw new Error("تعذّر الوصول للملف");
-      if (tab) tab.location.replace(url);
+      if (!preview) { const link=document.createElement('a');link.href=url;link.download=name;link.rel='noopener';document.body.appendChild(link);link.click();link.remove(); }
+      else if (tab) tab.location.replace(url);
       else { setError("اسمح بفتح نافذة المستند في إعدادات المتصفح ثم حاول مجدداً"); }
     } catch { tab?.close();setError("تعذّر فتح المستند، حاول مجدداً"); }
     finally { setOpeningId(null); }
@@ -94,21 +96,6 @@ export function DocumentsScreen({ project }: { project: Project }) {
     }
   };
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (readOnly) return;
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file || !currentFolderId) return;
-    setError("");
-    setUploading(true);
-    try {
-      await uploadDocument.mutateAsync(file);
-    } catch (err) {
-      setError(err instanceof Error && /[\u0600-\u06ff]/.test(err.message) ? err.message : "تعذّر رفع الملف، حاول مجدداً");
-    } finally {
-      setUploading(false);
-    }
-  };
 
   const handleDeleteDocument = async (id: string) => {
     if (readOnly) return;
@@ -172,23 +159,13 @@ export function DocumentsScreen({ project }: { project: Project }) {
         ))}
       </nav>
 
+      <ArchiveUploadPanel projectId={project.id} folderId={currentFolderId} readOnly={readOnly} onBusyChange={setUploading} />
       {!searching && <div className="flex gap-2 mb-5">
-        <SecondaryButton disabled={readOnly} onClick={() => setFolderModalOpen(true)} className="text-sm">
+        <SecondaryButton disabled={readOnly || uploading} onClick={() => setFolderModalOpen(true)} className="text-sm">
           + مجلد جديد
         </SecondaryButton>
-        <label
-          aria-disabled={readOnly || !currentFolderId || uploading}
-          className={`text-sm px-4 py-2.5 rounded-lg border font-semibold cursor-pointer ${
-            currentFolderId && !readOnly && !uploading ? "border-primary text-primary bg-primary-bg" : "border-line text-ink-soft bg-bg cursor-not-allowed"
-          }`}
-        >
-          {uploading ? "جارٍ الرفع..." : "+ رفع ملف"}
-          <input type="file" onChange={handleUpload} disabled={readOnly || (!currentFolderId || uploading)} className="hidden" />
-        </label>
+
       </div>}
-      {!searching && !currentFolderId && (
-        <p className="text-xs text-ink-soft mb-4">افتح مجلداً أولاً لرفع الملفات داخله (لا يمكن رفع ملفات بالجذر مباشرة)</p>
-      )}
 
       <ErrorText>{error}</ErrorText>
 
@@ -197,7 +174,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
       )}
 
       {searching ? (indexQuery.isError ? <div role="alert" className="text-sm text-critical">تعذّر إكمال البحث؛ لم نعرض نتائج جزئية. <SecondaryButton onClick={() => void indexQuery.refetch()}>إعادة البحث</SecondaryButton></div> : indexQuery.isPending ? <p role="status" className="text-sm text-ink-soft">جارٍ البحث في مجلدات المشروع...</p> :
-        <ArchiveSearchResults key={`${search.trim()}-${fileType}`} folders={folders} documents={indexQuery.data ?? []} query={search} type={fileType} opening={openingId !== null} onOpenFolder={setCurrentFolderId} onOpenFile={doc => void handleOpenDocument(doc.id, doc.fileUrl)} readOnly={readOnly} onOrganize={openOrganize} />
+        <ArchiveSearchResults key={`${search.trim()}-${fileType}`} folders={folders} documents={indexQuery.data ?? []} query={search} type={fileType} opening={openingId !== null} onOpenFolder={setCurrentFolderId} onOpenFile={doc => void handleOpenDocument(doc.id, doc.fileUrl,doc.name)} readOnly={readOnly} onOrganize={openOrganize} />
       ) : subfolders.length === 0 && documents.length === 0 && !documentsQuery.isError && !foldersQuery.isLoading && !(currentFolderId && documentsQuery.isPending) ? (
         <div className="bg-panel border border-dashed border-line rounded-xl p-10 text-center text-sm text-ink-soft">
           هذا المجلد فارغ
@@ -228,7 +205,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
             >
               <button
                 type="button" disabled={openingId !== null}
-                onClick={() => handleOpenDocument(doc.id, doc.fileUrl)}
+                onClick={() => handleOpenDocument(doc.id, doc.fileUrl,doc.name)}
                 className="flex-1 min-w-0 flex items-center gap-2 text-ink text-right bg-transparent border-none cursor-pointer disabled:opacity-50"
               >
                 <FileText size={18} className="text-ink-soft shrink-0" strokeWidth={2} />

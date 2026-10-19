@@ -9,7 +9,8 @@ const SIGNED_URL_TTL_SECONDS = 10 * 60;
 /** All private buckets store paths; links are signed at display time. */
 export async function uploadFile(bucket: Bucket, path: string, file: File | Blob): Promise<string> {
   const contentType=validateUpload(bucket,file);
-  const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true,contentType });
+  const body=file.type===contentType?file:new Blob([file],{type:contentType});
+  const { error } = await supabase.storage.from(bucket).upload(path, body, { upsert: true,contentType });
   if (error) throw error;
 
   return path;
@@ -18,9 +19,9 @@ export async function uploadFile(bucket: Bucket, path: string, file: File | Blob
 /** سجلات أُنشئت قبل هذا الإصلاح تخزّن رابطاً موقّعاً كاملاً بدل مسار مباشر —
  * نستخرج المسار منها للتوافق العكسي دون الحاجة لأي migration على البيانات القديمة. */
 /** رابط موقّع قصير الأجل (10 دقائق) لملف واحد — يُستدعى وقت العرض الفعلي فقط. */
-export async function getFileUrl(bucket: Bucket, stored: string | null): Promise<string | null> {
+export async function getFileUrl(bucket: Bucket, stored: string | null, downloadName?: string): Promise<string | null> {
   if (!stored) return null;
-  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(storedFilePath(bucket, stored), SIGNED_URL_TTL_SECONDS);
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(storedFilePath(bucket, stored), SIGNED_URL_TTL_SECONDS,downloadName?{download:downloadName}:undefined);
   if (error) return null;
   return data.signedUrl;
 }
