@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabase/client";
 import { fetchRowsByIds } from "@/lib/supabase/fetchAllRows";
 import { mapDocument } from "./mapDocument";
 
-/** Names and paths only; file contents are never downloaded for this search. RLS still applies. */
+/** Names, paths and user-entered metadata only; file contents are never downloaded for this search. RLS still applies. */
 export function useProjectDocumentIndex(projectId: string, folderIds: string[], enabled: boolean) {
   const ids = [...folderIds].sort();
   return useQuery({

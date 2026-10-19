@@ -17,6 +17,8 @@ import { useProjectDocumentIndex } from "./api/useProjectDocumentIndex";
 import { ArchiveFolderTree } from "./ArchiveFolderTree";
 import { ArchiveSearchResults } from "./ArchiveSearchResults";
 import { folderPath, type ArchiveFileType } from "./archiveIndex";
+import {documentCategories,type DocumentCategory} from "./documentMetadata";
+import {DocumentMetadataSummary} from "./DocumentMetadataSummary";
 import { OrganizeArchiveModal, type ArchiveEditTarget } from "./OrganizeArchiveModal";
 
 export function DocumentsScreen({ project }: { project: Project }) {
@@ -29,11 +31,12 @@ export function DocumentsScreen({ project }: { project: Project }) {
   const currentFolderId = folders.some(folder => folder.id === requestedFolderId) ? requestedFolderId : null;
   const [search, setSearch] = useState("");
   const [fileType, setFileType] = useState<ArchiveFileType>("all");
-  const searching = !!search.trim() || fileType !== "all";
+  const [category,setCategory]=useState<DocumentCategory|"all">("all");
+  const searching = !!search.trim() || fileType !== "all" || category !== "all";
   const indexQuery = useProjectDocumentIndex(project.id, folders.map(folder => folder.id), searching && foldersQuery.isSuccess);
   const setCurrentFolderId = (id: string | null) => {
     setSearch("");
-    setFileType("all");
+    setFileType("all");setCategory("all");
     setSearchParams(previous => { const next = new URLSearchParams(previous); if (id) next.set("folder", id); else next.delete("folder"); return next; });
   };
   const documentsQuery = useDocuments(currentFolderId ?? undefined);
@@ -123,13 +126,14 @@ export function DocumentsScreen({ project }: { project: Project }) {
 
       <div className="bg-panel border border-line/60 rounded-xl p-4 mb-5">
         <h2 className="text-sm font-bold mb-1">أرشيف المشروع</h2>
-        <p className="text-xs text-ink-soft mb-3">ابحث باسم الملف أو المجلد في جميع مجلدات المشروع. البحث داخل محتوى الوثائق سيُضاف لاحقاً.</p>
+        <p className="text-xs text-ink-soft mb-3">ابحث بالاسم أو المرجع أو التصنيف أو التاريخ أو الوصف في جميع مجلدات المشروع. البحث داخل محتوى الوثائق سيُضاف لاحقاً.</p>
         <div className="flex gap-3 flex-wrap">
           <div className="flex-1 min-w-0 basis-56"><FieldLabel>البحث في الأرشيف</FieldLabel><TextInput type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="مثال: اعتماد مخططات أو عقد الاستشاري" /></div>
           <div><FieldLabel>نوع الملف</FieldLabel><select value={fileType} onChange={event => setFileType(event.target.value as ArchiveFileType)} className="border border-line rounded-lg p-2.5 bg-panel text-sm">
             <option value="all">جميع الأنواع والمجلدات</option><option value="pdf">PDF</option><option value="image">صور</option><option value="office">مستندات وجداول وعروض</option><option value="other">أنواع أخرى</option>
           </select></div>
-          {searching && <SecondaryButton className="self-end" onClick={() => { setSearch(""); setFileType("all"); }}>مسح البحث</SecondaryButton>}
+          <div><FieldLabel>تصنيف الأرشيف</FieldLabel><select value={category} onChange={event=>setCategory(event.target.value as DocumentCategory|"all")} className="max-w-full border border-line rounded-lg p-2.5 bg-panel text-sm"><option value="all">جميع التصنيفات</option>{Object.entries(documentCategories).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></div>
+          {searching && <SecondaryButton className="self-end" onClick={() => { setSearch(""); setFileType("all");setCategory("all"); }}>مسح البحث</SecondaryButton>}
         </div>
       </div>
 
@@ -174,7 +178,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
       )}
 
       {searching ? (indexQuery.isError ? <div role="alert" className="text-sm text-critical">تعذّر إكمال البحث؛ لم نعرض نتائج جزئية. <SecondaryButton onClick={() => void indexQuery.refetch()}>إعادة البحث</SecondaryButton></div> : indexQuery.isPending ? <p role="status" className="text-sm text-ink-soft">جارٍ البحث في مجلدات المشروع...</p> :
-        <ArchiveSearchResults key={`${search.trim()}-${fileType}`} folders={folders} documents={indexQuery.data ?? []} query={search} type={fileType} opening={openingId !== null} onOpenFolder={setCurrentFolderId} onOpenFile={doc => void handleOpenDocument(doc.id, doc.fileUrl,doc.name)} readOnly={readOnly} onOrganize={openOrganize} />
+        <ArchiveSearchResults key={`${search.trim()}-${fileType}-${category}`} folders={folders} documents={indexQuery.data ?? []} query={search} type={fileType} category={category} opening={openingId !== null} onOpenFolder={setCurrentFolderId} onOpenFile={doc => void handleOpenDocument(doc.id, doc.fileUrl,doc.name)} readOnly={readOnly} onOrganize={openOrganize} />
       ) : subfolders.length === 0 && documents.length === 0 && !documentsQuery.isError && !foldersQuery.isLoading && !(currentFolderId && documentsQuery.isPending) ? (
         <div className="bg-panel border border-dashed border-line rounded-xl p-10 text-center text-sm text-ink-soft">
           هذا المجلد فارغ
@@ -203,10 +207,10 @@ export function DocumentsScreen({ project }: { project: Project }) {
               key={doc.id}
               className="flex items-center justify-between gap-2 bg-panel border border-line/60 shadow-sm rounded-lg px-4 py-3"
             >
-              <button
+              <div className="flex-1 min-w-0"><button
                 type="button" disabled={openingId !== null}
                 onClick={() => handleOpenDocument(doc.id, doc.fileUrl,doc.name)}
-                className="flex-1 min-w-0 flex items-center gap-2 text-ink text-right bg-transparent border-none cursor-pointer disabled:opacity-50"
+                className="w-full min-w-0 flex flex-wrap items-center gap-2 text-ink text-right bg-transparent border-none cursor-pointer disabled:opacity-50"
               >
                 <FileText size={18} className="text-ink-soft shrink-0" strokeWidth={2} />
                 <span className="text-sm font-medium truncate">{doc.name}</span>
@@ -214,6 +218,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
                   {new Date(doc.uploadedAt).toLocaleDateString("ar-SA")}
                 </span>
               </button>
+              <DocumentMetadataSummary document={doc}/></div>
               <IconButton disabled={readOnly} icon={Pencil} label={`تنظيم ${doc.name}`} onClick={() => openOrganize({ kind: "document", document: doc })} />
               <IconButton disabled={readOnly} icon={Trash2} label="حذف" tone="critical" onClick={() => setConfirmDeleteDocId(doc.id)} />
             </div>
