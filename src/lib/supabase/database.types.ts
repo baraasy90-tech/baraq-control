@@ -104,6 +104,8 @@ type FunctionReturns<F extends keyof GeneratedFunctions> = F extends 'list_all_c
 export type Database = Omit<Generated,'public'> & {public: Omit<Generated['public'],'Tables'|'Functions'> & {
  Tables: {[T in keyof Generated['public']['Tables']]: {[P in keyof Generated['public']['Tables'][T]]: P extends 'Row'|'Insert'|'Update' ? Replace<Generated['public']['Tables'][T][P], T extends keyof CheckedFields ? CheckedFields[T] : {}> & (T extends 'documents' ? P extends 'Row' ? DocumentMetadataRow : Partial<DocumentMetadataRow> : {}) : Generated['public']['Tables'][T][P]}};
  Functions: {[F in keyof GeneratedFunctions]: Omit<GeneratedFunctions[F],'Args'|'Returns'> & {Args: Args<GeneratedFunctions[F]['Args']>;Returns:FunctionReturns<F>}} & {
+   get_company_entitlements:{Args:{p_company_id:string};Returns:import('./database.generated').Json};
+   set_company_entitlements:{Args:{p_company_id:string;p_package_name:string|null;p_max_file_mib:number|null;p_storage_gib:number|null;p_annual_transfer_gib:number|null;p_max_users:number|null;p_expected_revision:number};Returns:import('./database.generated').Json};
    has_platform_admin_access: { Args: Record<string, never>; Returns: boolean };
      ensure_document_folder: {Args:{p_project_id:string;p_parent_folder_id:string|null;p_name:string;p_id:string};Returns:string};
    get_project_subscription_policy: { Args: {p_project_id: string}; Returns: import("./database.generated").Json };
