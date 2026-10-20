@@ -7,6 +7,7 @@ import type { CompanyBillingRow, SubscriptionStatus } from "@/types/domain";
 import { POLICY_LABELS, previewSubscriptionPolicy } from "./subscriptionPolicy";
 import { getUserErrorMessage } from "@/utils/errors";
 import { SubscriptionPolicyControl } from "./SubscriptionPolicyControl";
+import { SubscriptionEntitlements } from "./SubscriptionEntitlementsPanel";
 import { PlatformUserDirectory } from "./PlatformUserDirectory";
 
 const STATUS_LABEL: Record<SubscriptionStatus, string> = {
@@ -91,6 +92,7 @@ function EditSubscriptionModal({ row, onClose }: { row: CompanyBillingRow; onClo
           <p>تطبيق القيود يعتمد على تفعيل السياسة لهذا الحساب أدناه.</p>
         </div>
         <SubscriptionPolicyControl companyId={row.id} />
+        <SubscriptionEntitlements companyId={row.id} />
         <ErrorText>{error}</ErrorText>
         <div className="flex gap-2">
           <SecondaryButton onClick={onClose} disabled={setSubscription.isPending} className="flex-1">
@@ -164,6 +166,7 @@ export function PlatformAdminScreen() {
         <SecondaryButton onClick={() => navigate("/")}>رجوع</SecondaryButton>
       </div>
 
+      <p className="text-xs text-ink-soft mb-4">من «تعديل» الاشتراك يمكنك توثيق اسم الباقة وحدود الملفات والتخزين والنقل السنوي والمستخدمين، ومراجعة سجل تغييراتها.</p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <Card>
           <div className="text-xs text-ink-soft font-semibold mb-1.5">إجمالي الشركات</div>
