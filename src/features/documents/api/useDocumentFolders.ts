@@ -10,7 +10,7 @@ export function useDocumentFolders(projectId: string | undefined) {
     queryFn: async () => {
       const data = await fetchAllRows((from, to) => supabase
         .from("document_folders")
-        .select("*")
+        .select("*").is("trashed_at",null)
         .eq("project_id", projectId!)
         .order("name", { ascending: true }).order("id").range(from, to));
       return data.map(mapFolder);

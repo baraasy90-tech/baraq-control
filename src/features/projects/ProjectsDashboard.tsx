@@ -11,6 +11,7 @@ import { useProjects } from "@/features/projects/api/useProjects";
 import { useCreateProject } from "@/features/projects/api/useCreateProject";
 import { useUpdateProject } from "@/features/projects/api/useUpdateProject";
 import { useDeleteProject } from "@/features/projects/api/useDeleteProject";
+import { getUserErrorMessage } from "@/utils/errors";
 import type { Company, Project, ProjectStatus } from "@/types/domain";
 
 const STATUS_SECTIONS: { status: ProjectStatus; title: string; color: string; bg: string }[] = [
@@ -37,6 +38,7 @@ export function ProjectsDashboard({
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<ProjectStatus | null>(null);
 
@@ -70,10 +72,12 @@ export function ProjectsDashboard({
 
   const handleDelete = async (id: string) => {
     if (readOnly) return;
+    setDeleteError("");
     try {
       await deleteProject.mutateAsync(id);
-    } finally {
       setConfirmDeleteId(null);
+    } catch (caught) {
+      setDeleteError(getUserErrorMessage(caught, "تعذّر حذف المشروع. تحقق من النتيجة قبل إعادة المحاولة."));
     }
   };
 
@@ -186,7 +190,7 @@ export function ProjectsDashboard({
                       project={project}
                       onOpen={() => navigate(`/projects/${project.id}`)}
                       onEdit={() => openEdit(project)}
-                      onDelete={() => setConfirmDeleteId(project.id)}
+                      onDelete={() => {setDeleteError("");setConfirmDeleteId(project.id);}}
                       onStatusChange={(status) => changeStatus(project, status)}
                       draggable
                       onDragStart={() => setDraggingId(project.id)}
@@ -216,8 +220,9 @@ export function ProjectsDashboard({
       {confirmDeleteId && (
         <Modal title="تأكيد الحذف" onClose={() => setConfirmDeleteId(null)}>
           <p className="text-sm text-ink-soft mb-5">
-            هل أنت متأكد من حذف هذا المشروع؟ سيتم حذف كل بياناته (المراحل، الاستلامات، الميزانية، المستندات) بشكل نهائي.
+            هل أنت متأكد من حذف هذا المشروع وبيانات عمله نهائياً؟ إذا كان يحتوي أرشيفاً محفوظاً، يتوقف هذا المسار لحماية المستندات.
           </p>
+          {deleteError&&<p role="alert" className="text-sm text-critical mb-3">{deleteError}</p>}
           <div className="flex gap-2">
             <SecondaryButton onClick={() => setConfirmDeleteId(null)} className="flex-1">
               إلغاء

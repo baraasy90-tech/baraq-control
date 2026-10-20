@@ -10,7 +10,7 @@ export function useProjectDocumentIndex(projectId: string, folderIds: string[], 
     queryKey: ["project-document-index", projectId, ids],
     enabled,
     queryFn: async () => {
-      const rows = await fetchRowsByIds(ids, (batch, from, to) => supabase.from("documents").select("*")
+      const rows = await fetchRowsByIds(ids, (batch, from, to) => supabase.from("documents").select("*").is("trashed_at",null)
         .in("folder_id", batch).order("id").range(from, to));
       return rows.map(mapDocument);
     },

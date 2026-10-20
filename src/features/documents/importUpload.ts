@@ -45,9 +45,9 @@ export async function runImportJobs(jobs:ImportJob[],projectId:string,parentId:s
 
 async function uploadImportFile(client:SupabaseClient<Database>,job:ImportJob,ownerId:string) {
  const path=`${ownerId}/${job.id}`;
- const existing=await client.from('documents').select('id,file_url,folder_id').eq('id',job.id).maybeSingle();
+ const existing=await client.from('documents').select('id,file_url,folder_id,trashed_at').eq('id',job.id).maybeSingle();
  if(existing.error)throw existing.error;
- if(existing.data){if(existing.data.file_url!==path||existing.data.folder_id!==job.folderId)throw new Error('تغير سجل الملف؛ حدّث القائمة قبل إعادة المحاولة.');return;}
+ if(existing.data){if(existing.data.trashed_at)throw new Error('الملف نُقل إلى السلة أثناء العملية؛ استعده من السلة قبل الاستكمال.');if(existing.data.file_url!==path||existing.data.folder_id!==job.folderId)throw new Error('تغير سجل الملف؛ حدّث القائمة قبل إعادة المحاولة.');return;}
  if(!job.uploaded){
   const contentType=validateUpload('documents',job.file!);
   const body=job.file!.type===contentType?job.file!:new Blob([job.file!],{type:contentType});
@@ -58,7 +58,8 @@ async function uploadImportFile(client:SupabaseClient<Database>,job:ImportJob,ow
  const result=await client.from('documents').insert({id:job.id,folder_id:job.folderId!,name:job.file!.name,file_url:path});
  if(result.error){
   // A lost response or concurrent retry may already have committed this exact UUID.
-  const verified=await client.from('documents').select('file_url,folder_id').eq('id',job.id).maybeSingle();
+  const verified=await client.from('documents').select('file_url,folder_id,trashed_at').eq('id',job.id).maybeSingle();
+  if(verified.data?.trashed_at)throw new Error('الملف نُقل إلى السلة أثناء العملية؛ استعده من السلة قبل الاستكمال.');
   if(verified.data?.file_url===path&&verified.data.folder_id===job.folderId)return;
   throw result.error;
  }

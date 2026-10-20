@@ -99,11 +99,15 @@ type Replace<T, F> = { [K in keyof T]: K extends keyof F ? F[K] : T[K] };
 type NullableSqlArgument = "p_trial_ends_at" | "p_note" | "p_logo_url" | "p_archive_local_path" | "p_department_id" | "p_user_id" | "p_procurement_department_id" | "p_manager_signature_url" | "p_notes" | "p_type" | "p_description" | "p_start_date" | "p_end_date" | "p_template_id";
 type Args<T> = { [K in keyof T]: K extends NullableSqlArgument ? T[K] | null : T[K] };
 type DocumentMetadataRow = {category: import('@/features/documents/documentMetadata').DocumentCategory|null;reference_number:string|null;document_date:string|null;description:string|null;row_version:number};
+type TrashColumns={trashed_at:string|null;trash_batch_id:string|null};
+type TrashRow={id:string;project_id:string;root_kind:'folder'|'document';root_id:string;name:string;original_parent_id:string|null;deleted_at:string;deleted_by:string;folder_count:number;document_count:number;restored_at:string|null;restored_by:string|null};
 type GeneratedFunctions = Generated['public']['Functions'];
 type FunctionReturns<F extends keyof GeneratedFunctions> = F extends 'list_all_companies_billing' ? Replace<GeneratedFunctions[F]['Returns'][number], {subscription_status: CheckedFields['companies']['subscription_status']}>[] : GeneratedFunctions[F]['Returns'];
 export type Database = Omit<Generated,'public'> & {public: Omit<Generated['public'],'Tables'|'Functions'> & {
- Tables: {[T in keyof Generated['public']['Tables']]: {[P in keyof Generated['public']['Tables'][T]]: P extends 'Row'|'Insert'|'Update' ? Replace<Generated['public']['Tables'][T][P], T extends keyof CheckedFields ? CheckedFields[T] : {}> & (T extends 'documents' ? P extends 'Row' ? DocumentMetadataRow : Partial<DocumentMetadataRow> : {}) : Generated['public']['Tables'][T][P]}};
+ Tables: {[T in keyof Generated['public']['Tables']]: {[P in keyof Generated['public']['Tables'][T]]: P extends 'Row'|'Insert'|'Update' ? Replace<Generated['public']['Tables'][T][P], T extends keyof CheckedFields ? CheckedFields[T] : {}> & (T extends 'documents' ? P extends 'Row' ? DocumentMetadataRow : Partial<DocumentMetadataRow> : {}) & (T extends 'documents'|'document_folders' ? P extends 'Row' ? TrashColumns : Partial<TrashColumns> : {}) : Generated['public']['Tables'][T][P]}} & {document_trash:{Row:TrashRow;Insert:never;Update:never;Relationships:[]}};
  Functions: {[F in keyof GeneratedFunctions]: Omit<GeneratedFunctions[F],'Args'|'Returns'> & {Args: Args<GeneratedFunctions[F]['Args']>;Returns:FunctionReturns<F>}} & {
+   trash_project_archive:{Args:{p_project_id:string;p_kind:'folder'|'document';p_root_id:string;p_request_id:string;p_expected_version?:number|null;p_expected_name?:string|null};Returns:string};
+   restore_project_archive:{Args:{p_project_id:string;p_batch_id:string};Returns:string};
    get_company_entitlements:{Args:{p_company_id:string};Returns:import('./database.generated').Json};
    set_company_entitlements:{Args:{p_company_id:string;p_package_name:string|null;p_max_file_mib:number|null;p_storage_gib:number|null;p_annual_transfer_gib:number|null;p_max_users:number|null;p_expected_revision:number};Returns:import('./database.generated').Json};
    has_platform_admin_access: { Args: Record<string, never>; Returns: boolean };

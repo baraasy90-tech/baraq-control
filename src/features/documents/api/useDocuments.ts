@@ -10,7 +10,7 @@ export function useDocuments(folderId: string | undefined) {
     queryFn: async () => {
       const data = await fetchAllRows((from, to) => supabase
         .from("documents")
-        .select("*")
+        .select("*").is("trashed_at",null)
         .eq("folder_id", folderId!)
         .order("uploaded_at", { ascending: false }).order("id").range(from, to));
       return data.map(mapDocument);

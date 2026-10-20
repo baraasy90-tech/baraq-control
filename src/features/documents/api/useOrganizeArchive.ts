@@ -11,17 +11,17 @@ export function useOrganizeArchive(projectId: string) {
       const name = change.name.trim(), validation = archiveNameError(name);
       if (validation) throw new Error(validation);
       if (change.kind === "folder") {
-        const { error } = await supabase.from("document_folders").update({ name }).eq("id", change.folder.id)
+        const { error } = await supabase.from("document_folders").update({ name }).is("trashed_at",null).eq("id", change.folder.id)
           .eq("project_id", projectId).eq("name", change.folder.name).select("id").single();
         if (error) throw error;
       } else {
         const ids = [...new Set([change.document.folderId, change.folderId])];
-        const folders = await supabase.from("document_folders").select("id").eq("project_id", projectId).in("id", ids);
+        const folders = await supabase.from("document_folders").select("id").eq("project_id", projectId).is("trashed_at",null).in("id", ids);
         if (folders.error) throw folders.error;
         if (folders.data.length !== ids.length) throw new Error("المجلد المصدر أو الوجهة غير متاح ضمن هذا المشروع. حدّث القائمة وحاول مجدداً.");
         const metadata=cleanDocumentMetadata(change.metadata);
         const { error } = await supabase.from("documents").update({ name, folder_id: change.folderId, category:metadata.category,reference_number:metadata.referenceNumber,document_date:metadata.documentDate,description:metadata.description })
-          .eq("row_version",change.document.rowVersion??0).eq("id", change.document.id).eq("folder_id", change.document.folderId).eq("name", change.document.name).select("id").single();
+          .is("trashed_at",null).eq("row_version",change.document.rowVersion??0).eq("id", change.document.id).eq("folder_id", change.document.folderId).eq("name", change.document.name).select("id").single();
         if (error) throw error;
       }
     },
