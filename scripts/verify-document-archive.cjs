@@ -52,8 +52,8 @@ let browser,projectId,sharedPath,foreignFolderId,foreignPath;const checks=[],err
   await page.getByRole('button',{name:'مسح البحث',exact:true}).click();const uploadedRow=page.getByRole('main').locator('div').filter({has:page.getByRole('button',{name:/^ArchiveNew\.txt/})});
   const deleteId=ok(await client.from('documents').select('id').eq('folder_id',misc).eq('name','ArchiveNew.txt').single()).id;
   // Exercise the existing delete UI and check that cached search does not resurrect the file.
-  await uploadedRow.filter({has:page.getByRole('button',{name:'حذف',exact:true})}).last().getByRole('button',{name:'حذف',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'حذف نهائياً',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});
-  assert.equal(ok(await client.from('documents').select('id').eq('id',deleteId)).length,0);await search.fill('ArchiveNew');await results.getByRole('status').filter({hasText:'0 نتيجة'}).waitFor();checks.push('delete-invalidates-search-index');
+  await uploadedRow.filter({has:page.getByRole('button',{name:'حذف',exact:true})}).last().getByRole('button',{name:'حذف',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'نقل إلى السلة',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});
+  assert.equal(ok(await client.from('documents').select('id').eq('id',deleteId).is('trashed_at',null)).length,0);await search.fill('ArchiveNew');await results.getByRole('status').filter({hasText:'0 نتيجة'}).waitFor();checks.push('delete-invalidates-search-index');
   stage='failure';await page.route('**/rest/v1/documents?*',r=>r.fulfill({status:503,contentType:'application/json',body:'{"message":"Synthetic archive read failure"}'}));
   await page.reload();await page.getByLabel('البحث في الأرشيف',{exact:true}).fill('محضر');await page.getByRole('button',{name:'إعادة البحث',exact:true}).waitFor();await page.unroute('**/rest/v1/documents?*');await page.getByRole('button',{name:'إعادة البحث',exact:true}).click();await page.getByRole('region',{name:'نتائج بحث الأرشيف'}).getByRole('button',{name:'محضر اجتماع.txt',exact:true}).waitFor();checks.push('failed-index-never-shown-as-empty-and-retry-recovers');
   stage='scope';assert.equal(ok(await outsider.from('documents').select('id').eq('folder_id',foreignFolderId)).length,1);
@@ -68,4 +68,4 @@ let browser,projectId,sharedPath,foreignFolderId,foreignPath;const checks=[],err
   if(foreignPath)ok(await admin.storage.from('documents').remove([foreignPath]));
   await Promise.all([client.auth.signOut(),outsider.auth.signOut()]);
  }
-})().catch(()=>{console.error('Archive verification failed at stage: '+stage);process.exitCode=1;});
+})().catch(error=>{console.error('Archive verification failed at stage: '+stage+': '+String(error.message).split('\n')[0]);process.exitCode=1;});

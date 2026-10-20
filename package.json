@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:db": "node scripts/verify-phase1-db.mjs && node scripts/verify-platform-admin-db.mjs && node scripts/verify-subscription-policy-db.mjs && node scripts/verify-platform-user-directory.mjs && node scripts/verify-import-db.mjs && node scripts/verify-document-metadata-db.mjs && node scripts/verify-entitlements-db.mjs"
+    "test:db": "node scripts/verify-phase1-db.mjs && node scripts/verify-platform-admin-db.mjs && node scripts/verify-subscription-policy-db.mjs && node scripts/verify-platform-user-directory.mjs && node scripts/verify-import-db.mjs && node scripts/verify-document-metadata-db.mjs && node scripts/verify-entitlements-db.mjs && node scripts/verify-archive-trash-db.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.7.1",

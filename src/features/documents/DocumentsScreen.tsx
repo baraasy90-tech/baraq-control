@@ -11,7 +11,7 @@ import { useCreateFolder } from "@/features/documents/api/useCreateFolder";
 import { useDeleteFolder } from "@/features/documents/api/useDeleteFolder";
 import { ArchiveUploadPanel } from "./ArchiveUploadPanel";
 import { useDeleteDocument } from "@/features/documents/api/useDeleteDocument";
-import type { DocumentFolder, Project } from "@/types/domain";
+import type { DocumentFolder, Project, ProjectDocument } from "@/types/domain";
 import { getFileUrl } from "@/lib/supabase/storage";
 import { useProjectDocumentIndex } from "./api/useProjectDocumentIndex";
 import { ArchiveFolderTree } from "./ArchiveFolderTree";
@@ -19,6 +19,8 @@ import { ArchiveSearchResults } from "./ArchiveSearchResults";
 import { folderPath, type ArchiveFileType } from "./archiveIndex";
 import {documentCategories,type DocumentCategory} from "./documentMetadata";
 import {DocumentMetadataSummary} from "./DocumentMetadataSummary";
+import {ArchiveTrashModal} from "./ArchiveTrashModal";
+import {getUserErrorMessage} from "@/utils/errors";
 import { OrganizeArchiveModal, type ArchiveEditTarget } from "./OrganizeArchiveModal";
 
 export function DocumentsScreen({ project }: { project: Project }) {
@@ -43,12 +45,13 @@ export function DocumentsScreen({ project }: { project: Project }) {
   const createFolder = useCreateFolder(project.id);
   const deleteFolder = useDeleteFolder(project.id);
 
-  const deleteDocument = useDeleteDocument(currentFolderId ?? undefined);
+  const deleteDocument = useDeleteDocument(project.id);
 
   const [folderModalOpen, setFolderModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [confirmDeleteFolder, setConfirmDeleteFolder] = useState<DocumentFolder | null>(null);
-  const [confirmDeleteDocId, setConfirmDeleteDocId] = useState<string | null>(null);
+  const [confirmDeleteDoc, setConfirmDeleteDoc] = useState<ProjectDocument | null>(null);
+  const [trashOpen,setTrashOpen]=useState(false);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
@@ -90,25 +93,19 @@ export function DocumentsScreen({ project }: { project: Project }) {
   const handleDeleteFolder = async (folder: DocumentFolder) => {
     if (readOnly) return;
     try {
-      await deleteFolder.mutateAsync(folder.id);
+      await deleteFolder.mutateAsync(folder);
       if (currentFolderId === folder.id) setCurrentFolderId(folder.parentFolderId);
-    } catch {
-      setError("تعذّر حذف المجلد، ربما حُذف أو تغيّرت صلاحياتك");
-    } finally {
       setConfirmDeleteFolder(null);
-    }
+    } catch(caught) {setError(getUserErrorMessage(caught,"تعذّر نقل المجلد إلى السلة؛ تحقق من النتيجة قبل إعادة المحاولة."));}
   };
 
 
-  const handleDeleteDocument = async (id: string) => {
+  const handleDeleteDocument = async (doc: ProjectDocument) => {
     if (readOnly) return;
     try {
-      await deleteDocument.mutateAsync(id);
-    } catch {
-      setError("تعذّر حذف المستند، ربما حُذف أو تغيّرت صلاحياتك");
-    } finally {
-      setConfirmDeleteDocId(null);
-    }
+      await deleteDocument.mutateAsync(doc);
+      setConfirmDeleteDoc(null);
+    } catch(caught) {setError(getUserErrorMessage(caught,"تعذّر نقل المستند إلى السلة؛ تحقق من النتيجة قبل إعادة المحاولة."));}
   };
 
   if (foldersQuery.isError && !foldersQuery.data) {
@@ -121,6 +118,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
       <ProjectWriteStatus projectId={project.id} />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-lg font-bold text-ink truncate">المستندات — {project.name}</h1>
+        <SecondaryButton disabled={uploading} onClick={()=>setTrashOpen(true)}>سلة المحذوفات</SecondaryButton>
         <SecondaryButton onClick={() => navigate(`/projects/${project.id}`)}>رجوع</SecondaryButton>
       </div>
 
@@ -197,8 +195,8 @@ export function DocumentsScreen({ project }: { project: Project }) {
                 <Folder size={18} className="text-primary shrink-0" strokeWidth={2} />
                 <span className="text-sm font-semibold text-ink truncate">{folder.name}</span>
               </button>
-              <IconButton disabled={readOnly} icon={Pencil} label={`إعادة تسمية ${folder.name}`} onClick={() => openOrganize({ kind: "folder", folder })} />
-              <IconButton disabled={readOnly} icon={Trash2} label="حذف" tone="critical" onClick={() => setConfirmDeleteFolder(folder)} />
+              <IconButton disabled={readOnly||uploading} icon={Pencil} label={`إعادة تسمية ${folder.name}`} onClick={() => openOrganize({ kind: "folder", folder })} />
+              <IconButton disabled={readOnly||uploading} icon={Trash2} label="حذف" tone="critical" onClick={() => {setError("");setConfirmDeleteFolder(folder);}} />
             </div>
           ))}
 
@@ -219,8 +217,8 @@ export function DocumentsScreen({ project }: { project: Project }) {
                 </span>
               </button>
               <DocumentMetadataSummary document={doc}/></div>
-              <IconButton disabled={readOnly} icon={Pencil} label={`تنظيم ${doc.name}`} onClick={() => openOrganize({ kind: "document", document: doc })} />
-              <IconButton disabled={readOnly} icon={Trash2} label="حذف" tone="critical" onClick={() => setConfirmDeleteDocId(doc.id)} />
+              <IconButton disabled={readOnly||uploading} icon={Pencil} label={`تنظيم ${doc.name}`} onClick={() => openOrganize({ kind: "document", document: doc })} />
+              <IconButton disabled={readOnly||uploading} icon={Trash2} label="حذف" tone="critical" onClick={() => {setError("");setConfirmDeleteDoc(doc);}} />
             </div>
           ))}
         </div>
@@ -229,6 +227,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
       </main>
       </div>
 
+      {trashOpen&&<ArchiveTrashModal projectId={project.id} readOnly={readOnly} onClose={()=>setTrashOpen(false)}/>}
       {editTarget && <OrganizeArchiveModal projectId={project.id} folders={folders} target={editTarget} readOnly={readOnly} onClose={() => setEditTarget(null)} />}
 
       {folderModalOpen && (
@@ -250,8 +249,9 @@ export function DocumentsScreen({ project }: { project: Project }) {
       {confirmDeleteFolder && (
         <Modal title="تأكيد الحذف" onClose={() => setConfirmDeleteFolder(null)}>
           <p className="text-sm text-ink-soft mb-5">
-            هل أنت متأكد من حذف مجلد "{confirmDeleteFolder.name}"؟ سيتم حذف كل ما بداخله من مجلدات وملفات فرعية بشكل نهائي.
+            هل أنت متأكد من حذف مجلد "{confirmDeleteFolder.name}"؟ سينتقل هو ومحتواه إلى السلة دون حذف الملفات من التخزين، ويمكن استعادته لاحقاً.
           </p>
+          {error&&<p role="alert" className="text-sm text-critical">{error}</p>}
           <div className="flex gap-2">
             <SecondaryButton onClick={() => setConfirmDeleteFolder(null)} className="flex-1">
               إلغاء
@@ -260,24 +260,25 @@ export function DocumentsScreen({ project }: { project: Project }) {
               onClick={() => handleDeleteFolder(confirmDeleteFolder)}
               className="flex-1 py-2.5 rounded-lg bg-critical text-white border-none font-bold text-sm cursor-pointer"
             >
-              حذف نهائياً
+              نقل إلى السلة
             </button>
           </div>
         </Modal>
       )}
 
-      {confirmDeleteDocId && (
-        <Modal title="تأكيد الحذف" onClose={() => setConfirmDeleteDocId(null)}>
-          <p className="text-sm text-ink-soft mb-5">هل أنت متأكد من حذف هذا الملف نهائياً؟</p>
+      {confirmDeleteDoc && (
+        <Modal title="تأكيد الحذف" onClose={() => setConfirmDeleteDoc(null)}>
+          <p className="text-sm text-ink-soft mb-5">سينتقل الملف إلى السلة ويمكن استعادته لاحقاً دون تغيير محتواه.</p>
+          {error&&<p role="alert" className="text-sm text-critical">{error}</p>}
           <div className="flex gap-2">
-            <SecondaryButton onClick={() => setConfirmDeleteDocId(null)} className="flex-1">
+            <SecondaryButton onClick={() => setConfirmDeleteDoc(null)} className="flex-1">
               إلغاء
             </SecondaryButton>
             <button disabled={readOnly || deleteDocument.isPending}
-              onClick={() => handleDeleteDocument(confirmDeleteDocId)}
+              onClick={() => handleDeleteDocument(confirmDeleteDoc)}
               className="flex-1 py-2.5 rounded-lg bg-critical text-white border-none font-bold text-sm cursor-pointer"
             >
-              حذف نهائياً
+              نقل إلى السلة
             </button>
           </div>
         </Modal>
