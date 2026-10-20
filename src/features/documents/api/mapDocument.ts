@@ -20,5 +20,6 @@ export function mapDocument(row: DocumentRow): ProjectDocument {
     name: row.name,
     fileUrl: row.file_url,
     uploadedAt: row.uploaded_at,
+    category:row.category??null, referenceNumber:row.reference_number??null, documentDate:row.document_date??null, description:row.description??null, rowVersion:row.row_version??0,
   };
 }

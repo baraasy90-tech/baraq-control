@@ -1,5 +1,7 @@
 import type { DocumentFolder, ProjectDocument } from "@/types/domain";
 
+import { documentCategoryLabel, type DocumentCategory } from "./documentMetadata";
+
 export type ArchiveFileType = "all" | "pdf" | "image" | "office" | "other";
 
 export function normalizeArchiveText(text: string) {
@@ -66,13 +68,13 @@ export function archiveFileType(name: string): Exclude<ArchiveFileType, "all"> {
   return "other";
 }
 
-export function searchArchive(folders: DocumentFolder[], documents: ProjectDocument[], query: string, type: ArchiveFileType) {
+export function searchArchive(folders: DocumentFolder[], documents: ProjectDocument[], query: string, type: ArchiveFileType, category: DocumentCategory | "all" = "all") {
   const byId = new Map(folders.map(folder => [folder.id, folder]));
   const paths = new Map(folders.map(folder => [folder.id, pathFromMap(byId, folder.id).map(part => part.name).join(" / ")]));
   return {
-    folders: type === "all" ? folders.filter(folder => archiveMatches(paths.get(folder.id) ?? folder.name, query)) : [],
-    documents: documents.filter(doc => paths.has(doc.folderId) && (type === "all" || archiveFileType(doc.name) === type)
-      && archiveMatches(`${doc.name} ${paths.get(doc.folderId)}`, query)),
+    folders: type === "all" && category === "all" ? folders.filter(folder => archiveMatches(paths.get(folder.id) ?? folder.name, query)) : [],
+    documents: documents.filter(doc => (category === "all" || doc.category === category) && paths.has(doc.folderId) && (type === "all" || archiveFileType(doc.name) === type)
+      && archiveMatches(`${doc.name} ${paths.get(doc.folderId)} ${documentCategoryLabel(doc.category)} ${doc.referenceNumber??""} ${doc.documentDate??""} ${doc.description??""}`, query)),
     paths,
   };
 }

@@ -318,6 +318,11 @@ export interface DocumentFolder {
 }
 
 export interface ProjectDocument {
+  category?: import("@/features/documents/documentMetadata").DocumentCategory | null;
+  referenceNumber?: string | null;
+  documentDate?: string | null;
+  description?: string | null;
+  rowVersion?: number;
   id: string;
   folderId: string;
   name: string;

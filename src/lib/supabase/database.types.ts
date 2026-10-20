@@ -98,10 +98,11 @@ type CheckedFields = {
 type Replace<T, F> = { [K in keyof T]: K extends keyof F ? F[K] : T[K] };
 type NullableSqlArgument = "p_trial_ends_at" | "p_note" | "p_logo_url" | "p_archive_local_path" | "p_department_id" | "p_user_id" | "p_procurement_department_id" | "p_manager_signature_url" | "p_notes" | "p_type" | "p_description" | "p_start_date" | "p_end_date" | "p_template_id";
 type Args<T> = { [K in keyof T]: K extends NullableSqlArgument ? T[K] | null : T[K] };
+type DocumentMetadataRow = {category: import('@/features/documents/documentMetadata').DocumentCategory|null;reference_number:string|null;document_date:string|null;description:string|null;row_version:number};
 type GeneratedFunctions = Generated['public']['Functions'];
 type FunctionReturns<F extends keyof GeneratedFunctions> = F extends 'list_all_companies_billing' ? Replace<GeneratedFunctions[F]['Returns'][number], {subscription_status: CheckedFields['companies']['subscription_status']}>[] : GeneratedFunctions[F]['Returns'];
 export type Database = Omit<Generated,'public'> & {public: Omit<Generated['public'],'Tables'|'Functions'> & {
- Tables: {[T in keyof Generated['public']['Tables']]: {[P in keyof Generated['public']['Tables'][T]]: P extends 'Row'|'Insert'|'Update' ? Replace<Generated['public']['Tables'][T][P], T extends keyof CheckedFields ? CheckedFields[T] : {}> : Generated['public']['Tables'][T][P]}};
+ Tables: {[T in keyof Generated['public']['Tables']]: {[P in keyof Generated['public']['Tables'][T]]: P extends 'Row'|'Insert'|'Update' ? Replace<Generated['public']['Tables'][T][P], T extends keyof CheckedFields ? CheckedFields[T] : {}> & (T extends 'documents' ? P extends 'Row' ? DocumentMetadataRow : Partial<DocumentMetadataRow> : {}) : Generated['public']['Tables'][T][P]}};
  Functions: {[F in keyof GeneratedFunctions]: Omit<GeneratedFunctions[F],'Args'|'Returns'> & {Args: Args<GeneratedFunctions[F]['Args']>;Returns:FunctionReturns<F>}} & {
    has_platform_admin_access: { Args: Record<string, never>; Returns: boolean };
      ensure_document_folder: {Args:{p_project_id:string;p_parent_folder_id:string|null;p_name:string;p_id:string};Returns:string};
