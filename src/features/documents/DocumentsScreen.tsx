@@ -1,7 +1,7 @@
 import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
 import { ProjectWriteStatus } from "@/features/billing/ProjectWriteStatus";
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useBlocker } from "react-router-dom";
 import { Folder, FileText, Trash2, Pencil } from "lucide-react";
 import { QueryFailureScreen } from "@/components/QueryFailureScreen";
 import { SecondaryButton, PrimaryButton, IconButton, Modal, ErrorText, TextInput, FieldLabel } from "@/components/ui";
@@ -9,6 +9,7 @@ import { useDocumentFolders } from "@/features/documents/api/useDocumentFolders"
 import { useDocuments } from "@/features/documents/api/useDocuments";
 import { useCreateFolder } from "@/features/documents/api/useCreateFolder";
 import { useDeleteFolder } from "@/features/documents/api/useDeleteFolder";
+import { ArchiveExportPanel } from "./ArchiveExportPanel";
 import { ArchiveUploadPanel } from "./ArchiveUploadPanel";
 import { useDeleteDocument } from "@/features/documents/api/useDeleteDocument";
 import type { DocumentFolder, Project, ProjectDocument } from "@/types/domain";
@@ -54,9 +55,12 @@ export function DocumentsScreen({ project }: { project: Project }) {
   const [trashOpen,setTrashOpen]=useState(false);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const busy = uploading || exporting;
+  const blocker = useBlocker(busy);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<ArchiveEditTarget | null>(null);
-  const openOrganize = (target: ArchiveEditTarget) => { if (!readOnly) setEditTarget(target); };
+  const openOrganize = (target: ArchiveEditTarget) => { if (!readOnly && !busy) setEditTarget(target); };
   const handleOpenDocument = async (id: string, stored: string, name: string) => {
     setError("");setOpeningId(id);
     const preview=/\.(pdf|txt|csv|png|jpe?g|webp|gif|bmp|tiff?|mp4|webm|mov|mp3|m4a|wav|ogg)$/i.test(name.includes('.')?name:stored.split('?')[0]);
@@ -118,7 +122,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
       <ProjectWriteStatus projectId={project.id} />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-lg font-bold text-ink truncate">المستندات — {project.name}</h1>
-        <SecondaryButton disabled={uploading} onClick={()=>setTrashOpen(true)}>سلة المحذوفات</SecondaryButton>
+        <SecondaryButton disabled={busy} onClick={()=>setTrashOpen(true)}>سلة المحذوفات</SecondaryButton>
         <SecondaryButton onClick={() => navigate(`/projects/${project.id}`)}>رجوع</SecondaryButton>
       </div>
 
@@ -161,9 +165,10 @@ export function DocumentsScreen({ project }: { project: Project }) {
         ))}
       </nav>
 
-      <ArchiveUploadPanel projectId={project.id} folderId={currentFolderId} readOnly={readOnly} onBusyChange={setUploading} />
+      <ArchiveExportPanel key={project.id} project={project} folderId={currentFolderId} disabled={uploading} onBusyChange={setExporting} />
+      <ArchiveUploadPanel projectId={project.id} folderId={currentFolderId} readOnly={readOnly || exporting} onBusyChange={setUploading} />
       {!searching && <div className="flex gap-2 mb-5">
-        <SecondaryButton disabled={readOnly || uploading} onClick={() => setFolderModalOpen(true)} className="text-sm">
+        <SecondaryButton disabled={readOnly || busy} onClick={() => setFolderModalOpen(true)} className="text-sm">
           + مجلد جديد
         </SecondaryButton>
 
@@ -176,7 +181,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
       )}
 
       {searching ? (indexQuery.isError ? <div role="alert" className="text-sm text-critical">تعذّر إكمال البحث؛ لم نعرض نتائج جزئية. <SecondaryButton onClick={() => void indexQuery.refetch()}>إعادة البحث</SecondaryButton></div> : indexQuery.isPending ? <p role="status" className="text-sm text-ink-soft">جارٍ البحث في مجلدات المشروع...</p> :
-        <ArchiveSearchResults key={`${search.trim()}-${fileType}-${category}`} folders={folders} documents={indexQuery.data ?? []} query={search} type={fileType} category={category} opening={openingId !== null} onOpenFolder={setCurrentFolderId} onOpenFile={doc => void handleOpenDocument(doc.id, doc.fileUrl,doc.name)} readOnly={readOnly} onOrganize={openOrganize} />
+        <ArchiveSearchResults key={`${search.trim()}-${fileType}-${category}`} folders={folders} documents={indexQuery.data ?? []} query={search} type={fileType} category={category} opening={openingId !== null} onOpenFolder={setCurrentFolderId} onOpenFile={doc => void handleOpenDocument(doc.id, doc.fileUrl,doc.name)} readOnly={readOnly || busy} onOrganize={openOrganize} />
       ) : subfolders.length === 0 && documents.length === 0 && !documentsQuery.isError && !foldersQuery.isLoading && !(currentFolderId && documentsQuery.isPending) ? (
         <div className="bg-panel border border-dashed border-line rounded-xl p-10 text-center text-sm text-ink-soft">
           هذا المجلد فارغ
@@ -195,8 +200,8 @@ export function DocumentsScreen({ project }: { project: Project }) {
                 <Folder size={18} className="text-primary shrink-0" strokeWidth={2} />
                 <span className="text-sm font-semibold text-ink truncate">{folder.name}</span>
               </button>
-              <IconButton disabled={readOnly||uploading} icon={Pencil} label={`إعادة تسمية ${folder.name}`} onClick={() => openOrganize({ kind: "folder", folder })} />
-              <IconButton disabled={readOnly||uploading} icon={Trash2} label="حذف" tone="critical" onClick={() => {setError("");setConfirmDeleteFolder(folder);}} />
+              <IconButton disabled={readOnly||busy} icon={Pencil} label={`إعادة تسمية ${folder.name}`} onClick={() => openOrganize({ kind: "folder", folder })} />
+              <IconButton disabled={readOnly||busy} icon={Trash2} label="حذف" tone="critical" onClick={() => {setError("");setConfirmDeleteFolder(folder);}} />
             </div>
           ))}
 
@@ -217,8 +222,8 @@ export function DocumentsScreen({ project }: { project: Project }) {
                 </span>
               </button>
               <DocumentMetadataSummary document={doc}/></div>
-              <IconButton disabled={readOnly||uploading} icon={Pencil} label={`تنظيم ${doc.name}`} onClick={() => openOrganize({ kind: "document", document: doc })} />
-              <IconButton disabled={readOnly||uploading} icon={Trash2} label="حذف" tone="critical" onClick={() => {setError("");setConfirmDeleteDoc(doc);}} />
+              <IconButton disabled={readOnly||busy} icon={Pencil} label={`تنظيم ${doc.name}`} onClick={() => openOrganize({ kind: "document", document: doc })} />
+              <IconButton disabled={readOnly||busy} icon={Trash2} label="حذف" tone="critical" onClick={() => {setError("");setConfirmDeleteDoc(doc);}} />
             </div>
           ))}
         </div>
@@ -227,6 +232,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
       </main>
       </div>
 
+      {blocker.state === "blocked" && <Modal title={uploading ? "عملية رفع جارية" : "عملية تنزيل جارية"} onClose={() => blocker.reset()}><p className="text-sm mb-4">انتظر اكتمال العملية أو أوقف الملفات المتبقية قبل مغادرة الصفحة، لتبقى نتيجة كل ملف واضحة.</p><PrimaryButton onClick={() => blocker.reset()}>البقاء في الصفحة</PrimaryButton></Modal>}
       {trashOpen&&<ArchiveTrashModal projectId={project.id} readOnly={readOnly} onClose={()=>setTrashOpen(false)}/>}
       {editTarget && <OrganizeArchiveModal projectId={project.id} folders={folders} target={editTarget} readOnly={readOnly} onClose={() => setEditTarget(null)} />}
 

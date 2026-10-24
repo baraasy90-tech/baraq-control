@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { useBeforeUnload, useBlocker } from 'react-router-dom';
+import { useBeforeUnload } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Upload, FolderUp, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/features/auth/AuthContext';
-import { Modal, PrimaryButton, SecondaryButton, ErrorText } from '@/components/ui';
+import { SecondaryButton, ErrorText } from '@/components/ui';
 import { droppedImportEntries, pickedImportEntries, directoryImportEntries, type PickedDirectory, type ImportEntry } from './importEntries';
 import { importJobs, runImportJobs, type ImportJob } from './importUpload';
 
@@ -12,7 +12,7 @@ export function ArchiveUploadPanel({projectId,folderId,readOnly,onBusyChange}:{p
  const [jobs,setJobs]=useState<ImportJob[]>([]),[busy,setBusy]=useState(false),[collecting,setCollecting]=useState(false),[error,setError]=useState(''),[dragging,setDragging]=useState(false);
  const mounted=useRef(true),reading=useRef(false),writable=useRef(!readOnly);writable.current=!readOnly;
  const destination=useRef<{projectId:string;folderId:string|null}|null>(null);
- const blocker=useBlocker(busy||collecting);
+
  useBeforeUnload(event=>{if(running.current||reading.current){event.preventDefault();event.returnValue='';}});
  useEffect(()=>{onBusyChange(busy||collecting);return()=>onBusyChange(false);},[busy,collecting,onBusyChange]);
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;stop.current=true;};},[]);
@@ -66,6 +66,5 @@ export function ArchiveUploadPanel({projectId,folderId,readOnly,onBusyChange}:{p
     <SecondaryButton onClick={()=>{setJobs([]);setError('');destination.current=null;}}>مسح القائمة</SecondaryButton>
    </>}</div>
   </div>}
-  {blocker.state==='blocked'&&<Modal title="عملية رفع جارية" onClose={()=>blocker.reset()}><p className="text-sm mb-4">انتظر اكتمال الدفعة أو أوقف الملفات المتبقية قبل مغادرة الصفحة، لتبقى نتيجة كل ملف واضحة.</p><PrimaryButton onClick={()=>blocker.reset()}>البقاء في الصفحة</PrimaryButton></Modal>}
  </section>;
 }
