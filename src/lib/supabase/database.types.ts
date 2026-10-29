@@ -106,6 +106,8 @@ type FunctionReturns<F extends keyof GeneratedFunctions> = F extends 'list_all_c
 export type Database = Omit<Generated,'public'> & {public: Omit<Generated['public'],'Tables'|'Functions'> & {
  Tables: {[T in keyof Generated['public']['Tables']]: {[P in keyof Generated['public']['Tables'][T]]: P extends 'Row'|'Insert'|'Update' ? Replace<Generated['public']['Tables'][T][P], T extends keyof CheckedFields ? CheckedFields[T] : {}> & (T extends 'documents' ? P extends 'Row' ? DocumentMetadataRow : Partial<DocumentMetadataRow> : {}) & (T extends 'documents'|'document_folders' ? P extends 'Row' ? TrashColumns : Partial<TrashColumns> : {}) : Generated['public']['Tables'][T][P]}} & {document_trash:{Row:TrashRow;Insert:never;Update:never;Relationships:[]}};
  Functions: {[F in keyof GeneratedFunctions]: Omit<GeneratedFunctions[F],'Args'|'Returns'> & {Args: Args<GeneratedFunctions[F]['Args']>;Returns:FunctionReturns<F>}} & {
+   set_document_content:{Args:{p_document_id:string;p_expected_version:number;p_text:string|null;p_sha256:string|null;p_extractor:string|null};Returns:undefined};
+   search_document_content:{Args:{p_project_id:string;p_query:string;p_after?:string|null};Returns:{document_id:string;folder_id:string;name:string;file_url:string;snippet:string;row_version:number}[]};
    trash_project_archive:{Args:{p_project_id:string;p_kind:'folder'|'document';p_root_id:string;p_request_id:string;p_expected_version?:number|null;p_expected_name?:string|null};Returns:string};
    restore_project_archive:{Args:{p_project_id:string;p_batch_id:string};Returns:string};
    get_company_entitlements:{Args:{p_company_id:string};Returns:import('./database.generated').Json};
