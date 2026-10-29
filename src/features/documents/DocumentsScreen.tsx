@@ -9,6 +9,7 @@ import { useDocumentFolders } from "@/features/documents/api/useDocumentFolders"
 import { useDocuments } from "@/features/documents/api/useDocuments";
 import { useCreateFolder } from "@/features/documents/api/useCreateFolder";
 import { useDeleteFolder } from "@/features/documents/api/useDeleteFolder";
+import { DocumentContentPanel } from "./DocumentContentPanel";
 import { ArchiveExportPanel } from "./ArchiveExportPanel";
 import { ArchiveUploadPanel } from "./ArchiveUploadPanel";
 import { useDeleteDocument } from "@/features/documents/api/useDeleteDocument";
@@ -56,7 +57,8 @@ export function DocumentsScreen({ project }: { project: Project }) {
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const busy = uploading || exporting;
+  const [indexing,setIndexing] = useState(false);
+  const busy = uploading || exporting || indexing;
   const blocker = useBlocker(busy);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<ArchiveEditTarget | null>(null);
@@ -128,7 +130,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
 
       <div className="bg-panel border border-line/60 rounded-xl p-4 mb-5">
         <h2 className="text-sm font-bold mb-1">أرشيف المشروع</h2>
-        <p className="text-xs text-ink-soft mb-3">ابحث بالاسم أو المرجع أو التصنيف أو التاريخ أو الوصف في جميع مجلدات المشروع. البحث داخل محتوى الوثائق سيُضاف لاحقاً.</p>
+        <p className="text-xs text-ink-soft mb-3">ابحث بالاسم أو المرجع أو التصنيف أو التاريخ أو الوصف في جميع مجلدات المشروع. للبحث داخل النصوص استخدم قسم «البحث داخل الوثائق».</p>
         <div className="flex gap-3 flex-wrap">
           <div className="flex-1 min-w-0 basis-56"><FieldLabel>البحث في الأرشيف</FieldLabel><TextInput type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="مثال: اعتماد مخططات أو عقد الاستشاري" /></div>
           <div><FieldLabel>نوع الملف</FieldLabel><select value={fileType} onChange={event => setFileType(event.target.value as ArchiveFileType)} className="border border-line rounded-lg p-2.5 bg-panel text-sm">
@@ -165,8 +167,9 @@ export function DocumentsScreen({ project }: { project: Project }) {
         ))}
       </nav>
 
-      <ArchiveExportPanel key={project.id} project={project} folderId={currentFolderId} disabled={uploading} onBusyChange={setExporting} />
-      <ArchiveUploadPanel projectId={project.id} folderId={currentFolderId} readOnly={readOnly || exporting} onBusyChange={setUploading} />
+      <DocumentContentPanel key={`content-${project.id}`} projectId={project.id} documents={documents} readOnly={readOnly} disabled={uploading||exporting} onBusyChange={setIndexing} onOpen={(id,path,name)=>void handleOpenDocument(id,path,name)} onFolder={setCurrentFolderId} />
+      <ArchiveExportPanel key={project.id} project={project} folderId={currentFolderId} disabled={uploading||indexing} onBusyChange={setExporting} />
+      <ArchiveUploadPanel projectId={project.id} folderId={currentFolderId} readOnly={readOnly || exporting || indexing} onBusyChange={setUploading} />
       {!searching && <div className="flex gap-2 mb-5">
         <SecondaryButton disabled={readOnly || busy} onClick={() => setFolderModalOpen(true)} className="text-sm">
           + مجلد جديد
@@ -232,7 +235,7 @@ export function DocumentsScreen({ project }: { project: Project }) {
       </main>
       </div>
 
-      {blocker.state === "blocked" && <Modal title={uploading ? "عملية رفع جارية" : "عملية تنزيل جارية"} onClose={() => blocker.reset()}><p className="text-sm mb-4">انتظر اكتمال العملية أو أوقف الملفات المتبقية قبل مغادرة الصفحة، لتبقى نتيجة كل ملف واضحة.</p><PrimaryButton onClick={() => blocker.reset()}>البقاء في الصفحة</PrimaryButton></Modal>}
+      {blocker.state === "blocked" && <Modal title={uploading ? "عملية رفع جارية" : indexing ? "عملية فهرسة جارية" : "عملية تنزيل جارية"} onClose={() => blocker.reset()}><p className="text-sm mb-4">انتظر اكتمال العملية أو أوقف الملفات المتبقية قبل مغادرة الصفحة، لتبقى نتيجة كل ملف واضحة.</p><PrimaryButton onClick={() => blocker.reset()}>البقاء في الصفحة</PrimaryButton></Modal>}
       {trashOpen&&<ArchiveTrashModal projectId={project.id} readOnly={readOnly} onClose={()=>setTrashOpen(false)}/>}
       {editTarget && <OrganizeArchiveModal projectId={project.id} folders={folders} target={editTarget} readOnly={readOnly} onClose={() => setEditTarget(null)} />}
 
