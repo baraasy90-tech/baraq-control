@@ -1,3 +1,5 @@
+import {useCompany} from "@/features/company/useCompany";
+import {localDestination,type LocalDirectory} from "./localDestination";
 import { useEffect, useRef, useState } from 'react';
 import { useBeforeUnload } from 'react-router-dom';
 import { CheckCircle2, Download } from 'lucide-react';
@@ -14,6 +16,9 @@ export function ArchiveExportPanel({ project, folderId, disabled, onBusyChange }
     onBusyChange: (busy: boolean) => void;
 }) {
     const { user } = useAuth();
+    const {company}=useCompany();
+    const [saved,setSaved]=useState<LocalDirectory|null>(null);
+    useEffect(()=>{let current=true;setSaved(null);if(user)void localDestination(company.id,user.id).then(handle=>{if(current)setSaved(handle);}).catch(()=>{});return()=>{current=false;};},[company.id,user?.id]);
     const run = useRef<ArchiveExportRun | null>(null), active = useRef(false), stop = useRef(false), mounted = useRef(true), abort = useRef<AbortController | null>(null);
     const [busy, setBusy] = useState(false), [error, setError] = useState(''), [, render] = useState(0), [visible, setVisible] = useState(50);
     const picker = (window as unknown as {
@@ -35,7 +40,7 @@ export function ArchiveExportPanel({ project, folderId, disabled, onBusyChange }
             return;
         await resumeArchiveExport(run.current, { stopped: () => stop.current, signal: abort.current.signal, changed: refresh });
     };
-    const start = async (scope: string | null) => {
+    const start = async (scope: string | null, useSaved=false) => {
         if (!picker || !user || disabled || active.current || run.current)
             return;
         active.current = true;
@@ -46,7 +51,8 @@ export function ArchiveExportPanel({ project, folderId, disabled, onBusyChange }
         setVisible(50);
         try {
             // The native picker must be called directly in the click, before the first await.
-            const parent = await picker.call(window, { mode: 'readwrite' });
+            const parent = useSaved && saved ? (await saved.requestPermission({mode:'readwrite'})==='granted' ? saved : null) : await picker.call(window, { mode: 'readwrite' });
+            if(!parent)throw new Error('لم يُمنح إذن الكتابة للمجلد المحفوظ. اختر المجلد من جديد أو اسمح بالوصول.');
             if (stop.current || !mounted.current)
                 return;
             run.current = await startArchiveExport(parent, { id: project.id, name: project.name }, scope, user.id, abort.current.signal);
@@ -94,6 +100,7 @@ export function ArchiveExportPanel({ project, folderId, disabled, onBusyChange }
     <p className="text-xs text-ink-soft mb-3">اختر مجلداً على جهازك. تُنشأ داخله نسخة مستقلة بمجلداتها وفهرس يوضح اكتمال الملفات. أبقِ الصفحة مفتوحة حتى انتهاء التحقق. عناصر السلة مستثناة.</p>
     {!picker && <p role="status" className="text-xs text-ink-soft">تنزيل المجلدات يحتاج Chrome أو Edge على الكمبيوتر. يمكنك فتح الملفات وتنزيلها منفردة من القائمة.</p>}
     {!current && <div className="flex flex-wrap gap-2">
+      {saved&&<SecondaryButton disabled={disabled||busy||!user} onClick={()=>void start(null,true)}>تنزيل إلى الوجهة المحفوظة: {saved.name}</SecondaryButton>}
       <SecondaryButton disabled={!picker || disabled || busy || !user} onClick={() => void start(null)}>تنزيل أرشيف المشروع</SecondaryButton>
       {folderId && <SecondaryButton disabled={!picker || disabled || busy || !user} onClick={() => void start(folderId)}>تنزيل المجلد الحالي</SecondaryButton>}
     </div>}

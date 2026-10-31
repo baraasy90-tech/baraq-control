@@ -1,3 +1,4 @@
+import {LocalArchiveDestination} from "./LocalArchiveDestination";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
@@ -309,6 +310,7 @@ export function ControlPanelScreen({ company, onBack }: { company: Company; onBa
 
           {activeSection === "archive" && (
             <SectionCard title="الأرشفة" description="مكان حفظ مستندات المشاريع المؤرشفة.">
+              <LocalArchiveDestination companyId={company.id} />
               <ArchiveStorageFields
                 folderName={folderName}
                 onFolderNameChange={setFolderName}
