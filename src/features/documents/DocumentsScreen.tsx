@@ -1,3 +1,4 @@
+import {LocalArchivePanel} from "./LocalArchivePanel";
 import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
 import { ProjectWriteStatus } from "@/features/billing/ProjectWriteStatus";
 import { useState } from "react";
@@ -58,7 +59,8 @@ export function DocumentsScreen({ project }: { project: Project }) {
   const [uploading, setUploading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [indexing,setIndexing] = useState(false);
-  const busy = uploading || exporting || indexing;
+  const [localBusy,setLocalBusy]=useState(false);
+  const busy = uploading || exporting || indexing || localBusy;
   const blocker = useBlocker(busy);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<ArchiveEditTarget | null>(null);
@@ -167,9 +169,10 @@ export function DocumentsScreen({ project }: { project: Project }) {
         ))}
       </nav>
 
-      <DocumentContentPanel key={`content-${project.id}`} projectId={project.id} documents={documents} readOnly={readOnly} disabled={uploading||exporting} onBusyChange={setIndexing} onOpen={(id,path,name)=>void handleOpenDocument(id,path,name)} onFolder={setCurrentFolderId} />
-      <ArchiveExportPanel key={project.id} project={project} folderId={currentFolderId} disabled={uploading||indexing} onBusyChange={setExporting} />
-      <ArchiveUploadPanel projectId={project.id} folderId={currentFolderId} readOnly={readOnly || exporting || indexing} onBusyChange={setUploading} />
+      <LocalArchivePanel readOnly={readOnly} disabled={uploading||exporting||indexing} onBusyChange={setLocalBusy} />
+      <DocumentContentPanel key={`content-${project.id}`} projectId={project.id} documents={documents} readOnly={readOnly} disabled={uploading||exporting||localBusy} onBusyChange={setIndexing} onOpen={(id,path,name)=>void handleOpenDocument(id,path,name)} onFolder={setCurrentFolderId} />
+      <ArchiveExportPanel key={project.id} project={project} folderId={currentFolderId} disabled={uploading||indexing||localBusy} onBusyChange={setExporting} />
+      <ArchiveUploadPanel projectId={project.id} folderId={currentFolderId} readOnly={readOnly || exporting || indexing || localBusy} onBusyChange={setUploading} />
       {!searching && <div className="flex gap-2 mb-5">
         <SecondaryButton disabled={readOnly || busy} onClick={() => setFolderModalOpen(true)} className="text-sm">
           + مجلد جديد
