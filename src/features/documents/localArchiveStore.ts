@@ -54,3 +54,13 @@ export async function copyLocalFile(sourceRoot:FileSystemDirectoryHandle,sourceP
  try{await writeNewLocalFile(targetRoot,targetPath,report,signal);}catch{throw new Error('تم التحقق من ملف الوجهة، لكن تعذّر حفظ تقرير النسخ. الأصل محفوظ؛ يمكنك إعادة المحاولة دون استبدال ملف الوجهة.');}
  return receipt;
 }
+/** Save As deliberately retains the original; it is not a destructive rename. */
+export async function saveLocalFileAs(root:FileSystemDirectoryHandle,path:string[],sourceName:string,newName:string,signal:AbortSignal){
+ validateLocalSegment(sourceName);validateLocalSegment(newName);
+ if(sourceName.normalize('NFKC').toLowerCase()===newName.normalize('NFKC').toLowerCase())throw new Error('اختر اسماً مختلفاً للنسخة الجديدة.');
+ const folder=await localFolder(root,path),source=await folder.getFileHandle(sourceName),before=await source.getFile();
+ const result=await writeNewLocalFile(root,path,new File([before],newName,{type:before.type,lastModified:before.lastModified}),signal);
+ const current=await source.getFile(),check=await digestStream(current.stream(),signal);
+ if(current.lastModified!==before.lastModified||check.bytes!==result.bytes||check.crc32!==result.crc32)throw new Error('تغير المصدر أثناء الحفظ؛ الأصل محفوظ لكن يلزم إعادة التحقق من النسخة الجديدة.');
+ return {name:newName,sourceRetained:true,...check};
+}
