@@ -37,3 +37,20 @@ export async function writeNewLocalFile(root:FileSystemDirectoryHandle,path:stri
 export async function createLocalFolder(root:FileSystemDirectoryHandle,path:string[],name:string){
  validateLocalSegment(name);const parent=await localFolder(root,path);if(await entryExists(parent,name))throw new Error('يوجد عنصر بالاسم نفسه.');return parent.getDirectoryHandle(name,{create:true});
 }
+/** Verified copy between local folders. The source is always retained. */
+export async function copyLocalFile(sourceRoot:FileSystemDirectoryHandle,sourcePath:string[],name:string,targetRoot:FileSystemDirectoryHandle,targetPath:string[],signal:AbortSignal){
+ validateLocalSegment(name);const sourceFolder=await localFolder(sourceRoot,sourcePath),sourceHandle=await sourceFolder.getFileHandle(name),before=await sourceHandle.getFile();
+ const targetFolder=await localFolder(targetRoot,targetPath);let targetAlreadyPresent=false;let result:{bytes:number;crc32:string};
+ if(await entryExists(targetFolder,name)){
+  const existing=await targetFolder.getFileHandle(name);if(await existing.isSameEntry(sourceHandle))throw new Error('المصدر والوجهة هما الملف نفسه.');
+  const sourceDigest=await digestStream(before.stream(),signal),targetDigest=await digestStream((await existing.getFile()).stream(),signal);
+  if(sourceDigest.bytes!==targetDigest.bytes||sourceDigest.crc32!==targetDigest.crc32)throw new Error('يوجد ملف مختلف بالاسم نفسه؛ لم يتم استبداله.');
+  result=targetDigest;targetAlreadyPresent=true;
+ }else result=await writeNewLocalFile(targetRoot,targetPath,before,signal);
+ const after=await sourceHandle.getFile(),current=await digestStream(after.stream(),signal);
+ if(after.size!==before.size||after.lastModified!==before.lastModified||current.bytes!==result.bytes||current.crc32!==result.crc32)throw new Error('تغير المصدر أثناء النسخ؛ الأصل محفوظ ولا تعتمد هذه النسخة كنسخة نهائية.');
+ const receipt={format:'baraq-local-copy',version:1,sourcePath:[...sourcePath,name],targetPath:[...targetPath,name],bytes:result.bytes,crc32:result.crc32,verifiedAt:new Date().toISOString(),sourceRetained:true,targetAlreadyPresent};
+ const report=new File([JSON.stringify(receipt,null,2)],'baraq-copy-'+crypto.randomUUID()+'.json',{type:'application/json'});
+ try{await writeNewLocalFile(targetRoot,targetPath,report,signal);}catch{throw new Error('تم التحقق من ملف الوجهة، لكن تعذّر حفظ تقرير النسخ. الأصل محفوظ؛ يمكنك إعادة المحاولة دون استبدال ملف الوجهة.');}
+ return receipt;
+}
