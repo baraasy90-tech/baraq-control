@@ -8,6 +8,9 @@ it('rejects duplicate files and case-equivalent path collisions before writing',
  expect(()=>planImportCopy([{path:['a.txt'],file:file('a.txt')},{path:['a.txt'],file:file('a.txt')}])).toThrow('تعارض');
  expect(()=>planImportCopy([{path:['Folder','a.txt'],file:file('a.txt')},{path:['folder','b.txt'],file:file('b.txt')}])).toThrow('تعارض');
 });
+it('rejects directory aliases that cloud folder creation would trim',()=>{
+ expect(()=>planImportCopy([{path:['Folder','a.txt'],file:file('a.txt')},{path:['Folder ','b.txt'],file:file('b.txt')}])).toThrow('تعارض');
+});
 it('rejects file-directory conflicts regardless of the ordering',()=>{
  for(const entries of [[{path:['same'],file:file('same')},{path:['same','a.txt'],file:file('a.txt')}],[{path:['same','a.txt'],file:file('a.txt')},{path:['same'],file:file('same')}]] )expect(()=>planImportCopy([...entries])).toThrow('تعارض');
 });

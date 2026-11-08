@@ -9,7 +9,7 @@ export function planImportCopy(entries:ImportEntry[]):ImportCopyPlan{
   validateImportPath(entry.path);if(entry.file)validateUpload('documents',entry.file);
   if(entry.file&&entry.path.at(-1)!==entry.file.name)throw new Error('اسم الملف لا يطابق مساره؛ أعد اختياره قبل النسخ.');
   for(let depth=1;depth<=entry.path.length;depth++){
-   const path=entry.path.slice(0,depth),original=JSON.stringify(path),key=JSON.stringify(path.map(name=>name.normalize('NFKC').toLowerCase())),kind=depth===entry.path.length&&entry.file?'file':'directory',previous=paths.get(key);
+   const path=entry.path.slice(0,depth),original=JSON.stringify(path),key=JSON.stringify(path.map(name=>name.normalize('NFKC').trim().toLowerCase())),kind=depth===entry.path.length&&entry.file?'file':'directory',previous=paths.get(key);
    if(previous&&(previous.original!==original||previous.kind!==kind||kind==='file'))throw new Error('تعارض في مسارات الدفعة: '+path.join(' / ')+'؛ غيّر الاسم أو اختر دفعات منفصلة. لم يبدأ النسخ.');
    paths.set(key,{original,kind});
    if(paths.size>MAX_IMPORT_ENTRIES)throw new Error('الدفعة مع المجلدات الحاوية تتجاوز 5000 عنصر.');
