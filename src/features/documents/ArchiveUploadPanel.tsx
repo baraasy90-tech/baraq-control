@@ -5,18 +5,21 @@ import { Upload, FolderUp, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/features/auth/AuthContext';
 import { SecondaryButton, ErrorText, Modal } from '@/components/ui';
 import { droppedImportEntries, pickedImportEntries, directoryImportEntries, type PickedDirectory, type ImportEntry } from './importEntries';
+import {createCopyCheckpoint,loadCopyCheckpoint,saveCopyCheckpointJob,clearCopyCheckpoint,reattachCopySources,type SavedCopy} from './importCheckpoint';
 import {planImportCopy,type ImportCopyPlan} from './importCopyPlan';
 import {buildImportReceipt} from './importVerification';
 import { importJobs, runImportJobs, type ImportJob } from './importUpload';
 
 export function ArchiveUploadPanel({projectId,folderId,readOnly,onBusyChange}:{projectId:string;folderId:string|null;readOnly:boolean;onBusyChange:(busy:boolean)=>void}) {
  const {user}=useAuth(),cache=useQueryClient();const filesRef=useRef<HTMLInputElement>(null),folderRef=useRef<HTMLInputElement>(null),stop=useRef(false),running=useRef(false);
+ const checkpoint=useRef<SavedCopy|null>(null);const [savedCopy,setSavedCopy]=useState<SavedCopy|null>(null),[resumeRequested,setResumeRequested]=useState(false),[checkpointLoaded,setCheckpointLoaded]=useState(false),[checkpointError,setCheckpointError]=useState(false);
  const [verifyCopy,setVerifyCopy]=useState(false);
- const [pending,setPending]=useState<{entries:ImportEntry[];projectId:string;folderId:string|null;plan:ImportCopyPlan}|null>(null);
+ const [pending,setPending]=useState<{entries:ImportEntry[];projectId:string;folderId:string|null;plan:ImportCopyPlan;resumeJobs?:ImportJob[]}|null>(null);
  const [jobs,setJobs]=useState<ImportJob[]>([]),[busy,setBusy]=useState(false),[collecting,setCollecting]=useState(false),[error,setError]=useState(''),[dragging,setDragging]=useState(false);
  const mounted=useRef(true),reading=useRef(false),writable=useRef(!readOnly);writable.current=!readOnly;
  const destination=useRef<{projectId:string;folderId:string|null;verifyCopy:boolean}|null>(null);
 
+ useEffect(()=>{let current=true;setCheckpointLoaded(false);setCheckpointError(false);setSavedCopy(null);checkpoint.current=null;setResumeRequested(false);if(user?.id)void loadCopyCheckpoint(user.id,projectId).then(saved=>{if(current){setSavedCopy(saved);checkpoint.current=saved;setCheckpointLoaded(true);}}).catch(()=>{if(current){setCheckpointError(true);setError('تعذّر تحميل سجل الاستئناف المحلي؛ لا تبدأ نسخة موثقة جديدة قبل معالجة السجل.');}});return()=>{current=false;};},[user?.id,projectId]);
  useBeforeUnload(event=>{if(running.current||reading.current){event.preventDefault();event.returnValue='';}});
  useEffect(()=>{onBusyChange(busy||collecting);return()=>onBusyChange(false);},[busy,collecting,onBusyChange]);
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;stop.current=true;};},[]);
@@ -25,15 +28,16 @@ export function ArchiveUploadPanel({projectId,folderId,readOnly,onBusyChange}:{p
  const execute=async(batch:ImportJob[])=>{
   if(!mounted.current||!writable.current||running.current||!user||!destination.current)return;
   running.current=true;stop.current=false;setBusy(true);setError('');
-  try{await runImportJobs(batch,destination.current.projectId,destination.current.folderId,user.id,stop,()=>setJobs([...batch]),destination.current.verifyCopy);}
+  const saved=destination.current.verifyCopy?checkpoint.current:null;
+  try{await runImportJobs(batch,destination.current.projectId,destination.current.folderId,user.id,stop,async job=>{if(mounted.current)setJobs([...batch]);if(saved)await saveCopyCheckpointJob(saved,job);},destination.current.verifyCopy);}
   catch(caught){setError(caught instanceof Error?caught.message:'تعذّر بدء الرفع.');}
-  finally{running.current=false;setBusy(false);setJobs([...batch]);await refresh();}
+  finally{running.current=false;setBusy(false);setJobs([...batch]);if(saved)try{const latest=await loadCopyCheckpoint(user.id,projectId);if(mounted.current){setSavedCopy(latest);checkpoint.current=latest;}}catch{setError('تعذّر إعادة قراءة سجل الاستئناف؛ تحقق منه قبل إغلاق الصفحة.');}await refresh();}
  };
  const add=async(entries:ImportEntry[])=>{
   if(!mounted.current||!writable.current)return;
   if(running.current){setError('انتظر اكتمال الدفعة الجارية قبل إضافة دفعة أخرى.');return;}
   if(jobs.some(job=>job.status!=='done')){setError('استكمل الدفعة السابقة أو امسح قائمتها قبل إضافة دفعة جديدة.');return;}
-  if(verifyCopy){try{setPending({entries,projectId,folderId,plan:planImportCopy(entries)});setError('');}catch(caught){setError(caught instanceof Error?caught.message:'تعذّر فحص الدفعة.');}return;}
+  if(verifyCopy){try{if(!checkpointLoaded)throw new Error('انتظر تحميل سجل الاستئناف المحلي.');if(savedCopy&&!resumeRequested)throw new Error('توجد دفعة محفوظة؛ استأنفها أو امسح سجلها قبل نسخة موثقة جديدة.');const resumeJobs=resumeRequested&&savedCopy?reattachCopySources(savedCopy,entries):undefined;setPending({entries,projectId,folderId:resumeJobs?savedCopy!.parentId:folderId,plan:planImportCopy(entries),resumeJobs});setError('');}catch(caught){setError(caught instanceof Error?caught.message:'تعذّر فحص الدفعة.');}return;}
   destination.current={projectId,folderId,verifyCopy};const batch=importJobs(entries);setJobs(batch);await execute(batch);
  };
  const pick=(files:FileList|null)=>{if(!files)return;try{void add(pickedImportEntries(files));}catch(caught){setError(caught instanceof Error?caught.message:'تعذّر قراءة الملفات.');}};
@@ -46,7 +50,8 @@ export function ArchiveUploadPanel({projectId,folderId,readOnly,onBusyChange}:{p
   catch(caught){if(mounted.current&&!(caught instanceof DOMException&&caught.name==='AbortError'))setError(caught instanceof Error&&/[\u0600-\u06ff]/.test(caught.message)?caught.message:'تعذّر قراءة المجلد. تحقق من صلاحية الوصول إليه.');}
   finally{reading.current=false;if(mounted.current)setCollecting(false);}
  };
- const confirmCopy=async()=>{if(!pending||!mounted.current||!writable.current||running.current)return;const selected=pending;destination.current={projectId:selected.projectId,folderId:selected.folderId,verifyCopy:true};const batch=importJobs(selected.entries);setPending(null);setJobs(batch);await execute(batch);};
+ const confirmCopy=async()=>{if(!pending||!mounted.current||!writable.current||running.current||!user)return;const selected=pending;setCollecting(true);try{const batch=selected.resumeJobs??importJobs(selected.entries);if(!selected.resumeJobs){const saved=await createCopyCheckpoint(user.id,selected.projectId,selected.folderId,batch);checkpoint.current=saved;setSavedCopy(saved);}destination.current={projectId:selected.projectId,folderId:selected.folderId,verifyCopy:true};setPending(null);setResumeRequested(false);setJobs(batch);await execute(batch);}catch(caught){setError(caught instanceof Error?caught.message:'تعذّر حفظ سجل الاستئناف؛ لم يبدأ النسخ.');}finally{setCollecting(false);}};
+ const clearList=async(force=false)=>{setCollecting(true);try{if(user&&(force||checkpoint.current||savedCopy))await clearCopyCheckpoint(user.id,projectId);checkpoint.current=null;setSavedCopy(null);setCheckpointError(false);setCheckpointLoaded(true);setResumeRequested(false);setJobs([]);setError('');destination.current=null;}catch{setError('تعذّر مسح سجل الاستئناف المحلي؛ لم تُحذف الملفات.');}finally{setCollecting(false);}};
  const saveReceipt=()=>{if(!destination.current)return;const receipt=buildImportReceipt(jobs,destination.current.projectId,destination.current.folderId),url=URL.createObjectURL(new Blob([JSON.stringify(receipt,null,2)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='baraq-copy-report-'+crypto.randomUUID()+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),60000);};
  const done=jobs.filter(job=>job.status==='done').length,failed=jobs.filter(job=>job.status==='error').length;
  return <section aria-label="رفع الملفات والمجلدات" className={`rounded-xl border-2 border-dashed p-4 mb-4 transition ${dragging?'border-primary bg-primary-bg':'border-line bg-panel'}`}
@@ -56,6 +61,9 @@ export function ArchiveUploadPanel({projectId,folderId,readOnly,onBusyChange}:{p
   onDrop={event=>{event.preventDefault();setDragging(false);if(readOnly||running.current||reading.current)return;reading.current=true;setCollecting(true);const entries=droppedImportEntries(event.dataTransfer.items,event.dataTransfer.files);void entries.then(found=>{reading.current=false;if(mounted.current)setCollecting(false);return add(found);}).catch(caught=>{if(mounted.current)setError(caught instanceof Error&&/[\u0600-\u06ff]/.test(caught.message)?caught.message:'تعذّر قراءة المجلد بالكامل. تحقق من صلاحية الوصول أو استخدم اختيار الملفات.');}).finally(()=>{reading.current=false;if(mounted.current)setCollecting(false);});}}>
   <p className="text-sm font-semibold mb-1 flex gap-2 items-center"><Upload size={18}/>اسحب الملفات أو المجلدات وأفلتها هنا</p>
   <p className="text-xs text-ink-soft mb-3">جميع الصيغ، بما فيها الفيديو وDWG وRevit وPrimavera والملفات المضغوطة؛ حتى 50 ميجابايت للملف. {folderId?'تُضاف داخل المجلد المفتوح مع الاحتفاظ بالتفرعات.':'تُضاف المجلدات بتفرعاتها، والملفات المفردة إلى «ملفات عامة» تلقائياً.'}</p>
+  {checkpointError&&<div className="border border-line p-3 mb-2"><p className="text-xs">يمكن مسح بيانات التقدم المحلي غير القابلة للقراءة. لا يحذف ذلك الملفات، لكنه يفقد إمكانية الاستئناف بمعرّفات الدفعة السابقة.</p><SecondaryButton disabled={busy||collecting} onClick={()=>void clearList(true)}>مسح سجل الاستئناف غير القابل للقراءة</SecondaryButton></div>}
+  {savedCopy&&<div className="border border-line rounded-lg p-3 mb-3"><p className="text-sm">توجد دفعة نسخ محفوظة لهذا الحساب والمشروع: {savedCopy.jobs.length} عنصر. تُحفظ بيانات التقدم محلياً دون محتوى الملفات أو بيانات الدخول.</p><SecondaryButton disabled={readOnly||busy||collecting} onClick={()=>{setVerifyCopy(true);setResumeRequested(true);setJobs([]);setPending(null);setError('');}}>استئناف دفعة محفوظة</SecondaryButton><SecondaryButton disabled={busy||collecting} onClick={()=>void clearList()}>مسح سجل الاستئناف فقط</SecondaryButton><p className="text-xs">مسح السجل لا يحذف أي أصل أو نسخة سحابية. استئناف المكتمل يعيد التحقق منه وقد يستهلك تنزيل بيانات إضافياً.</p></div>}
+  {resumeRequested&&<p role="status" className="text-sm mb-2">أعد اختيار الملفات أو المجلد الأصلي كاملاً بنفس المسارات، ثم راجع تأكيد الاستئناف.</p>}
   <label className="flex items-start gap-2 text-sm mb-2"><input type="checkbox" checked={verifyCopy} disabled={readOnly||busy||collecting||jobs.length>0} onChange={event=>setVerifyCopy(event.target.checked)}/>نسخ موثّق إلى السحابة مع إبقاء الأصل</label><p className="text-xs text-ink-soft mb-3">عند تفعيله نعيد تنزيل النسخة لمقارنة الحجم وفحص CRC32، ثم يتاح تقرير العملية. يستهلك ذلك نقل بيانات إضافياً، وتُعالج الملفات بالتتابع. للمجلد المختار نعيد فحص الأصل من الجهاز؛ لاختيار الملفات والسحب نتحقق من النسخة المحددة بالمتصفح. هذا نسخ وليس تغييراً تلقائياً لوجهة التخزين.</p>
   <div className="flex flex-wrap gap-2">
    <SecondaryButton disabled={readOnly||busy||collecting} onClick={()=>filesRef.current?.click()}>إضافة ملفات</SecondaryButton>
@@ -72,9 +80,9 @@ export function ArchiveUploadPanel({projectId,folderId,readOnly,onBusyChange}:{p
    <div className="flex flex-wrap gap-2 mt-3">{busy?<SecondaryButton onClick={()=>{stop.current=true;}}>إيقاف بعد الملفات الجارية</SecondaryButton>:<>
     {jobs.some(job=>job.status!=='done')&&<SecondaryButton disabled={readOnly} onClick={()=>void execute(jobs)}>استكمال وإعادة محاولة المتعثر</SecondaryButton>}
     {destination.current?.verifyCopy&&<SecondaryButton onClick={saveReceipt}>حفظ تقرير النسخ</SecondaryButton>}
-    <SecondaryButton onClick={()=>{setJobs([]);setError('');destination.current=null;}}>مسح القائمة</SecondaryButton>
+    <SecondaryButton disabled={collecting} onClick={()=>void clearList()}>مسح القائمة</SecondaryButton>
    </>}</div>
   </div>}
- {pending&&<Modal title="مراجعة النسخ الموثّق" onClose={()=>setPending(null)}><p className="text-sm mb-3">لم يبدأ الرفع بعد. راجع الدفعة ثم أكد بدء النسخ؛ يبقى الأصل محفوظاً.</p><dl className="text-sm space-y-2"><div><dt>الملفات</dt><dd>{pending.plan.files}</dd></div><div><dt>المجلدات بما فيها الحاوية والفارغة</dt><dd>{pending.plan.folders}</dd></div><div><dt>حجم الملفات الإجمالي</dt><dd>{(pending.plan.bytes/1024/1024).toFixed(2)} ميجابايت</dd></div><div><dt>تقدير الرفع والتنزيل للتحقق</dt><dd>{(pending.plan.bytes*2/1024/1024).toFixed(2)} ميجابايت، دون كلفة إعادة المحاولة</dd></div></dl><p className="text-xs my-3">مصادر بمقبض مباشر: {pending.plan.liveSources}؛ لقطات ملفات من المتصفح: {pending.plan.snapshotSources}. لم يُكشف تعارض مسارات داخل الدفعة. تُنشأ نسخ سحابية مستقلة؛ لا استبدال لملفات موجودة ولا اعتماد تلقائي لوجهة التخزين.</p><SecondaryButton disabled={readOnly||busy||collecting} onClick={()=>void confirmCopy()}>تأكيد بدء النسخ الموثّق</SecondaryButton><SecondaryButton onClick={()=>setPending(null)}>إلغاء النسخ</SecondaryButton></Modal>}
+ {pending&&<Modal title="مراجعة النسخ الموثّق" onClose={()=>{if(!collecting)setPending(null);}}><p className="text-sm mb-3">لم يبدأ الرفع بعد. راجع الدفعة ثم أكد بدء النسخ؛ يبقى الأصل محفوظاً. يُحفظ سجل التقدم في هذا المتصفح، ويتطلب الاستئناف إعادة اختيار المصادر.</p><dl className="text-sm space-y-2"><div><dt>الملفات</dt><dd>{pending.plan.files}</dd></div><div><dt>المجلدات بما فيها الحاوية والفارغة</dt><dd>{pending.plan.folders}</dd></div><div><dt>حجم الملفات الإجمالي</dt><dd>{(pending.plan.bytes/1024/1024).toFixed(2)} ميجابايت</dd></div><div><dt>تقدير الرفع والتنزيل للتحقق</dt><dd>{(pending.plan.bytes*2/1024/1024).toFixed(2)} ميجابايت، دون كلفة إعادة المحاولة</dd></div></dl><p className="text-xs my-3">مصادر بمقبض مباشر: {pending.plan.liveSources}؛ لقطات ملفات من المتصفح: {pending.plan.snapshotSources}. لم يُكشف تعارض مسارات داخل الدفعة. تُنشأ نسخ سحابية مستقلة؛ لا استبدال لملفات موجودة ولا اعتماد تلقائي لوجهة التخزين.</p><SecondaryButton disabled={readOnly||busy||collecting} onClick={()=>void confirmCopy()}>تأكيد بدء النسخ الموثّق</SecondaryButton><SecondaryButton disabled={collecting} onClick={()=>setPending(null)}>إلغاء النسخ</SecondaryButton></Modal>}
  </section>;
 }

@@ -2,10 +2,10 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import type { Database } from '@/lib/supabase/database.types';
 import { validateUpload } from '@/lib/supabase/uploadPolicy';
-import {verifyImportedCopy,type ImportVerification} from './importVerification';
+import {blobFingerprint,verifyImportedCopy,type ImportVerification} from './importVerification';
 import type { ImportEntry } from './importEntries';
 
-export interface ImportJob extends ImportEntry { id:string; status:'queued'|'uploading'|'done'|'error'; error?:string; uploaded?:boolean; folderId?:string; verification?:ImportVerification; verifying?:boolean }
+export interface ImportJob extends ImportEntry { id:string; status:'queued'|'uploading'|'done'|'error'; error?:string; uploaded?:boolean; folderId?:string; verification?:ImportVerification; verifying?:boolean; sourceFingerprint?:{bytes:number;crc32:string} }
 export const importJobs=(entries:ImportEntry[]):ImportJob[]=>entries.map(entry=>({...entry,id:crypto.randomUUID(),status:'queued'}));
 
 function displayError(error:unknown) {
@@ -16,7 +16,7 @@ function displayError(error:unknown) {
  return 'تعذّر الرفع أو تأكيد الحفظ. إعادة المحاولة تتحقق من السجل قبل استكماله دون تكرار الملف.';
 }
 
-export async function runImportJobs(jobs:ImportJob[],projectId:string,parentId:string|null,ownerId:string,stop:{current:boolean},changed:()=>void,verifyCopy=false) {
+export async function runImportJobs(jobs:ImportJob[],projectId:string,parentId:string|null,ownerId:string,stop:{current:boolean},changed:(job:ImportJob)=>void|Promise<void>,verifyCopy=false) {
  const session=(await supabase.auth.getSession()).data.session;
  if(!session||session.user.id!==ownerId)throw new Error('انتهت جلسة الحساب. سجّل الدخول من جديد.');
  // Bind this batch to its starting identity, even if the application later signs out.
@@ -31,20 +31,20 @@ export async function runImportJobs(jobs:ImportJob[],projectId:string,parentId:s
  let next=0;
  await Promise.all(Array.from({length:verifyCopy?1:3},async()=>{
   while(next<jobs.length&&!stop.current){const job=jobs[next++];if(job.status==='done')continue;
-   job.status='uploading';job.error=undefined;job.verification=undefined;job.verifying=false;changed();
+   job.status='uploading';job.error=undefined;job.verification=undefined;job.verifying=false;await changed(job);
    try{
-    if(job.file)validateUpload('documents',job.file);
-    if(!job.file){job.folderId=(await folderFor(job.path))??undefined;job.status='done';changed();continue;}
+    if(job.file){validateUpload('documents',job.file);if(verifyCopy){const fingerprint=await blobFingerprint(job.file);if(job.sourceFingerprint&&(job.sourceFingerprint.bytes!==fingerprint.bytes||job.sourceFingerprint.crc32!==fingerprint.crc32))throw new Error('اختلف محتوى المصدر عن سجل الاستئناف؛ لم يُستكمل النسخ.');job.sourceFingerprint=fingerprint;await changed(job);}}
+    if(!job.file){job.folderId=(await folderFor(job.path))??undefined;job.status='done';await changed(job);continue;}
     if(!job.folderId){const resolved=job.path.length>1?await folderFor(job.path.slice(0,-1)):parentId??await ensure(null,'ملفات عامة');if(!resolved)throw new Error('تعذّر تحديد مجلد الوجهة.');job.folderId=resolved;}
-    await uploadImportFile(client,job,ownerId,verifyCopy,()=>changed());
+    await uploadImportFile(client,job,ownerId,verifyCopy,()=>changed(job));
     job.status='done';job.verifying=false;
    }catch(error){job.status='error';job.verifying=false;job.error=displayError(error);}
-   changed();
+   await changed(job);
   }
  }));
 }
 
-async function uploadImportFile(client:SupabaseClient<Database>,job:ImportJob,ownerId:string,verifyCopy:boolean,changed:()=>void) {
+async function uploadImportFile(client:SupabaseClient<Database>,job:ImportJob,ownerId:string,verifyCopy:boolean,changed:()=>void|Promise<void>) {
  const path=`${ownerId}/${job.id}`;
  const existing=await client.from('documents').select('id,file_url,folder_id,trashed_at,name,row_version').eq('id',job.id).maybeSingle();
  if(existing.error)throw existing.error;
@@ -75,10 +75,11 @@ async function confirmCopiedRecord(client:SupabaseClient<Database>,job:ImportJob
  if(record.data.trashed_at||record.data.file_url!==path||record.data.folder_id!==job.folderId||record.data.name!==job.file!.name||(expectedVersion!==undefined&&record.data.row_version!==expectedVersion))throw new Error('تغير سجل الوجهة أثناء التحقق؛ لم تُعتمد عملية النسخ.');
  if(job.verification)job.verification.rowVersion=record.data.row_version;
 }
-async function verifyCloudCopy(client:SupabaseClient<Database>,job:ImportJob,path:string,changed:()=>void,expectedVersion?:number){
- job.verifying=true;changed();
+async function verifyCloudCopy(client:SupabaseClient<Database>,job:ImportJob,path:string,changed:()=>void|Promise<void>,expectedVersion?:number){
+ job.verifying=true;await changed();
  const downloaded=await client.storage.from('documents').download(path,{}, {cache:'no-store',signal:AbortSignal.timeout(120000)});
  if(downloaded.error)throw downloaded.error;
  job.verification=await verifyImportedCopy(job.file!,downloaded.data,job.getCurrentFile);
+ if(job.sourceFingerprint&&(job.sourceFingerprint.bytes!==job.verification.bytes||job.sourceFingerprint.crc32!==job.verification.crc32))throw new Error('تغير محتوى المصدر منذ حفظ سجل الاستئناف؛ لم يُعتمد النسخ.');
  if(expectedVersion!==undefined)await confirmCopiedRecord(client,job,path,expectedVersion);
 }
