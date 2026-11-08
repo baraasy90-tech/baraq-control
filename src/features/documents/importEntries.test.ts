@@ -21,3 +21,5 @@ it('imports empty folders through the directory handle picker',async()=>{
   const root:PickedDirectory={kind:'directory',name:'Project',async *values(){yield empty;yield {kind:'file',name:'a.rvt',getFile:async()=>({name:'a.rvt'} as File)};}};
   expect((await directoryImportEntries(root)).map(entry=>entry.path.join('/'))).toEqual(['Project','Project/Empty','Project/a.rvt']);
 });
+
+it("cancels native folder collection before reading its contents",async()=>{const controller=new AbortController();controller.abort();let read=false;const root:PickedDirectory={kind:"directory",name:"Project",async *values(){read=true;}};await expect(directoryImportEntries(root,controller.signal)).rejects.toMatchObject({name:"AbortError"});expect(read).toBe(false);});
