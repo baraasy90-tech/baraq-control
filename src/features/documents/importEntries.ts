@@ -1,4 +1,4 @@
-export interface ImportEntry { path: string[]; file?: File }
+export interface ImportEntry { path: string[]; file?: File; getCurrentFile?:()=>Promise<File> }
 export type PickedDirectory = {kind:'directory';name:string;values:()=>AsyncIterable<PickedDirectory|{kind:'file';name:string;getFile:()=>Promise<File>}>};
 type Entry = { name: string; isFile: boolean; isDirectory: boolean; file: (ok: (file: File) => void, fail: (error: DOMException) => void) => void; createReader: () => {readEntries: (ok: (entries: Entry[]) => void, fail: (error: DOMException) => void) => void} };
 export const MAX_IMPORT_ENTRIES = 5000;
@@ -40,7 +40,7 @@ export async function directoryImportEntries(root:PickedDirectory):Promise<Impor
     const path=[...parent,directory.name];add({path});
     for await(const child of directory.values()){
       if(child.kind==='directory')await walk(child,path);
-      else add({path:[...path,child.name],file:await child.getFile()});
+      else add({path:[...path,child.name],file:await child.getFile(),getCurrentFile:()=>child.getFile()});
     }
   }
   await walk(root,[]);return result;
