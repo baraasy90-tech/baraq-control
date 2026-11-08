@@ -64,3 +64,30 @@ export async function saveLocalFileAs(root:FileSystemDirectoryHandle,path:string
  if(current.lastModified!==before.lastModified||check.bytes!==result.bytes||check.crc32!==result.crc32)throw new Error('تغير المصدر أثناء الحفظ؛ الأصل محفوظ لكن يلزم إعادة التحقق من النسخة الجديدة.');
  return {name:newName,sourceRetained:true,...check};
 }
+export interface LocalRecoveryPoint {id:string;name:string;path:string[];bytes:number;crc32:string;createdAt:string}
+const recoveryPrefix='.baraq-recovery-';
+export async function createLocalRecovery(root:FileSystemDirectoryHandle,path:string[],name:string,signal:AbortSignal):Promise<LocalRecoveryPoint>{
+ const folder=await localFolder(root,path),handle=await folder.getFileHandle(validateLocalSegment(name)),source=await handle.getFile(),id=recoveryPrefix+crypto.randomUUID();
+ const destination=await root.getDirectoryHandle(id,{create:true}),copied=await writeNewLocalFile(destination,[],new File([source],'payload.bin',{type:source.type}),signal),current=await handle.getFile(),check=await digestStream(current.stream(),signal);
+ if(current.lastModified!==source.lastModified||check.bytes!==copied.bytes||check.crc32!==copied.crc32)throw new Error('تغير المصدر؛ لم تُعتمد نقطة الاستعادة.');
+ const point:LocalRecoveryPoint={id,name,path:[...path],bytes:copied.bytes,crc32:copied.crc32,createdAt:new Date().toISOString()};
+ await writeNewLocalFile(destination,[],new File([JSON.stringify(point)],'recovery.json',{type:'application/json'}),signal);return point;
+}
+export async function listLocalRecovery(root:FileSystemDirectoryHandle):Promise<LocalRecoveryPoint[]>{
+ const result:LocalRecoveryPoint[]=[];
+ for await(const entry of (root as unknown as {values():AsyncIterable<FileSystemHandle>}).values()){
+  if(entry.kind!=='directory'||!/^\.baraq-recovery-[0-9a-f-]{36}$/.test(entry.name))continue;
+  if(result.length>=200)throw new Error('قائمة نقاط الاستعادة كبيرة؛ يلزم تنظيمها قبل عرضها كاملة.');
+  try{const dir=await root.getDirectoryHandle(entry.name),file=await(await dir.getFileHandle('recovery.json')).getFile();if(file.size>65536)continue;const point=JSON.parse(await file.text()) as LocalRecoveryPoint;
+   if(point.id!==entry.name||typeof point.createdAt!=='string'||point.createdAt.length>40||!Number.isFinite(Date.parse(point.createdAt))||!Array.isArray(point.path)||point.path.length>32||typeof point.name!=='string'||!Number.isSafeInteger(point.bytes)||point.bytes<0||!/^[0-9a-f]{8}$/.test(point.crc32))continue;
+   validateLocalSegment(point.name);point.path.forEach(validateLocalSegment);result.push(point);
+  }catch(error){if(error instanceof DOMException&&["NotAllowedError","SecurityError","NotReadableError","AbortError"].includes(error.name))throw error;continue;}
+ }
+ return result.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+export async function restoreLocalRecovery(root:FileSystemDirectoryHandle,point:LocalRecoveryPoint,newName:string,signal:AbortSignal){
+ if(!/^\.baraq-recovery-[0-9a-f-]{36}$/.test(point.id)||point.path.length>32)throw new Error('نقطة الاستعادة غير صالحة.');
+ const folder=await root.getDirectoryHandle(point.id),file=await(await folder.getFileHandle('payload.bin')).getFile(),digest=await digestStream(file.stream(),signal);
+ if(digest.bytes!==point.bytes||digest.crc32!==point.crc32)throw new Error('لم يتطابق محتوى نقطة الاستعادة؛ لم تُستعد نسخة.');
+ await localFolder(root,point.path,true);return writeNewLocalFile(root,point.path,new File([file],validateLocalSegment(newName),{type:file.type}),signal);
+}
