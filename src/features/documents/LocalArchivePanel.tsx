@@ -6,7 +6,7 @@ import {useCompany} from '@/features/company/useCompany';
 import type {LocalTextHit} from './localTextIndex';
 import {localDestination,type LocalDirectory} from './localDestination';
 import {createLocalRecovery,listLocalRecovery,restoreLocalRecovery,type LocalRecoveryPoint,saveLocalFileAs,copyLocalFile,createLocalFolder,listLocalFolder,localFolder,writeNewLocalFile} from './localArchiveStore';
-export function LocalArchivePanel({readOnly,disabled,onBusyChange}:{readOnly:boolean;disabled:boolean;onBusyChange:(busy:boolean)=>void}){
+export function LocalArchivePanel({readOnly,disabled,onBusyChange,rootHandle}:{readOnly:boolean;disabled:boolean;onBusyChange:(busy:boolean)=>void;rootHandle?:FileSystemDirectoryHandle}){
  const {user}=useAuth(),{company}=useCompany(),userId=user?.id;
  const [root,setRoot]=useState<LocalDirectory|null>(null),[opened,setOpened]=useState(false),[path,setPath]=useState<string[]>([]),[rows,setRows]=useState<{name:string;kind:'file'|'directory'}[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[name,setName]=useState('');
  useBeforeUnload(event=>{if(running.current){event.preventDefault();event.returnValue="";}});
@@ -14,7 +14,7 @@ export function LocalArchivePanel({readOnly,disabled,onBusyChange}:{readOnly:boo
  const [points,setPoints]=useState<LocalRecoveryPoint[]>([]),[restorePoint,setRestorePoint]=useState<LocalRecoveryPoint|null>(null),[restoreName,setRestoreName]=useState('');
  const [saveAsSource,setSaveAsSource]=useState<string|null>(null),[saveAsName,setSaveAsName]=useState('');
  const input=useRef<HTMLInputElement>(null),controller=useRef<AbortController|null>(null),running=useRef(false);
- useEffect(()=>{let current=true;setRoot(null);setOpened(false);setPoints([]);setRestorePoint(null);setSaveAsSource(null);setLocalHits([]);setLocalQuery('');setError('');setMessage('');if(userId)void localDestination(company.id,userId).then(handle=>{if(current)setRoot(handle);}).catch(()=>{if(current)setError('تعذّر تحميل المجلد المحفوظ. اختر وجهة من إعدادات الأرشفة.');});return()=>{current=false;controller.current?.abort();};},[company.id,userId]);
+ useEffect(()=>{let current=true;setRoot(null);setOpened(false);setPoints([]);setRestorePoint(null);setSaveAsSource(null);setLocalHits([]);setLocalQuery('');setError('');setMessage('');if(rootHandle){setRoot(rootHandle as LocalDirectory);}else if(userId)void localDestination(company.id,userId).then(handle=>{if(current)setRoot(handle);}).catch(()=>{if(current)setError('تعذّر تحميل المجلد المحفوظ. اختر وجهة من إعدادات الأرشفة.');});return()=>{current=false;controller.current?.abort();};},[company.id,userId,rootHandle]);
  useEffect(()=>{onBusyChange(busy);return()=>onBusyChange(false);},[busy,onBusyChange]);
  const refresh=async(next=path)=>{if(!root)return;const items=await listLocalFolder(root,next);setRows(items);setPath(next);};
  const perform=async(action:()=>Promise<void>)=>{if(running.current||disabled)return;running.current=true;setBusy(true);setError('');setMessage('');controller.current=new AbortController();try{await action();}catch(caught){setError(caught instanceof Error?caught.message:'تعذّر التعامل مع المجلد المحلي.');}finally{running.current=false;setBusy(false);}};

@@ -67,11 +67,12 @@ export function ArchiveStorageFields({
             )}
           >
             <div className="text-sm font-semibold text-ink">{opt.label}{opt.id !== "cloud" && " — قريباً"}</div>
-            <div className="text-xs text-ink-soft mt-0.5">{opt.id === "cloud" ? opt.desc : "غير متاح حالياً؛ لا تُحفظ نسخة أرشيف بهذه الطريقة"}</div>
+            <div className="text-xs text-ink-soft mt-0.5">{opt.id === "cloud" ? opt.desc : "غير متاح كإعداد عام للشركة؛ لا تُحفظ نسخة أرشيف بهذه الطريقة"}</div>
           </button>
         ))}
       </div>
 
+      <p className="text-xs text-ink-soft mb-4">يمكن اختيار مجلد عمل على الجهاز لكل مشروع من صفحة مستنداته. هذا الاختيار يُحفظ للحساب والمتصفح؛ إعداد الشركة العام هنا يبقى سحابياً.</p>
       {storageType !== "cloud" && <p className="text-xs text-warn mb-4">الإعداد السابق لهذه الطريقة لا ينفذ أرشفة فعلية. اختر التخزين السحابي المتاح.</p>}
 
       {storageType === "local" && (

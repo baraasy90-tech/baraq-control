@@ -1,3 +1,4 @@
+import {documentWorkspace} from './documentWorkspace';
 import {useCompany} from "@/features/company/useCompany";
 import {localDestination,type LocalDirectory} from "./localDestination";
 import { useEffect, useRef, useState } from 'react';
@@ -18,7 +19,7 @@ export function ArchiveExportPanel({ project, folderId, disabled, onBusyChange }
     const { user } = useAuth();
     const {company}=useCompany();
     const [saved,setSaved]=useState<LocalDirectory|null>(null);
-    useEffect(()=>{let current=true;setSaved(null);if(user)void localDestination(company.id,user.id).then(handle=>{if(current)setSaved(handle);}).catch(()=>{});return()=>{current=false;};},[company.id,user?.id]);
+    useEffect(()=>{let current=true;setSaved(null);if(user)void documentWorkspace(company.id,user.id,project.id).then(async value=>value.directory??await localDestination(company.id,user.id)).then(handle=>{if(current)setSaved(handle as LocalDirectory|null);}).catch(()=>{});return()=>{current=false;};},[company.id,user?.id,project.id]);
     const run = useRef<ArchiveExportRun | null>(null), active = useRef(false), stop = useRef(false), mounted = useRef(true), abort = useRef<AbortController | null>(null);
     const [busy, setBusy] = useState(false), [error, setError] = useState(''), [, render] = useState(0), [visible, setVisible] = useState(50);
     const picker = (window as unknown as {
