@@ -1,9 +1,9 @@
 import type {ImportJob} from './importUpload';
 import {finishCrc32,updateCrc32} from './archiveExportPlan';
 export interface ImportVerification {bytes:number;crc32:string;verifiedAt:string;sourceCheck:'live-handle'|'selected-snapshot';sourceRetained:true;rowVersion?:number}
-export async function blobFingerprint(blob:Blob){
+export async function blobFingerprint(blob:Blob,signal?:AbortSignal){
  const reader=blob.stream().getReader();let bytes=0,state=0xffffffff;
- try{for(;;){const chunk=await reader.read();if(chunk.done)break;bytes+=chunk.value.byteLength;state=updateCrc32(state,chunk.value);}}finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
+ try{for(;;){signal?.throwIfAborted();const chunk=await reader.read();if(chunk.done)break;bytes+=chunk.value.byteLength;state=updateCrc32(state,chunk.value);}}finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
  return {bytes,crc32:finishCrc32(state)};
 }
 export async function verifyImportedCopy(source:File,remote:Blob,getCurrentFile?:()=>Promise<File>):Promise<ImportVerification>{

@@ -18,12 +18,13 @@ export function pickedImportEntries(files: FileList | File[]): ImportEntry[] {
   return entries;
 }
 
-export async function droppedImportEntries(items: DataTransferItemList, fallback: FileList): Promise<ImportEntry[]> {
+export async function droppedImportEntries(items: DataTransferItemList, fallback: FileList,signal?:AbortSignal): Promise<ImportEntry[]> {
   // Capture entries synchronously; browsers invalidate DataTransfer after the drop callback.
   const roots = Array.from(items).filter(item => item.kind==='file').map(item => ({entry:item.webkitGetAsEntry?.() as unknown as Entry|null,file:item.getAsFile()}));
   const result: ImportEntry[]=[];
-  const add=(item:ImportEntry)=>{validateImportPath(item.path);if(result.length>=MAX_IMPORT_ENTRIES)throw new Error('اسحب حتى 5000 ملف ومجلد في الدفعة الواحدة.');result.push(item);};
+  const add=(item:ImportEntry)=>{signal?.throwIfAborted();validateImportPath(item.path);if(result.length>=MAX_IMPORT_ENTRIES)throw new Error('اسحب حتى 5000 ملف ومجلد في الدفعة الواحدة.');result.push(item);};
   async function walk(entry:Entry,parent:string[]) {
+    signal?.throwIfAborted();
     const path=[...parent,entry.name];validateImportPath(path);
     if(entry.isFile){const file=await new Promise<File>((resolve,reject)=>entry.file(resolve,reject));add({path,file});}
     else if(entry.isDirectory){add({path});const reader=entry.createReader();for(;;){const children=await new Promise<Entry[]>((resolve,reject)=>reader.readEntries(resolve,reject));if(!children.length)break;for(const child of children)await walk(child,path);}}
@@ -33,10 +34,11 @@ export async function droppedImportEntries(items: DataTransferItemList, fallback
   return result;
 }
 
-export async function directoryImportEntries(root:PickedDirectory):Promise<ImportEntry[]> {
+export async function directoryImportEntries(root:PickedDirectory,signal?:AbortSignal):Promise<ImportEntry[]> {
   const result:ImportEntry[]=[];
-  const add=(entry:ImportEntry)=>{validateImportPath(entry.path);if(result.length>=MAX_IMPORT_ENTRIES)throw new Error('اختر حتى 5000 ملف ومجلد في الدفعة الواحدة.');result.push(entry);};
+  const add=(entry:ImportEntry)=>{signal?.throwIfAborted();validateImportPath(entry.path);if(result.length>=MAX_IMPORT_ENTRIES)throw new Error('اختر حتى 5000 ملف ومجلد في الدفعة الواحدة.');result.push(entry);};
   async function walk(directory:PickedDirectory,parent:string[]) {
+    signal?.throwIfAborted();
     const path=[...parent,directory.name];add({path});
     for await(const child of directory.values()){
       if(child.kind==='directory')await walk(child,path);
