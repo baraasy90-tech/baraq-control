@@ -3,14 +3,16 @@ import { useBeforeUnload } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Upload, FolderUp, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/features/auth/AuthContext';
-import { SecondaryButton, ErrorText } from '@/components/ui';
+import { SecondaryButton, ErrorText, Modal } from '@/components/ui';
 import { droppedImportEntries, pickedImportEntries, directoryImportEntries, type PickedDirectory, type ImportEntry } from './importEntries';
+import {planImportCopy,type ImportCopyPlan} from './importCopyPlan';
 import {buildImportReceipt} from './importVerification';
 import { importJobs, runImportJobs, type ImportJob } from './importUpload';
 
 export function ArchiveUploadPanel({projectId,folderId,readOnly,onBusyChange}:{projectId:string;folderId:string|null;readOnly:boolean;onBusyChange:(busy:boolean)=>void}) {
  const {user}=useAuth(),cache=useQueryClient();const filesRef=useRef<HTMLInputElement>(null),folderRef=useRef<HTMLInputElement>(null),stop=useRef(false),running=useRef(false);
  const [verifyCopy,setVerifyCopy]=useState(false);
+ const [pending,setPending]=useState<{entries:ImportEntry[];projectId:string;folderId:string|null;plan:ImportCopyPlan}|null>(null);
  const [jobs,setJobs]=useState<ImportJob[]>([]),[busy,setBusy]=useState(false),[collecting,setCollecting]=useState(false),[error,setError]=useState(''),[dragging,setDragging]=useState(false);
  const mounted=useRef(true),reading=useRef(false),writable=useRef(!readOnly);writable.current=!readOnly;
  const destination=useRef<{projectId:string;folderId:string|null;verifyCopy:boolean}|null>(null);
@@ -31,6 +33,7 @@ export function ArchiveUploadPanel({projectId,folderId,readOnly,onBusyChange}:{p
   if(!mounted.current||!writable.current)return;
   if(running.current){setError('انتظر اكتمال الدفعة الجارية قبل إضافة دفعة أخرى.');return;}
   if(jobs.some(job=>job.status!=='done')){setError('استكمل الدفعة السابقة أو امسح قائمتها قبل إضافة دفعة جديدة.');return;}
+  if(verifyCopy){try{setPending({entries,projectId,folderId,plan:planImportCopy(entries)});setError('');}catch(caught){setError(caught instanceof Error?caught.message:'تعذّر فحص الدفعة.');}return;}
   destination.current={projectId,folderId,verifyCopy};const batch=importJobs(entries);setJobs(batch);await execute(batch);
  };
  const pick=(files:FileList|null)=>{if(!files)return;try{void add(pickedImportEntries(files));}catch(caught){setError(caught instanceof Error?caught.message:'تعذّر قراءة الملفات.');}};
@@ -43,6 +46,7 @@ export function ArchiveUploadPanel({projectId,folderId,readOnly,onBusyChange}:{p
   catch(caught){if(mounted.current&&!(caught instanceof DOMException&&caught.name==='AbortError'))setError(caught instanceof Error&&/[\u0600-\u06ff]/.test(caught.message)?caught.message:'تعذّر قراءة المجلد. تحقق من صلاحية الوصول إليه.');}
   finally{reading.current=false;if(mounted.current)setCollecting(false);}
  };
+ const confirmCopy=async()=>{if(!pending||!mounted.current||!writable.current||running.current)return;const selected=pending;destination.current={projectId:selected.projectId,folderId:selected.folderId,verifyCopy:true};const batch=importJobs(selected.entries);setPending(null);setJobs(batch);await execute(batch);};
  const saveReceipt=()=>{if(!destination.current)return;const receipt=buildImportReceipt(jobs,destination.current.projectId,destination.current.folderId),url=URL.createObjectURL(new Blob([JSON.stringify(receipt,null,2)],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='baraq-copy-report-'+crypto.randomUUID()+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),60000);};
  const done=jobs.filter(job=>job.status==='done').length,failed=jobs.filter(job=>job.status==='error').length;
  return <section aria-label="رفع الملفات والمجلدات" className={`rounded-xl border-2 border-dashed p-4 mb-4 transition ${dragging?'border-primary bg-primary-bg':'border-line bg-panel'}`}
@@ -71,5 +75,6 @@ export function ArchiveUploadPanel({projectId,folderId,readOnly,onBusyChange}:{p
     <SecondaryButton onClick={()=>{setJobs([]);setError('');destination.current=null;}}>مسح القائمة</SecondaryButton>
    </>}</div>
   </div>}
+ {pending&&<Modal title="مراجعة النسخ الموثّق" onClose={()=>setPending(null)}><p className="text-sm mb-3">لم يبدأ الرفع بعد. راجع الدفعة ثم أكد بدء النسخ؛ يبقى الأصل محفوظاً.</p><dl className="text-sm space-y-2"><div><dt>الملفات</dt><dd>{pending.plan.files}</dd></div><div><dt>المجلدات بما فيها الحاوية والفارغة</dt><dd>{pending.plan.folders}</dd></div><div><dt>حجم الملفات الإجمالي</dt><dd>{(pending.plan.bytes/1024/1024).toFixed(2)} ميجابايت</dd></div><div><dt>تقدير الرفع والتنزيل للتحقق</dt><dd>{(pending.plan.bytes*2/1024/1024).toFixed(2)} ميجابايت، دون كلفة إعادة المحاولة</dd></div></dl><p className="text-xs my-3">مصادر بمقبض مباشر: {pending.plan.liveSources}؛ لقطات ملفات من المتصفح: {pending.plan.snapshotSources}. لم يُكشف تعارض مسارات داخل الدفعة. تُنشأ نسخ سحابية مستقلة؛ لا استبدال لملفات موجودة ولا اعتماد تلقائي لوجهة التخزين.</p><SecondaryButton disabled={readOnly||busy||collecting} onClick={()=>void confirmCopy()}>تأكيد بدء النسخ الموثّق</SecondaryButton><SecondaryButton onClick={()=>setPending(null)}>إلغاء النسخ</SecondaryButton></Modal>}
  </section>;
 }
