@@ -1,0 +1,9 @@
+import {expect,it} from 'vitest';
+import {validSavedLocalJob,localCopyScopeKey,type SavedLocalCopy} from './localCopyCheckpoint';
+import {reattachLocalSources} from './localCopyResume';
+const id='11111111-1111-4111-8111-111111111111';
+const job={id,path:['a.txt'],file:{name:'a.txt',size:3,lastModified:100},fingerprint:{bytes:3,crc32:'12345678'},status:'queued' as const};
+it('requires content fingerprints and a valid bounded path for checkpointed files',()=>{expect(validSavedLocalJob(job)).toBe(true);expect(validSavedLocalJob({...job,fingerprint:undefined})).toBe(false);expect(validSavedLocalJob({...job,path:['../a.txt']})).toBe(false);expect(validSavedLocalJob({...job,fingerprint:{bytes:4,crc32:'12345678'}})).toBe(false);});
+it('does not apply a cloud size cap to local checkpoint metadata',()=>expect(validSavedLocalJob({...job,file:{...job.file,size:100*1024*1024},fingerprint:{...job.fingerprint,bytes:100*1024*1024}})).toBe(true));
+it('scopes local batches to company, user and project',()=>{expect(localCopyScopeKey({companyId:'a',userId:'b',projectId:'c'})).not.toBe(localCopyScopeKey({companyId:'a',userId:'x',projectId:'c'}));expect(()=>localCopyScopeKey({companyId:'',userId:'b',projectId:'c'})).toThrow();});
+it('reattaches only a complete matching source set while retaining job IDs',()=>{const saved={jobs:[job]} as SavedLocalCopy;const file=new File(['abc'],'a.txt',{lastModified:100});expect(reattachLocalSources(saved,[{path:['a.txt'],file}])[0].id).toBe(id);expect(()=>reattachLocalSources(saved,[])).toThrow();expect(()=>reattachLocalSources(saved,[{path:['a.txt'],file:new File(['abc'],'a.txt',{lastModified:200})}])).toThrow();});
