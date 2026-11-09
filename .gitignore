@@ -29,3 +29,6 @@ dist-ssr
 .verification/
 verification-results/
 review-*.png
+
+# Generated from pinned OCR packages during dev/build
+public/ocr-assets/
