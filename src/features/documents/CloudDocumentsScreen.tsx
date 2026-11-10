@@ -169,8 +169,8 @@ export function CloudDocumentsScreen({ project,onBusyChange }: { project: Projec
       </nav>
 
       <DocumentContentPanel key={`content-${project.id}`} projectId={project.id} documents={documents} readOnly={readOnly} disabled={uploading||exporting} onBusyChange={setIndexing} onOpen={(id,path,name)=>void handleOpenDocument(id,path,name)} onFolder={setCurrentFolderId} />
-      <ArchiveExportPanel key={project.id} project={project} folderId={currentFolderId} disabled={uploading||indexing} onBusyChange={setExporting} />
-      <ArchiveUploadPanel key={project.id} projectId={project.id} folderId={currentFolderId} readOnly={readOnly || exporting || indexing} onBusyChange={setUploading} />
+      <ArchiveExportPanel key={`export-${project.id}`} project={project} folderId={currentFolderId} disabled={uploading||indexing} onBusyChange={setExporting} />
+      <ArchiveUploadPanel key={`upload-${project.id}`} projectId={project.id} folderId={currentFolderId} readOnly={readOnly || exporting || indexing} onBusyChange={setUploading} />
       {!searching && <div className="flex gap-2 mb-5">
         <SecondaryButton disabled={readOnly || busy} onClick={() => setFolderModalOpen(true)} className="text-sm">
           + مجلد جديد

@@ -11,6 +11,9 @@ export interface ExportFile {
     bytes?: number;
     crc32?: string;
     error?: string;
+    sourceVersion?: {id:string;version:string;size:number;etag?:string};
+    previousPaths?: string[][];
+    needsNewCopy?: boolean;
 }
 export interface ExportPlan {
     folders: ExportFolder[];
@@ -118,5 +121,5 @@ export function archiveExportManifest(plan: ExportPlan, project: {
     return { format: 'baraq-document-copy', version: 1, project, scopeFolderId: scope, createdAt, recordedAt: new Date().toISOString(), complete,
         checksum: 'CRC32 (transfer integrity only)',
         folders: plan.folders.map(({ folder, path }) => ({ id: folder.id, parentId: folder.parentFolderId, name: folder.name, localPath: ['الملفات', ...path].join('/') })),
-        documents: plan.files.map(({ document: d, path, status, bytes, crc32, error }) => ({ id: d.id, folderId: d.folderId, name: d.name, localPath: ['الملفات', ...path].join('/'), category: d.category ?? null, referenceNumber: d.referenceNumber ?? null, documentDate: d.documentDate ?? null, description: d.description ?? null, rowVersion: d.rowVersion ?? 0, uploadedAt: d.uploadedAt, status, bytes, crc32, error })) };
+        documents: plan.files.map(({ document: d, path, status, bytes, crc32, error, previousPaths }) => ({ id: d.id, folderId: d.folderId, name: d.name, localPath: ['الملفات', ...path].join('/'), category: d.category ?? null, referenceNumber: d.referenceNumber ?? null, documentDate: d.documentDate ?? null, description: d.description ?? null, rowVersion: d.rowVersion ?? 0, uploadedAt: d.uploadedAt, status, bytes, crc32, error, retainedCopies:previousPaths?.map(path=>['الملفات',...path].join('/')) })) };
 }
