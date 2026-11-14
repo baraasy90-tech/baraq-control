@@ -1,3 +1,4 @@
+import {mergeReviewedPdfText,validReviewedPdfPages} from './reviewedPdfMerge';
 import {localIndexFiles,withLocalIndexLock,retentionEventName,retentionEvent,canRetireIndex} from './localIndexRetention';
 import {ocrImageName} from './ocrImagePolicy';
 import {contentFileKind,decodeDocumentText,MAX_CONTENT_BYTES,MAX_CONTENT_CHARACTERS} from './contentText';
@@ -14,8 +15,8 @@ async function fingerprint(file:File,signal:AbortSignal){
 async function ensureIndexCapacity(root:FileSystemDirectoryHandle,signal:AbortSignal){
  const files=await localIndexFiles(root,signal);if(files.active.length>=maxIndexes)throw new Error('وصل الفهرس إلى حد 200 نسخة نشطة؛ راجع تنظيم الفهرس المحلي.');if(files.total>=1000)throw new Error('وصل الفهرس إلى حد 1000 ملف تاريخي؛ لم تُضف نسخة جديدة.');
 }
-async function persistIndex(root:FileSystemDirectoryHandle,record:LocalTextRecord,signal:AbortSignal){
- await withLocalIndexLock(signal,async()=>{await ensureIndexCapacity(root,signal);await writeNewLocalFile(root,[],new File([JSON.stringify(record)],prefix+crypto.randomUUID()+'.json',{type:'application/json'}),signal);});
+async function persistIndex(root:FileSystemDirectoryHandle,record:LocalTextRecord,signal:AbortSignal,guard?:()=>Promise<void>){
+ await withLocalIndexLock(signal,async()=>{await guard?.();await ensureIndexCapacity(root,signal);await writeNewLocalFile(root,[],new File([JSON.stringify(record)],prefix+crypto.randomUUID()+'.json',{type:'application/json'}),signal);});
 }
 export async function indexLocalText(root:FileSystemDirectoryHandle,path:string[],name:string,signal:AbortSignal){
  if(path.length>32||name.startsWith(prefix)||path.some(segment=>segment.startsWith('.baraq-')))throw new Error('مسار غير مناسب للفهرسة.');validateLocalSegment(name);
@@ -32,7 +33,7 @@ export async function indexLocalText(root:FileSystemDirectoryHandle,path:string[
 function parseRecord(value:unknown):LocalTextRecord|null{
  if(!value||typeof value!=='object')return null;const r=value as LocalTextRecord;
  if(r.format!=='baraq-local-text'||r.version!==1||!Array.isArray(r.path)||r.path.length>32||r.path.some(p=>typeof p!=='string')||typeof r.name!=='string'||!(contentFileKind(r.name)||r.source==='image-ocr-reviewed'&&ocrImageName(r.name))||!Number.isSafeInteger(r.bytes)||r.bytes<0||r.bytes>MAX_CONTENT_BYTES||!Number.isFinite(r.modified)||typeof r.crc32!=='string'||!/^[0-9a-f]{8}$/.test(r.crc32)||typeof r.text!=='string'||r.text.length>MAX_CONTENT_CHARACTERS||typeof r.indexedAt!=='string'||!Number.isFinite(Date.parse(r.indexedAt)))return null;
- try{if(r.source==='pdf-ocr-reviewed')pdfReviewPath(r.path,r.name,r.pages);validateLocalSegment(r.name);r.path.forEach(validateLocalSegment);}catch{return null;}return r;
+ try{if(r.source==='pdf-ocr-reviewed'){if(!validReviewedPdfPages(r.pages))return null;pdfReviewPath(r.path,r.name,[r.pages![0]]);}validateLocalSegment(r.name);r.path.forEach(validateLocalSegment);}catch{return null;}return r;
 }
 export async function searchLocalText(root:FileSystemDirectoryHandle,query:string,signal:AbortSignal):Promise<{hits:LocalTextHit[];stale:number;incomplete:number}>{
  const needle=query.trim().toLocaleLowerCase();if(needle.length<2||needle.length>200)throw new Error('اكتب بين حرفين و200 حرف للبحث.');
@@ -68,12 +69,29 @@ export async function extractLocalImageText(root:FileSystemDirectoryHandle,path:
  signal.throwIfAborted();if(before.lastModified!==after.lastModified||before.size!==after.size||source.crc32!==current.crc32)throw new Error('تغيرت الصورة أثناء OCR؛ لم تُعتمد النتيجة.');
  return {name,path:[...path],bytes:before.size,modified:before.lastModified,crc32:source.crc32,...result};
 }
-export async function saveReviewedOcrText(root:FileSystemDirectoryHandle,review:LocalOcrReview,text:string,signal:AbortSignal){
+export interface LocalPdfAppend {baseline:string;pages:number[]}
+async function latestReviewedPdf(root:FileSystemDirectoryHandle,path:string[],name:string,signal:AbortSignal){
+ const files=await localIndexFiles(root,signal);if(files.active.length>maxIndexes)throw new Error('نظّم الفهرس قبل جمع النصوص.');
+ let latest:{record:LocalTextRecord;name:string;baseline:string}|null=null;
+ for(const entry of files.active){signal.throwIfAborted();const file=await(await root.getFileHandle(entry.name)).getFile();if(file.size>MAX_CONTENT_CHARACTERS*6+8192)continue;const bytes=new Uint8Array(await file.arrayBuffer());let value:unknown;try{value=JSON.parse(new TextDecoder().decode(bytes));}catch{continue;}const record=parseRecord(value);if(!record||record.name!==name||JSON.stringify(record.path)!==JSON.stringify(path))continue;
+ if(!latest||Date.parse(record.indexedAt)>Date.parse(latest.record.indexedAt)||Date.parse(record.indexedAt)===Date.parse(latest.record.indexedAt)&&entry.name>latest.name)latest={record,name:entry.name,baseline:JSON.stringify([entry.name,finishCrc32(updateCrc32(0xffffffff,bytes))])};
+ }
+ return latest;
+}
+export async function prepareLocalPdfAppend(root:FileSystemDirectoryHandle,review:LocalOcrReview,text:string,signal:AbortSignal){
+ if(review.kind!=='pdf')throw new Error('جمع النصوص متاح لمراجعة PDF فقط.');pdfReviewPath(review.path,review.name,review.pages);
+ const latest=await latestReviewedPdf(root,review.path,review.name,signal);if(!latest||latest.record.source!=='pdf-ocr-reviewed')throw new Error('لا يوجد نص PDF مراجع سابق؛ يمكنك حفظ النص الحالي مباشرة.');
+ const prior=latest.record;if(prior.bytes!==review.bytes||prior.modified!==review.modified||prior.crc32!==review.crc32)throw new Error('النص السابق يعود لنسخة مختلفة من الملف؛ لا يمكن جمعهما.');
+ const file=await(await(await localFolder(root,review.path)).getFileHandle(review.name)).getFile(),current=await fingerprint(file,signal);if(file.size!==review.bytes||file.lastModified!==review.modified||current.crc32!==review.crc32)throw new Error('تغير PDF؛ أعد استخراج النص قبل الجمع.');
+ const merged=mergeReviewedPdfText(prior.text,prior.pages!,text,review.pages!);return {...merged,baseline:latest.baseline};
+}
+export async function saveReviewedOcrText(root:FileSystemDirectoryHandle,review:LocalOcrReview,text:string,signal:AbortSignal,append?:LocalPdfAppend){
+ if(append&&(review.kind!=='pdf'||!validReviewedPdfPages(append.pages)||!review.pages?.every(page=>append.pages.includes(page))))throw new Error('مراجعة الجمع غير صالحة.');
  if(review.kind==='pdf'){pdfReviewPath(review.path,review.name,review.pages);}else imageSourcePath(review.path,review.name);await ensureIndexCapacity(root,signal);
  const {checkDocumentText}=await import('./contentText');const accepted=checkDocumentText(text),handle=await(await localFolder(root,review.path)).getFileHandle(review.name),file=await handle.getFile(),current=await fingerprint(file,signal);
  signal.throwIfAborted();if(file.size!==review.bytes||file.lastModified!==review.modified||current.crc32!==review.crc32)throw new Error('تغيرت الوثيقة منذ استخراج النص؛ أعد OCR قبل حفظ الفهرس.');
- const record:LocalTextRecord={format:'baraq-local-text',version:1,path:review.path,name:review.name,bytes:review.bytes,modified:review.modified,crc32:review.crc32,text:accepted,indexedAt:new Date().toISOString(),source:review.kind==='pdf'?'pdf-ocr-reviewed':'image-ocr-reviewed',confidence:review.confidence,...(review.kind==='pdf'?{pages:review.pages}:{})};
- await persistIndex(root,record,signal);
+ const record:LocalTextRecord={format:'baraq-local-text',version:1,path:review.path,name:review.name,bytes:review.bytes,modified:review.modified,crc32:review.crc32,text:accepted,indexedAt:new Date().toISOString(),source:review.kind==='pdf'?'pdf-ocr-reviewed':'image-ocr-reviewed',confidence:review.confidence,...(review.kind==='pdf'?{pages:append?.pages??review.pages}:{})};
+ await persistIndex(root,record,signal,append?async()=>{const latest=await latestReviewedPdf(root,review.path,review.name,signal);if(!latest||latest.baseline!==append.baseline)throw new Error('تغير الفهرس منذ إعداد الجمع؛ أعد فتح المراجعة واجمع النص السابق من جديد.');record.indexedAt=new Date(Math.max(Date.now(),Date.parse(latest.record.indexedAt)+1)).toISOString();}:undefined);
 }
 
 function pdfReviewPath(path:string[],name:string,pages:number[]|undefined){
@@ -107,3 +125,4 @@ export async function confirmLocalIndexRetirement(root:FileSystemDirectoryHandle
 export async function restoreRetiredLocalIndexes(root:FileSystemDirectoryHandle,signal:AbortSignal){
  await withLocalIndexLock(signal,async()=>{const files=await localIndexFiles(root,signal);if(!files.retired.length)throw new Error('لا توجد نسخ فهرس مستبعدة.');if(files.active.length+files.retired.length>200)throw new Error('إعادة كل النسخ ستتجاوز حد 200 نسخة نشطة؛ احتفظ بالسجل الحالي.');if(files.controlCount>=100)throw new Error('وصل سجل تنظيم الفهرس إلى 100 عملية.');await writeNewLocalFile(root,[],new File([JSON.stringify(retentionEvent(files.revision+1,'restore',files.retired.map(entry=>entry.name)))],retentionEventName(),{type:'application/json'}),signal);});
 }
+
