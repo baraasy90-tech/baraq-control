@@ -1,3 +1,4 @@
+import {ContractLocalCopy} from './ContractLocalCopy';
 import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
 import { ProjectWriteStatus } from "@/features/billing/ProjectWriteStatus";
 import { useState } from "react";
@@ -538,7 +539,9 @@ export function ContractScreen() {
                 </StorageFileLink>
               )}
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+              {contract.pdfUrl&&projectId&&<ContractLocalCopy key={contract.id+contract.pdfUrl} companyId={company.id} projectId={projectId} contractId={contract.id} stored={contract.pdfUrl}/>}
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                 <StatCard label="تاريخ البدء" value={contract.startDate ? fmt(contract.startDate) : "—"} />
                 <StatCard label="مدة العقد" value={contract.durationDays ? `${contract.durationDays} يوم` : "—"} />
                 <StatCard label="قيمة العقد الأصلية" value={contract.totalValue ? fmtMoney(contract.totalValue) : "—"} />
