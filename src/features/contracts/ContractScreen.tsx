@@ -1,3 +1,4 @@
+import {CloudAttachmentNotice} from '@/components/CloudAttachmentNotice';
 import {ContractLocalCopy} from './ContractLocalCopy';
 import { useSubscriptionWriteAccess } from "@/features/billing/useSubscriptionWriteAccess";
 import { ProjectWriteStatus } from "@/features/billing/ProjectWriteStatus";
@@ -625,6 +626,7 @@ export function ContractScreen() {
 
           <div className="mb-4">
             <FieldLabel>نسخة العقد (PDF)</FieldLabel>
+            <div className="mb-2"><CloudAttachmentNotice kind="contract"/></div>
             <label className="flex items-center gap-2 border border-dashed border-line rounded-lg px-3 py-2.5 cursor-pointer text-sm text-ink-soft hover:bg-bg">
               <Upload size={15} />
               {pdfFile ? pdfFile.name : contract?.pdfUrl ? "استبدال الملف الحالي" : "اختر ملف PDF"}

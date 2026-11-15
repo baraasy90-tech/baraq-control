@@ -1,3 +1,4 @@
+import {CloudAttachmentNotice} from '@/components/CloudAttachmentNotice';
 import { useState } from "react";
 import { createFileUploadCache } from "@/lib/supabase/fileUploadCache";
 import { getErrorMessage } from "@/utils/errors";
@@ -152,6 +153,7 @@ export function NewSubmissionForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <CloudAttachmentNotice kind="receiving"/>
       <div>
         <FieldLabel>اسم مدير المشروع</FieldLabel>
         <TextInput disabled={readOnly} value={managerName} onChange={(e) => setManagerName(e.target.value)} />
