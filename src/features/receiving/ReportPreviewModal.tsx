@@ -11,6 +11,7 @@ export function ReportPreviewModal({
   onDelete,
   onEdit,
   onPrint,
+  onCopyImages,
 }: {
   readOnly?: boolean;
   activityName: string;
@@ -20,6 +21,7 @@ export function ReportPreviewModal({
   onDelete?: () => void;
   onEdit?: () => void;
   onPrint?: () => void;
+  onCopyImages?: () => void;
 }) {
   const checklistById = new Map(checklistItems.map((c) => [c.id, c]));
 
@@ -76,6 +78,7 @@ export function ReportPreviewModal({
       )}
 
       <div className="flex gap-2 flex-wrap">
+        {onCopyImages&&<SecondaryButton onClick={onCopyImages}>نسخ صور الاستلام إلى الجهاز</SecondaryButton>}
         {onPrint && (
           <SecondaryButton onClick={onPrint} className="flex-1">
             طباعة / PDF
