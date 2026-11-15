@@ -133,7 +133,7 @@ export function ReceivingScreen({ project }: { project: Project }) {
 
               <div>
                 <h3 className="text-sm font-bold text-ink mb-2">سجل التقديمات</h3>
-                <SubmissionHistory
+                <SubmissionHistory key={selected.id} projectId={project.id} activityId={selected.id}
                   readOnly={readOnly}
                   activityName={selected.name}
                   submissions={selected.submissions}

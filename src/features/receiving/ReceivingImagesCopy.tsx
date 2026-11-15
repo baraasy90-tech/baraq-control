@@ -1,0 +1,25 @@
+import {useEffect,useRef,useState} from 'react';
+import {useBeforeUnload} from 'react-router-dom';
+import {Modal,SecondaryButton} from '@/components/ui';
+import {useAuth} from '@/features/auth/AuthContext';
+import {useCompany} from '@/features/company/useCompany';
+import {documentWorkspace} from '@/features/documents/documentWorkspace';
+import type {Submission} from '@/types/domain';
+import type {ReceivingCopyJob} from './localReceivingImagesCopy';
+import {receivingPhotoPaths} from './receivingPhotoPlan';
+
+export function ReceivingImagesCopy({projectId,activityId,activityName,submission,onClose}:{projectId:string;activityId:string;activityName:string;submission:Submission;onClose:()=>void}){
+ const {user}=useAuth(),{company}=useCompany();const userId=user?.id;
+ const [root,setRoot]=useState<FileSystemDirectoryHandle|null>(null),[paths,setPaths]=useState<string[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[jobs,setJobs]=useState<ReceivingCopyJob[]>([]),[error,setError]=useState(''),[message,setMessage]=useState('');
+ const controller=useRef<AbortController|null>(null),running=useRef(false),generation=useRef(0);
+ // eslint-disable-next-line react-hooks/exhaustive-deps -- Cleanup must abort the latest operation, not the controller present before the user starts copying.
+ useEffect(()=>{const turn=++generation.current;setRoot(null);setPaths([]);setJobs([]);setError('');setMessage('');setLoading(true);setBusy(false);if(userId)void(async()=>{try{const values=receivingPhotoPaths([...submission.images,...submission.checklistResults.map(row=>row.imageUrl)]);const saved=await documentWorkspace(company.id,userId,projectId);if(!saved.directory)throw new Error('اختر مجلد المشروع من صفحة المستندات أولاً ثم أعد فتح نسخ الصور.');if(turn===generation.current){setPaths(values);setRoot(saved.directory);}}catch(caught){if(turn===generation.current)setError(caught instanceof Error?caught.message:'تعذّر تحميل الوجهة.');}finally{if(turn===generation.current)setLoading(false);}})();else setLoading(false);return()=>{generation.current++;controller.current?.abort();};},[company.id,userId,projectId,activityId,submission]);
+ useBeforeUnload(event=>{if(running.current){event.preventDefault();event.returnValue='';}});
+ const copy=async()=>{
+  if(!root||!user||running.current)return;const turn=generation.current;running.current=true;setBusy(true);setError('');setMessage('');setJobs([]);const signal=(controller.current=new AbortController()).signal;
+  try{const permission=await(root as FileSystemDirectoryHandle&{requestPermission:(options:{mode:'readwrite'})=>Promise<PermissionState>}).requestPermission({mode:'readwrite'});if(permission!=='granted')throw new Error('لم يُمنح إذن الكتابة في المجلد.');const {copyReceivingImages}=await import('./localReceivingImagesCopy');const result=await copyReceivingImages({ownerId:user.id,projectId,activityId,submissionId:submission.id,expectedPaths:paths,root},signal,values=>{if(turn===generation.current)setJobs(values);});if(turn===generation.current)setMessage((result.complete?'✓ اكتمل نسخ الصور والتحقق منها وإيصالاتها.':'اكتملت المحاولة مع صور متعثرة؛ راجع النتائج.')+' الوجهة: '+root.name+' / '+result.folderPath.join(' / '));}
+  catch(caught){if(turn===generation.current)setError((signal.aborted?'أوقفت نسخ الصور؛ الصور المكتملة محفوظة.':caught instanceof Error?caught.message:'تعذّر النسخ.')+' قد تبقى نسخ أو محاولات محلية؛ إعادة المحاولة تحفظ مجلداً جديداً دون استبدالها.');}
+  finally{running.current=false;if(turn===generation.current)setBusy(false);}
+ };
+ return <Modal title="نسخ صور الاستلام إلى الجهاز" onClose={()=>{if(!busy)onClose();}}>{loading?<p role="status">جارٍ تحميل مجلد المشروع...</p>:<><p className="text-sm mb-2">البند: {activityName} — {submission.managerName}</p><p className="text-sm mb-3">{paths.length} صورة من صور الفحص والصور الإضافية، دون التوقيع. الوجهة: {root?.name??'غير محددة'} ← الاستلام. تبقى أصول الصور ومشاركتها سحابياً. حتى 100 صورة و10 ميجابايت للصورة؛ تُنسخ بالتتابع في مجلد جديد مع إيصالات التحقق.</p><SecondaryButton disabled={!root||!paths.length||busy} onClick={()=>void copy()}>{jobs.length?'نسخ الصور في مجلد جديد':'تأكيد نسخ صور الاستلام'}</SecondaryButton>{busy?<SecondaryButton onClick={()=>controller.current?.abort()}>إيقاف نسخ صور الاستلام</SecondaryButton>:<SecondaryButton onClick={onClose}>إغلاق</SecondaryButton>}</>}{busy&&<p role="status" className="text-xs my-2">جارٍ نسخ الصور والتحقق منها...</p>}{jobs.length>0&&<ul aria-label="نتيجة نسخ صور الاستلام" className="list-none p-0 max-h-60 overflow-auto">{jobs.map((job,index)=><li key={job.path} className="text-xs border-b border-line py-2 break-all">الصورة {index+1} — {job.status==='done'?'✓ تم الحفظ والتحقق والإيصال':job.status==='copying'?'جارٍ النسخ':job.status==='error'?'تعذّر النسخ':busy?'في الانتظار':'لم يبدأ'}{job.error&&<p className="text-critical">{job.error}</p>}</li>)}</ul>}{message&&<p role="status" className="text-xs break-all my-2">{message}</p>}{error&&<p role="alert" className="text-xs text-critical my-2">{error}</p>}</Modal>;
+}

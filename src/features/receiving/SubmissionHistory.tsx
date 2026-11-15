@@ -1,3 +1,4 @@
+import {ReceivingImagesCopy} from './ReceivingImagesCopy';
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { DecisionPill } from "@/features/receiving/DecisionPill";
@@ -6,6 +7,7 @@ import { Modal, SecondaryButton, IconButton } from "@/components/ui";
 import type { ChecklistItem, Submission } from "@/types/domain";
 
 export function SubmissionHistory({
+  projectId,activityId,
   readOnly = false,
   activityName,
   submissions,
@@ -16,6 +18,7 @@ export function SubmissionHistory({
   deleting,
 }: {
   readOnly?: boolean;
+  projectId:string;activityId:string;
   activityName: string;
   submissions: Submission[];
   checklistItems: ChecklistItem[];
@@ -24,6 +27,7 @@ export function SubmissionHistory({
   onPrint: (submission: Submission) => void;
   deleting?: boolean;
 }) {
+  const [copying,setCopying]=useState<Submission|null>(null);
   const [previewing, setPreviewing] = useState<Submission | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -56,6 +60,7 @@ export function SubmissionHistory({
           checklistItems={checklistItems}
           onClose={() => setPreviewing(null)}
           onPrint={() => onPrint(previewing)}
+          onCopyImages={previewing.images.length||previewing.checklistResults.some(row=>row.imageUrl)?()=>{setCopying(previewing);setPreviewing(null);}:undefined}
           onEdit={() => {
             if (readOnly) return;
             setPreviewing(null);
@@ -69,6 +74,7 @@ export function SubmissionHistory({
         />
       )}
 
+      {copying&&<ReceivingImagesCopy projectId={projectId} activityId={activityId} activityName={activityName} submission={copying} onClose={()=>setCopying(null)}/>}
       {confirmDeleteId && (
         <Modal title="تأكيد حذف التقديم" onClose={() => setConfirmDeleteId(null)}>
           <p className="text-sm text-ink-soft mb-5">
