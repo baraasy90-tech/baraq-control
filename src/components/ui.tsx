@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import clsx from "clsx";
 import { Download } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { BaraqBrand } from "./BaraqBrand";
 
 const openDialogs = new Set<HTMLDivElement>();
 let backgroundWasInert = false;
@@ -13,7 +14,7 @@ export function AuthCard({ children, title, eyebrow }: { children: ReactNode; ti
     <div className="min-h-screen flex items-center justify-center p-5">
       <div className="bg-panel border border-line/60 shadow-sm rounded-2xl p-8 w-full max-w-md">
         <div className="text-center mb-5 pb-5 border-b border-line/60">
-          <div className="text-sm font-bold tracking-[0.2em] text-primary">BARAQ CONTROL</div>
+          <div className="flex justify-center text-navy"><BaraqBrand /></div>
           <div className="text-[11px] text-ink-soft mt-1">منصة إدارة المشاريع المتكاملة</div>
         </div>
         <div className="text-xs text-ink-soft tracking-wide font-mono">{eyebrow}</div>
