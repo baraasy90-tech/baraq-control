@@ -1,3 +1,4 @@
+import {ProjectWorkspaceHeader} from '@/features/projects/ProjectWorkspaceHeader';
 import { useNavigate, useParams } from "react-router-dom";
 import { ProjectQueryState } from "@/components/ProjectQueryState";
 import { QueryFailureScreen } from "@/components/QueryFailureScreen";
@@ -23,10 +24,11 @@ import { AdvanceOrdersPanel } from "@/features/schedule/AdvanceOrdersPanel";
 import { computeSchedule, getCurrentPreviousNext, getLatePhases, getCriticalUpcoming } from "@/features/schedule/lib/schedule";
 import { useCustomCalendarMap } from "@/features/schedule/api/useCustomCalendars";
 import { withComputedDone } from "@/features/schedule/lib/completion";
-import { DonutChart } from "@/components/DonutChart";
 import { Card, StatCard, SecondaryButton } from "@/components/ui";
 import { fmt } from "@/utils/dates";
 import type { ScopeConfig } from "@/types/domain";
+
+const sectionDescriptions:Record<string,string>={"الجدول الزمني للمشروع":"المراحل والمواعيد وترابط أعمال التنفيذ","الاستلام":"فحص الأعمال وتوثيق الصور والقرارات","المستندات":"ملفات المشروع ومجلداته والبحث عنها","الميزانية":"المخطط والمصروف ومتابعة الفروقات","العقود":"العقود والدفعات ومستندات الاعتماد","اعتماد المواد والمشتريات":"طلبات المواد ومسار الموافقة والتوريد","الفريق":"أعضاء المشروع وأدوارهم وصلاحياتهم"};
 
 export function ProjectPage() {
   const { id } = useParams<{ id: string }>();
@@ -78,56 +80,15 @@ export function ProjectPage() {
 
   return (
     <div className="min-h-screen p-4 sm:p-6 max-w-5xl mx-auto">
-      <div
-        className="rounded-2xl p-4 sm:p-5 mb-6"
-        style={{ background: `${project.themeColor}0d`, border: `1px solid ${project.themeColor}33` }}
-      >
-        <div className="flex items-center justify-between mb-4 gap-2">
-          <div className="flex items-center gap-3 min-w-0">
-            <div
-              className="w-11 h-11 rounded-lg flex items-center justify-center text-xl shrink-0"
-              style={{ background: `${project.themeColor}1a` }}
-            >
-              {project.themeIcon}
-            </div>
-            <h1 className="text-lg font-bold text-ink truncate">{project.name}</h1>
-          </div>
-          <SecondaryButton onClick={() => navigate("/")} className="text-sm shrink-0">
-            رجوع للمشاريع
-          </SecondaryButton>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-          {navTiles.map((tile) => {
-            const Icon = tile.icon;
-            return (
-              <button
-                key={tile.label}
-                onClick={tile.onClick}
-                className="flex flex-col items-center gap-2 text-center bg-panel shadow-sm rounded-xl p-4 cursor-pointer hover:shadow-md transition-shadow"
-                style={{ border: `1px solid ${project.themeColor}26` }}
-              >
-                <span
-                  className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ background: `${project.themeColor}1a`, color: project.themeColor }}
-                >
-                  <Icon size={18} strokeWidth={2.2} />
-                </span>
-                <span className="text-xs font-semibold text-ink leading-tight">{tile.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
+      <ProjectWorkspaceHeader project={project} percent={roots.length?overallPercent:null} completed={roots.filter(a=>a.done).length} total={roots.length} loading={activitiesQuery.isPending} onSchedule={()=>navigate('/projects/'+project.id+'/admin')} onBudget={()=>navigate('/projects/'+project.id+'/budget')} onBack={()=>navigate('/')}/>
+      {[
+        {title:'متابعة التنفيذ',description:'أعمال الموقع، الاستلامات، وملفات المشروع في متناولك.',labels:['الجدول الزمني للمشروع','الاستلام','المستندات']},
+        {title:'الماليات والفريق',description:'تابع الالتزامات المالية ونسّق القرارات مع فريقك.',labels:['العقود','الميزانية','اعتماد المواد والمشتريات','الفريق']},
+      ].map(group=><section key={group.title} aria-label={group.title} className="mb-6"><div className="mb-3"><h2 className="text-base font-bold text-ink">{group.title}</h2><p className="text-xs text-ink-soft mt-1">{group.description}</p></div><div className={"grid grid-cols-1 min-[420px]:grid-cols-2 gap-3 "+(navTiles.filter(tile=>group.labels.includes(tile.label)).length===4?"lg:grid-cols-4":navTiles.filter(tile=>group.labels.includes(tile.label)).length===2?"lg:grid-cols-2":"lg:grid-cols-3")}>{navTiles.filter(tile=>group.labels.includes(tile.label)).map(tile=>{const Icon=tile.icon;return <button type="button" key={tile.label} aria-label={tile.label} onClick={tile.onClick} className="group flex items-start gap-3 text-right bg-panel border border-line/70 rounded-2xl p-4 sm:p-5 hover:border-primary/50 hover:shadow-sm transition focus-visible:outline-2 focus-visible:outline-primary cursor-pointer min-w-0"><span className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{background:project.themeColor+'12',color:project.themeColor}}><Icon size={21} strokeWidth={1.8}/></span><span className="min-w-0"><span className="block text-sm font-bold text-ink mb-1">{tile.label}</span><span className="block text-xs text-ink-soft leading-relaxed">{sectionDescriptions[tile.label]}</span></span></button>;})}</div></section>)}
+      <div className="flex flex-wrap items-center gap-2 mb-6"><span className="text-xs text-ink-soft ml-1">إعدادات المشروع</span>{navTiles.filter(tile=>['النطاقات','المظهر'].includes(tile.label)).map(tile=>{const Icon=tile.icon;return <SecondaryButton key={tile.label} onClick={tile.onClick} className="text-xs inline-flex gap-2 items-center"><Icon size={14}/>{tile.label}</SecondaryButton>;})}</div>
+      {activitiesQuery.isPending?<p role="status" className="text-sm text-ink-soft p-4">جارٍ تحميل خط سير المشروع...</p>:roots.length===0?<Card title="جهّز مشروعك للمتابعة"><p className="text-sm text-ink-soft mb-3">ابدأ بإضافة مراحل المشروع ومواعيدها؛ ستظهر مؤشرات المتابعة بعد حفظ الجدول.</p><SecondaryButton onClick={()=>navigate('/projects/'+project.id+'/admin')}>إضافة أول مرحلة</SecondaryButton></Card>:<>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <Card className="flex items-center gap-3">
-          <DonutChart percent={overallPercent} size={52} color={project.themeColor} />
-          <div>
-            <div className="text-xs text-ink-soft font-semibold mb-0.5">نسبة الإنجاز</div>
-            <div className="text-xs text-ink-soft">{roots.filter((a) => a.done).length} / {roots.length} مرحلة</div>
-          </div>
-        </Card>
+        <StatCard label="المراحل المكتملة" value={roots.filter(a=>a.done).length} sub={"من أصل "+roots.length+" مرحلة رئيسية"}/>
         <StatCard label="المرحلة الحالية" value={current?.name} sub={current ? `حتى ${fmt(schedule[current.id]?.end)}` : undefined} />
         <StatCard
           label="مراحل متأخرة"
@@ -154,6 +115,7 @@ export function ProjectPage() {
         <StatCard label="المرحلة الحالية" value={current?.name} sub={current ? `${fmt(schedule[current.id]?.start)} → ${fmt(schedule[current.id]?.end)}` : undefined} />
         <StatCard label="المرحلة القادمة" value={next?.name} sub={next ? `تبدأ ${fmt(schedule[next.id]?.start)}` : undefined} />
       </div>
+      </>}
     </div>
   );
 }
