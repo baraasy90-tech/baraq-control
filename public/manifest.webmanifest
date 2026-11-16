@@ -8,11 +8,11 @@
   "orientation": "any",
   "lang": "ar",
   "dir": "rtl",
-  "background_color": "#F1EFEA",
+  "background_color": "#F5F6FA",
   "theme_color": "#E86B2C",
   "icons": [
-    { "src": "/pwa-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/pwa-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/pwa-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/baraq-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/baraq-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/baraq-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

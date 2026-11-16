@@ -98,6 +98,7 @@ function SidebarNav({
             onClick={onNavigate}
             title={collapsed ? item.label : undefined}
             aria-label={item.label}
+            style={active ? { background: 'var(--baraq-interface-color, #e86b2c)', color: '#fff' } : undefined}
             className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold no-underline transition-colors ${
               collapsed ? "justify-center px-0" : ""
             } ${active ? "bg-primary-bg text-primary" : "text-ink-soft hover:bg-bg"}`}

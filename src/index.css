@@ -188,3 +188,50 @@ body {
 @media (max-width: 640px) { .baraq-watermark { left: 16px; top: 60px; bottom: auto; opacity: .055; } .baraq-watermark .baraq-monogram { width: 120px; height: 120px; } }
 @media print { .baraq-sidebar, .baraq-desktop-header { display: none !important; } }
 .baraq-sidebar .text-critical { color: #ff9b9b; }
+
+/* Personal interface preferences; company branding and print colours are independent. */
+html[data-baraq-accent='orange'] { --baraq-interface-color: #c05327; --color-primary: #c05327; --color-primary-bg: #fdebe0; }
+html[data-baraq-accent='teal'] { --baraq-interface-color: #137465; --color-primary: #137465; --color-primary-bg: #e4f3ee; }
+html[data-baraq-accent='blue'] { --baraq-interface-color: #315dcc; --color-primary: #315dcc; --color-primary-bg: #e8efff; }
+html[data-baraq-accent='violet'] { --baraq-interface-color: #7750b2; --color-primary: #7750b2; --color-primary-bg: #f1eafb; }
+.baraq-sidebar a[aria-current='page'] { background: var(--baraq-interface-color, #e86b2c); }
+html[data-baraq-mode='dark'] {
+  color-scheme: dark;
+  --color-bg: #111b27; --color-panel: #1c2a39; --color-ink: #edf2f8;
+  --color-ink-soft: #bac7d6; --color-line: #3b4b5e; --color-current: #edf2f8;
+  --color-navy-soft: #293c50;
+  --color-accent: #86dba7; --color-accent-bg: #183e30;
+  --color-ontrack: #86dba7; --color-ontrack-bg: #183e30;
+  --color-warn: #edc86e; --color-warn-bg: #41361d;
+  --color-critical: #ffabab; --color-critical-bg: #47272e;
+  --color-not-submitted: #edc86e; --color-not-submitted-bg: #41361d;
+  --color-done-late: #9bdab1; --color-done-late-bg: #223d30;
+  --color-order-urgent: #ffabab; --color-order-urgent-bg: #47272e;
+  --color-order-soon: #f4b782; --color-order-soon-bg: #43311f;
+  --color-order-upcoming: #edc86e; --color-order-upcoming-bg: #41361d;
+}
+html[data-baraq-mode='dark'] body { background: var(--color-bg); }
+html[data-baraq-mode='dark'] .baraq-app-shell { background: var(--color-bg); }
+html[data-baraq-mode='dark'] .project-identity-panel { background: linear-gradient(120deg, #1c2a39, #223346); }
+html[data-baraq-mode='dark'] .baraq-watermark { color: #e3edf8; opacity: .08; }
+html[data-baraq-mode='dark'] .bg-white { background-color: var(--color-panel); }
+html[data-baraq-mode='dark'][data-baraq-accent='orange'] { --color-primary-bg: #442b20; }
+html[data-baraq-mode='dark'][data-baraq-accent='teal'] { --color-primary-bg: #173e37; }
+html[data-baraq-mode='dark'][data-baraq-accent='blue'] { --color-primary-bg: #22375d; }
+html[data-baraq-mode='dark'][data-baraq-accent='violet'] { --color-primary-bg: #392c50; }
+@media print {
+  html[data-baraq-mode] { color-scheme: light; --color-bg: #fff; --color-panel: #fff; --color-ink: #1a2332; --color-ink-soft: #5b6472; --color-line: #e1e5ee; --color-current: #1a2332; --color-primary: #e86b2c; --color-primary-bg: #fdebe0; --color-accent: #2e9e52; --color-accent-bg: #e5f5ea; --color-ontrack: #2e9e52; --color-ontrack-bg: #e5f5ea; --color-critical: #d64545; --color-critical-bg: #fbe7e7; --color-warn: #dfa22e; --color-warn-bg: #fbf1de; }
+  html[data-baraq-mode='dark'] body { background: #fff; color: #1a2332; }
+  html[data-baraq-mode='dark'] .project-identity-panel { background: #f5f6fa; }
+  html[data-baraq-mode='dark'] .baraq-watermark { color: #142d3e; opacity: .075; }
+}
+@media screen {
+  html[data-baraq-mode='dark'] .bg-ink.text-white { background-color: #31475d; }
+  html[data-baraq-mode='dark'][data-baraq-accent='orange'] .text-primary { color: #ffad83; }
+  html[data-baraq-mode='dark'][data-baraq-accent='teal'] .text-primary { color: #7bd8c4; }
+  html[data-baraq-mode='dark'][data-baraq-accent='blue'] .text-primary { color: #a7bfff; }
+  html[data-baraq-mode='dark'][data-baraq-accent='violet'] .text-primary { color: #d1b3fa; }
+}
+@media print {
+  html[data-baraq-mode][data-baraq-accent] { --color-primary-bg: #fdebe0; --color-not-submitted: #a67c00; --color-not-submitted-bg: #fbf3dc; --color-done-late: #63a97c; --color-done-late-bg: #eaf5ee; --color-order-urgent: #d64545; --color-order-urgent-bg: #fbe7e7; --color-order-soon: #d9772e; --color-order-soon-bg: #fbeee0; --color-order-upcoming: #dfa22e; --color-order-upcoming-bg: #fbf1de; }
+}

@@ -15,6 +15,7 @@ import { useCreateIndividualAccount } from "@/features/company/useCreateIndividu
 import { CompanyOnboardingWizard } from "@/features/company/CompanyOnboardingWizard";
 import { SupportChatWidget } from "@/features/support/SupportChatWidget";
 import { AppShell } from "@/app/AppShell";
+import { InterfaceAppearanceController } from '@/features/appearance/InterfaceAppearance';
 
 function CenteredMessage({ children }: { children: React.ReactNode }) {
   return <div className="min-h-screen flex items-center justify-center p-5 text-sm text-ink-soft">{children}</div>;
@@ -147,6 +148,7 @@ function AppRootContent() {
 export function AppRoot() {
   return (
     <>
+      <InterfaceAppearanceController />
       <AppRootContent />
     </>
   );

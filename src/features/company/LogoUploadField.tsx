@@ -39,7 +39,7 @@ export function LogoUploadField({
       </label>
       <p className="text-xs text-ink-soft mt-2">يدعم PNG بخلفية شفافة؛ تُحفظ الشفافية كما هي دون إضافة خلفية أو قصّ الشعار. يجب أن تكون الشفافية موجودة في الملف الأصلي.</p>
       {hasPreview && <div className="grid grid-cols-2 gap-3 mt-3" aria-label="معاينة الشعار على خلفيات التصميم">
-        <figure className="m-0"><div className="rounded-xl border border-line bg-white p-3">{preview()}</div><figcaption className="text-xs text-ink-soft mt-1 text-center">خلفية فاتحة</figcaption></figure>
+        <figure className="m-0"><div className="rounded-xl border border-line p-3" style={{ backgroundColor: '#fff' }}>{preview()}</div><figcaption className="text-xs text-ink-soft mt-1 text-center">خلفية فاتحة</figcaption></figure>
         <figure className="m-0"><div className="rounded-xl border border-line bg-navy p-3">{preview()}</div><figcaption className="text-xs text-ink-soft mt-1 text-center">خلفية كحلية</figcaption></figure>
       </div>}
       {error && <p className="text-sm text-critical mt-2">{error}</p>}
