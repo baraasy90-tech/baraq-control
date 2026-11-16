@@ -91,14 +91,6 @@ function PendingJoinOrOnboarding({ fullName }: { fullName: string }) {
   return <CompanyOnboardingWizard />;
 }
 
-function BrandMark() {
-  return (
-    <div className="fixed top-2 left-2 z-30 pointer-events-none select-none text-[10px] font-mono font-semibold tracking-[0.15em] text-ink-soft/35">
-      BARAQ CONTROL
-    </div>
-  );
-}
-
 function AppRootContent() {
   const { session, loading: authLoading, error: authError, isPasswordRecovery } = useAuth();
   const profileQuery = useProfile();
@@ -156,7 +148,6 @@ export function AppRoot() {
   return (
     <>
       <AppRootContent />
-      <BrandMark />
     </>
   );
 }
