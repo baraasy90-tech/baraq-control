@@ -5,12 +5,12 @@
   --font-sans: "IBM Plex Sans Arabic", sans-serif;
   --font-mono: "IBM Plex Mono", monospace;
 
-  --color-bg: #f1efea;
+  --color-bg: #f5f6fa;
   --color-panel: #ffffff;
   --color-ink: #1a2332;
   --color-ink-soft: #5b6472;
-  --color-line: #e5e2da;
-  --color-navy: #171b26;
+  --color-line: #e1e5ee;
+  --color-navy: #142d3e;
   --color-navy-soft: #262c3c;
   --color-primary: #e86b2c;
   --color-primary-bg: #fdebe0;
@@ -173,3 +173,21 @@ body {
     border: none !important;
   }
 }
+
+/* BARAQ identity is permanent; customer/project colours stay on their own accents. */
+.baraq-brand { display: inline-flex; align-items: center; gap: 12px; color: inherit; }
+.baraq-monogram { font-family: var(--font-sans); font-size: 32px; font-weight: 400; line-height: 1; letter-spacing: -4px; }
+.baraq-monogram > span { position: relative; }
+.baraq-monogram > span::after { content: ''; position: absolute; width: 8px; height: 3px; background: var(--color-primary); transform: rotate(42deg); right: -3px; bottom: 4px; }
+.baraq-wordmark { font-family: var(--font-sans); font-size: 20px; letter-spacing: .19em; font-weight: 400; }
+.baraq-sidebar { --color-panel: #142d3e; --color-bg: #203c50; --color-ink: #f5f7fb; --color-ink-soft: #c4d0dd; --color-line: #385064; --color-primary-bg: #e86b2c; --color-primary: #ffffff; background: #142d3e; color: #f5f7fb; }
+.baraq-sidebar .baraq-monogram > span::after { background: #f28a48; }
+.baraq-sidebar a[aria-current='page'] { background: #e86b2c; color: #fff; }
+.baraq-app-shell { background: #f5f6fa; }
+.project-identity-panel { background: linear-gradient(120deg, #edf0f6, #fafbfe); }
+.baraq-watermark { position: absolute; left: 28px; bottom: 8px; pointer-events: none; user-select: none; color: #142d3e; opacity: .045; }
+.baraq-watermark .baraq-monogram { font-size: 180px; letter-spacing: -22px; }
+.baraq-watermark .baraq-monogram > span::after { width: 36px; height: 14px; bottom: 22px; }
+@media (max-width: 640px) { .baraq-watermark { left: 12px; bottom: 28px; opacity: .03; } .baraq-watermark .baraq-monogram { font-size: 120px; } }
+@media print { .baraq-sidebar, .baraq-desktop-header { display: none !important; } }
+.baraq-sidebar .text-critical { color: #ff9b9b; }

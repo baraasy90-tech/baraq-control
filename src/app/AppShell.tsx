@@ -25,6 +25,7 @@ import { SubscriptionBanner } from "@/features/billing/SubscriptionBanner";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { fmt } from "@/utils/dates";
 import type { Company, Profile } from "@/types/domain";
+import { BaraqBrand } from "@/components/BaraqBrand";
 
 interface NavItem {
   to: string;
@@ -55,7 +56,9 @@ function isNavItemActive(pathname: string, to: string): boolean {
 
 function SidebarBrand({ company, collapsed }: { company: Company; collapsed: boolean }) {
   return (
-    <div className={`flex items-center gap-2.5 px-4 py-4 border-b border-line/60 ${collapsed ? "justify-center px-2" : ""}`}>
+    <div className={`flex flex-col gap-4 px-4 py-6 border-b border-line/60 ${collapsed ? "items-center px-2" : ""}`}>
+      <BaraqBrand compact={collapsed} />
+      <div className="flex items-center gap-2.5 min-w-0">
       {company.logoUrl ? (
         <img src={company.logoUrl} alt={company.name} className="h-8 w-8 object-contain rounded shrink-0" />
       ) : (
@@ -67,6 +70,7 @@ function SidebarBrand({ company, collapsed }: { company: Company; collapsed: boo
         </div>
       )}
       {!collapsed && <span className="text-sm font-bold text-ink truncate">{company.name}</span>}
+      </div>
     </div>
   );
 }
@@ -93,6 +97,7 @@ function SidebarNav({
             to={item.to}
             onClick={onNavigate}
             title={collapsed ? item.label : undefined}
+            aria-label={item.label}
             className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold no-underline transition-colors ${
               collapsed ? "justify-center px-0" : ""
             } ${active ? "bg-primary-bg text-primary" : "text-ink-soft hover:bg-bg"}`}
@@ -114,6 +119,7 @@ function PlatformAdminLink({ collapsed }: { collapsed: boolean }) {
     <Link
       to="/platform-admin"
       title={collapsed ? "إدارة المنصة" : undefined}
+      aria-label="إدارة المنصة"
       className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold no-underline text-ink-soft hover:bg-bg transition-colors ${
         collapsed ? "justify-center px-0" : "mx-2"
       }`}
@@ -185,9 +191,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [signatureOpen, setSignatureOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex bg-bg">
+    <div className="baraq-app-shell min-h-screen flex bg-bg">
       <aside
-        className={`hidden md:flex flex-col shrink-0 border-l border-line/60 bg-panel transition-[width] duration-200 ${
+        className={`baraq-sidebar hidden md:flex flex-col shrink-0 border-l border-line/60 bg-panel transition-[width] duration-200 ${
           collapsed ? "w-16" : "w-56"
         }`}
       >
@@ -201,6 +207,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <button
           onClick={() => setCollapsed((c) => !c)}
+          aria-label={collapsed ? "توسيع القائمة" : "طي القائمة"}
           className="flex items-center justify-center gap-2 border-none border-t border-line/60 bg-transparent text-ink-soft text-xs font-semibold py-3 cursor-pointer hover:bg-bg"
         >
           {collapsed ? <ChevronsLeft size={16} /> : <ChevronsRight size={16} />}
@@ -210,7 +217,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="w-64 bg-panel border-l border-line/60 flex flex-col">
+          <div className="baraq-sidebar w-64 bg-panel border-l border-line/60 flex flex-col">
             <div className="flex items-center justify-between px-2">
               <SidebarBrand company={company} collapsed={false} />
               <button
@@ -243,6 +250,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       <div className="flex-1 min-w-0 flex flex-col">
+        <header className="baraq-desktop-header hidden md:flex items-center justify-between gap-4 px-7 py-4 bg-navy text-white">
+          <div className="flex items-center gap-3 min-w-0">
+            {company.logoUrl ? <img src={company.logoUrl} alt="" className="h-9 w-9 object-contain bg-white rounded-lg p-1 shrink-0" /> : <span className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0"><UserRound size={20} /></span>}
+            <span className="text-sm font-semibold truncate">{company.name}</span>
+          </div>
+          <span className="text-xs text-white/70 shrink-0">مساحة إدارة المشاريع</span>
+        </header>
         <div className="md:hidden flex items-center gap-2 px-3 py-2.5 border-b border-line/60 bg-panel sticky top-0 z-30">
           <button
             onClick={() => setMobileOpen(true)}
@@ -255,6 +269,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {company.logoUrl && <img src={company.logoUrl} alt="" className="h-6 object-contain shrink-0" />}
             <span className="text-sm font-bold text-ink truncate">{company.name}</span>
           </div>
+          <span className="mr-auto text-navy shrink-0"><BaraqBrand compact /></span>
         </div>
 
         <OfflineBanner />
