@@ -100,7 +100,7 @@ export function ProjectsDashboard({
       >
         <div className="flex items-center gap-3 min-w-0">
           {company.logoUrl && (
-            <img src={company.logoUrl} alt={company.name} className="h-9 object-contain shrink-0 bg-white rounded p-1" />
+            <img src={company.logoUrl} alt={company.name} className="h-9 max-w-28 object-contain shrink-0" />
           )}
           <h1 className="text-lg sm:text-xl font-bold text-white truncate">{company.name}</h1>
         </div>

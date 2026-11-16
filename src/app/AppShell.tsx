@@ -60,7 +60,7 @@ function SidebarBrand({ company, collapsed }: { company: Company; collapsed: boo
       <BaraqBrand compact={collapsed} />
       <div className="flex items-center gap-2.5 min-w-0">
       {company.logoUrl ? (
-        <img src={company.logoUrl} alt={company.name} className="h-8 w-8 object-contain rounded shrink-0" />
+        <img src={company.logoUrl} alt={company.name} className="h-8 w-12 object-contain shrink-0" />
       ) : (
         <div
           className="h-8 w-8 rounded shrink-0 flex items-center justify-center text-white text-xs font-bold"
@@ -252,7 +252,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex-1 min-w-0 flex flex-col">
         <header className="baraq-desktop-header hidden md:flex items-center justify-between gap-4 px-7 py-4 bg-navy text-white">
           <div className="flex items-center gap-3 min-w-0">
-            {company.logoUrl ? <img src={company.logoUrl} alt="" className="h-9 w-9 object-contain bg-white rounded-lg p-1 shrink-0" /> : <span className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0"><UserRound size={20} /></span>}
+            {company.logoUrl ? <img src={company.logoUrl} alt="" className="h-9 w-14 object-contain shrink-0" /> : <span className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shrink-0"><UserRound size={20} /></span>}
             <span className="text-sm font-semibold truncate">{company.name}</span>
           </div>
           <span className="text-xs text-white/70 shrink-0">مساحة إدارة المشاريع</span>
